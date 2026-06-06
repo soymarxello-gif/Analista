@@ -1,0 +1,5 @@
+Opcional: en ui/dashboard.py agrega estas columnas a preferred_cols y oportunidades:
+options_score, options_bias, options_confidence, put_call_volume_ratio, put_call_oi_ratio,
+call_volume_share, near_call_oi_share, max_call_oi_strike, max_put_oi_strike,
+max_pain_approx, atm_implied_volatility, total_option_volume, total_option_open_interest.
+El dashboard profesional ya muestra columnas restantes en tabla completa, por lo que las verás aunque no las agregues al bloque prioritario.

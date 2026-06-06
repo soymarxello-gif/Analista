@@ -1,0 +1,9 @@
+yfinance
+pandas
+numpy
+pyyaml
+streamlit
+plotly
+loguru
+python-dateutil
+pytz

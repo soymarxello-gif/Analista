@@ -1,0 +1,24 @@
+Manual patch required in engine/scanner_engine.py if you do not replace the whole file:
+
+1) Add imports:
+from data.options_client import fetch_options_metrics
+from scoring.options_score import score_options_flow
+
+2) In run_scan(), before rows loop:
+options_enabled = config.get("options_flow", {}).get("enabled", False)
+max_options_tickers = config.get("options_flow", {}).get("max_tickers_per_run", 50)
+options_counter = 0
+
+3) Inside each ticker scoring loop after spot/latest is known:
+if options_enabled and options_counter < max_options_tickers:
+    options_metrics = fetch_options_metrics(ticker, spot, config)
+    options_score_data = score_options_flow(options_metrics, spot, config)
+    options_counter += 1
+else:
+    options_metrics = {"options_data_available": False, "options_source": "disabled_or_limit", "options_warning": "options_flow desactivado o límite max_tickers_per_run alcanzado"}
+    options_score_data = score_options_flow(options_metrics, spot, config)
+
+4) In scores dict:
+"options_score": options_score_data.get("options_score", 0.5),
+
+5) In row dict add options_score, options_bias, confidence and metrics from options_metrics.

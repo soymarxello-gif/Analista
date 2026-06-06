@@ -1,0 +1,238 @@
+project:
+  name: "Analista"
+  version: "0.1.0"
+  description: "Scanner para detectar setups long-only de swing trading en acciones comunes estadounidenses."
+
+trading_profile:
+  market: "US"
+  asset_class: "common_stocks"
+  direction: "long_only"
+  holding_period_min_days: 4
+  holding_period_ideal_days: [4, 21]
+  allow_etfs_as_tradable_assets: false
+  allow_etfs_as_benchmarks: true
+
+universe:
+  allowed_exchanges: ["NMS", "NYQ", "ASE", "NAS", "NYE"]
+  allowed_quote_types: ["EQUITY"]
+  allow_adrs: true
+  min_history_days: 252
+  exclude_name_contains:
+    - "ETF"
+    - "ETN"
+    - "Fund"
+    - "Trust"
+    - "Preferred"
+    - "Warrant"
+    - "Unit"
+    - "Right"
+
+screener:
+  max_results_per_query: 250
+  deduplicate_results: true
+  fallback_tickers:
+    - AAPL
+    - MSFT
+    - NVDA
+    - AMZN
+    - META
+    - GOOGL
+    - AVGO
+    - AMD
+    - CRM
+    - ORCL
+    - NFLX
+    - COST
+    - LLY
+    - JPM
+    - GE
+    - PLTR
+    - ANET
+    - CRWD
+    - NOW
+    - SMCI
+  channels:
+    day_gainers:
+      enabled: true
+    most_actives:
+      enabled: true
+    growth_technology_stocks:
+      enabled: true
+    undervalued_growth_stocks:
+      enabled: true
+
+liquidity:
+  min_price: 5
+  min_avg_volume_20d: 300000
+  min_avg_volume_60d: 250000
+  min_dollar_volume_20d: 10000000
+  min_median_to_mean_volume_ratio: 0.50
+
+benchmarks:
+  broad_market: "SPY"
+  growth_market: "QQQ"
+  small_caps: "IWM"
+  volatility: "^VIX"
+  us10y: "^TNX"
+  dollar: "DX-Y.NYB"
+  crude_oil: "CL=F"
+  bitcoin: "BTC-USD"
+
+market_regime:
+  risk_on:
+    min_score: 6
+    min_candidate_score: 75
+  neutral:
+    min_score: 4
+    min_candidate_score: 82
+  risk_off:
+    max_score: 3
+    min_candidate_score: 90
+    block_new_longs: true
+  vix:
+    low_risk_below: 16
+    high_risk_above: 25
+
+price_data:
+  daily_period: "1y"
+  daily_interval: "1d"
+
+indicators:
+  moving_averages: [20, 50, 200]
+  rsi:
+    period: 14
+    healthy_min: 55
+    healthy_max: 70
+    overextended: 75
+  macd:
+    fast: 12
+    slow: 26
+    signal: 9
+  atr:
+    period: 14
+  volume:
+    avg_period: 20
+    relative_volume_breakout_min: 1.30
+    relative_volume_strong_min: 1.50
+  obv:
+    slope_period: 20
+
+relative_strength:
+  windows:
+    short_days: 20
+    medium_days: 63
+  benchmarks:
+    market: "SPY"
+    growth: "QQQ"
+
+trend:
+  scoring:
+    close_above_ma20: 0.20
+    close_above_ma50: 0.25
+    close_above_ma200: 0.25
+    ma20_above_ma50: 0.15
+    ma50_above_ma200: 0.15
+  thresholds:
+    excellent: 0.85
+    acceptable: 0.70
+    weak: 0.55
+
+setups:
+  breakout:
+    min_relative_volume: 1.30
+    lookback_resistance: 20
+  pullback:
+    max_distance_to_ma_pct: 0.025
+  reclaim:
+    min_relative_volume: 1.10
+  volatility_contraction:
+    min_compression_ratio: 0.75
+
+risk_reward:
+  atr_stop_multiplier: 1.5
+  min_rr_absolute: 1.5
+  min_rr_acceptable: 1.7
+  min_rr_ideal: 2.0
+
+data_sources:
+  cache_ttl_minutes:
+    fundamentals: 1440
+
+fundamentals:
+  enabled: true
+  metadata_enrichment:
+    enabled: true
+    max_tickers: 300
+  earnings_risk:
+    veto_if_days_to_earnings_lte: 3
+    penalize_if_days_to_earnings_lte: 7
+
+scoring_weights:
+  relative_strength: 11.4
+  trend: 11.0
+  market_regime: 10.7
+  volume_accumulation: 10.3
+  sector_rotation: 9.5
+  structure_trigger: 9.0
+  risk_reward_atr: 8.4
+  liquidity: 7.6
+  momentum: 6.9
+  options_flow: 6.1
+  fundamentals: 5.1
+  sentiment: 4.0
+
+signal_thresholds:
+  buy_setup_active:
+    min_score: 85
+    require_trigger: true
+    min_rr: 2.0
+  ready_wait_trigger:
+    min_score: 80
+    min_rr: 1.7
+  watchlist:
+    min_score: 70
+
+veto_rules:
+  thresholds:
+    min_trend_score: 0.55
+    min_rr: 1.5
+
+outputs:
+  files:
+    latest_scan: "reports/latest_scan.json"
+    latest_csv: "reports/latest_scan.csv"
+    history_dir: "reports/history"
+
+logging:
+  level: "INFO"
+  file: "logs/scanner.log"
+  log_to_console: true
+
+development:
+  save_raw_screener_response: true
+  fail_soft_on_missing_data: true
+
+data_sources:
+  cache_ttl_minutes:
+    options: 30
+
+options_flow:
+  enabled: true
+  use_as_confirmation_only: true
+  max_tickers_per_run: 30
+  max_expirations: 3
+  min_days_to_expiration: 3
+  max_days_to_expiration: 45
+  near_moneyness_pct: 0.08
+  min_total_option_volume: 100
+  min_total_option_open_interest: 1000
+  extreme_bullish_put_call_below: 0.35
+  cache_ttl_minutes: 30
+  weights:
+    put_call_volume_ratio: 0.25
+    call_volume_share: 0.20
+    near_call_oi_share: 0.20
+    call_wall_position: 0.15
+    iv_risk: 0.10
+    options_liquidity: 0.10
+

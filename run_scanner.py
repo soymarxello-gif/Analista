@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+from loguru import logger
+
+from config_loader import load_config
+from engine.scanner_engine import run_scan
+from engine.report_engine import save_reports, format_numeric_columns
+
+
+def setup_logger(config: dict, verbose: bool = False):
+    logger.remove()
+    level = "DEBUG" if verbose else config.get("logging", {}).get("level", "INFO")
+
+    if config.get("logging", {}).get("log_to_console", True):
+        logger.add(lambda msg: print(msg, end=""), level=level)
+
+    log_file = config.get("logging", {}).get("file", "logs/scanner.log")
+    Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+    logger.add(log_file, level=level, rotation="2 MB")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Analista MVP - Scanner swing long-only USA")
+    parser.add_argument("--config", default=None)
+    parser.add_argument("--max-candidates", type=int, default=None)
+    parser.add_argument("--json-out", default=None)
+    parser.add_argument("--csv-out", default=None)
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--no-intraday", action="store_true", help="Reservado para compatibilidad futura.")
+    args = parser.parse_args()
+
+    config = load_config(args.config)
+    setup_logger(config, args.verbose)
+
+    df = run_scan(config, max_candidates=args.max_candidates)
+
+    if df.empty:
+        logger.warning("Scanner terminó sin candidatos.")
+        return
+
+    save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
+    logger.info(f"Scanner completado. Candidatos: {len(df)}")
+
+    display_cols = [
+        "rank",
+        "ticker",
+        "signal",
+        "setup_type",
+        "final_score",
+        "entry",
+        "stop",
+        "target",
+        "rr",
+        "reason_summary",
+    ]
+
+    available_cols = [c for c in display_cols if c in df.columns]
+    display_df = format_numeric_columns(df[available_cols].head(30), decimals=2)
+    print(display_df.to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()
