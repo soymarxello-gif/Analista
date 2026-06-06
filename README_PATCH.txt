@@ -1,30 +1,32 @@
-Parche de estabilización posterior a auditoría.
+Parche: calidad, tests y CI.
 
-Archivos a reemplazar/agregar:
-1) .gitignore
-2) config.yaml
-3) requirements.txt
-4) README.md
-5) engine/scanner_engine.py
-6) tools/validate_project.py
+Archivos a agregar/reemplazar:
+1) requirements-dev.txt
+2) pyproject.toml
+3) .github/workflows/ci.yml
+4) tests/test_config.py
+5) tests/test_final_score.py
+6) tests/test_signal_classifier.py
+7) tests/test_options_score.py
+8) tools/quick_check.py
 
-Correcciones:
-- Unifica data_sources.cache_ttl_minutes para fundamentals y options.
-- Agrega .gitignore para evitar subir .venv, cache, logs y reports.
-- Revalida universo después de enrich_metadata().
-- Actualiza README con opciones, dashboard, arquitectura y limitaciones.
-- Agrega versiones mínimas en requirements.txt.
-- Agrega tools/validate_project.py para validar config.yaml sin claves duplicadas y compilar Python.
+Qué agrega:
+- Tests de config.yaml sin duplicados.
+- Test de suma de scoring_weights = 100.
+- Test de pesos internos de options_flow = 1.
+- Tests de final_score.
+- Tests de signal_classifier.
+- Tests de options_score.
+- GitHub Actions CI en cada push/PR a main.
+- Script local tools/quick_check.py.
 
-Uso:
+Uso local:
 cd "C:\Users\El otro Yo\Projects\ChatGPT\Analista"
 .\.venv\Scripts\activate
-python -m compileall .
-python tools\validate_project.py
-python run_scanner.py --max-candidates 30 --verbose --csv-out reports/latest_scan_audit_fix.csv --json-out reports/latest_scan_audit_fix.json
+pip install -r requirements-dev.txt
+python tools\quick_check.py
 
 Git:
-git status
 git add .
-git commit -m "Audit fixes: config, gitignore, validation and docs"
+git commit -m "Add tests and CI quality checks"
 git push
