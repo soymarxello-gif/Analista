@@ -1,6 +1,6 @@
 project:
   name: "Analista"
-  version: "0.1.0"
+  version: "0.1.1"
   description: "Scanner para detectar setups long-only de swing trading en acciones comunes estadounidenses."
 
 trading_profile:
@@ -157,6 +157,7 @@ risk_reward:
 data_sources:
   cache_ttl_minutes:
     fundamentals: 1440
+    options: 30
 
 fundamentals:
   enabled: true
@@ -166,6 +167,26 @@ fundamentals:
   earnings_risk:
     veto_if_days_to_earnings_lte: 3
     penalize_if_days_to_earnings_lte: 7
+
+options_flow:
+  enabled: true
+  use_as_confirmation_only: true
+  max_tickers_per_run: 30
+  max_expirations: 3
+  min_days_to_expiration: 3
+  max_days_to_expiration: 45
+  near_moneyness_pct: 0.08
+  min_total_option_volume: 100
+  min_total_option_open_interest: 1000
+  extreme_bullish_put_call_below: 0.35
+  cache_ttl_minutes: 30
+  weights:
+    put_call_volume_ratio: 0.25
+    call_volume_share: 0.20
+    near_call_oi_share: 0.20
+    call_wall_position: 0.15
+    iv_risk: 0.10
+    options_liquidity: 0.10
 
 scoring_weights:
   relative_strength: 11.4
@@ -211,28 +232,3 @@ logging:
 development:
   save_raw_screener_response: true
   fail_soft_on_missing_data: true
-
-data_sources:
-  cache_ttl_minutes:
-    options: 30
-
-options_flow:
-  enabled: true
-  use_as_confirmation_only: true
-  max_tickers_per_run: 30
-  max_expirations: 3
-  min_days_to_expiration: 3
-  max_days_to_expiration: 45
-  near_moneyness_pct: 0.08
-  min_total_option_volume: 100
-  min_total_option_open_interest: 1000
-  extreme_bullish_put_call_below: 0.35
-  cache_ttl_minutes: 30
-  weights:
-    put_call_volume_ratio: 0.25
-    call_volume_share: 0.20
-    near_call_oi_share: 0.20
-    call_wall_position: 0.15
-    iv_risk: 0.10
-    options_liquidity: 0.10
-

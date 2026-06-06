@@ -1,22 +1,30 @@
-Parche: dashboard con pestaña de opciones put/call.
+Parche de estabilización posterior a auditoría.
 
 Archivos a reemplazar/agregar:
-1) ui/dashboard.py
-2) .streamlit/config.toml
+1) .gitignore
+2) config.yaml
+3) requirements.txt
+4) README.md
+5) engine/scanner_engine.py
+6) tools/validate_project.py
 
-Qué incluye:
-- Nueva pestaña "Opciones".
-- Gráfico de distribución options_bias.
-- Gráfico options_score vs put_call_volume_ratio.
-- Ranking de flujo de opciones.
-- Filtros por options_bias y options_score mínimo.
-- Columnas de opciones en Oportunidades, Tabla completa y Diagnóstico.
+Correcciones:
+- Unifica data_sources.cache_ttl_minutes para fundamentals y options.
+- Agrega .gitignore para evitar subir .venv, cache, logs y reports.
+- Revalida universo después de enrich_metadata().
+- Actualiza README con opciones, dashboard, arquitectura y limitaciones.
+- Agrega versiones mínimas en requirements.txt.
+- Agrega tools/validate_project.py para validar config.yaml sin claves duplicadas y compilar Python.
 
-Instrucciones:
+Uso:
 cd "C:\Users\El otro Yo\Projects\ChatGPT\Analista"
 .\.venv\Scripts\activate
-Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
-streamlit run ui/dashboard.py
+python -m compileall .
+python tools\validate_project.py
+python run_scanner.py --max-candidates 30 --verbose --csv-out reports/latest_scan_audit_fix.csv --json-out reports/latest_scan_audit_fix.json
 
-Luego selecciona en el panel lateral:
-reports/latest_scan_options.csv
+Git:
+git status
+git add .
+git commit -m "Audit fixes: config, gitignore, validation and docs"
+git push

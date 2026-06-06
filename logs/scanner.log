@@ -2950,3 +2950,8 @@ peewee.OperationalError: unable to open database file
 2026-06-05 20:13:36.895 | INFO     | engine.scanner_engine:run_scan:77 - Tickers tras screener/validación/enriquecimiento: 30
 2026-06-05 20:13:42.716 | INFO     | engine.scanner_engine:run_scan:127 - Tickers tras liquidez: 26
 2026-06-05 20:14:05.616 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 26
+2026-06-05 21:50:37.024 | INFO     | engine.scanner_engine:run_scan:59 - Iniciando scanner Analista MVP.
+2026-06-05 21:50:40.034 | INFO     | engine.scanner_engine:run_scan:73 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-05 21:50:42.840 | INFO     | engine.scanner_engine:run_scan:86 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-05 21:50:44.029 | INFO     | engine.scanner_engine:run_scan:136 - Tickers tras liquidez: 26
+2026-06-05 21:51:06.896 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 26

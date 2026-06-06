@@ -58,7 +58,7 @@ def _safe_float(value, default=None):
 def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
     logger.info("Iniciando scanner Analista MVP.")
 
-    # 1. Screener
+    # 1. Screener and first universe validation.
     screen = run_screeners(config)
     meta = validate_universe(screen.dataframe, config)
 
@@ -66,17 +66,26 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
         meta = meta.head(max_candidates)
 
     if meta.empty:
-        logger.warning("No hay tickers tras screener/validación.")
+        logger.warning("No hay tickers tras screener/validación inicial.")
         return pd.DataFrame()
 
-    # 2. Metadata/fundamentals enrichment
+    # 2. Metadata/fundamentals enrichment.
     logger.info("Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.")
     meta = enrich_metadata(meta, config)
+
+    # 2b. Revalidate after enrichment.
+    # Some screeners return incomplete quote_type/metadata. This second pass reduces
+    # the chance of ETFs, preferreds, units, warrants or funds reaching the scanner.
+    meta = validate_universe(meta, config)
+
+    if meta.empty:
+        logger.warning("No hay tickers tras enriquecimiento y revalidación de universo.")
+        return pd.DataFrame()
 
     tickers = meta["ticker"].dropna().astype(str).str.upper().unique().tolist()
     logger.info(f"Tickers tras screener/validación/enriquecimiento: {len(tickers)}")
 
-    # 3. Prices
+    # 3. Prices.
     price_cfg = config.get("price_data", {})
     raw_prices = download_daily_prices(
         tickers,
@@ -130,7 +139,7 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
         logger.warning("Todos los tickers fallaron liquidez.")
         return pd.DataFrame()
 
-    # 4. Market regime and sector rotation
+    # 4. Market regime and sector rotation.
     regime = classify_market_regime(config)
 
     sector_df = calculate_sector_rotation(meta, prices)
@@ -221,7 +230,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
         final_score = calculate_final_score(scores, config)
 
         row = {
-            # Identity
             "ticker": ticker,
             "company": m.get("company"),
             "exchange": m.get("exchange"),
@@ -232,7 +240,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "market_cap": m.get("market_cap"),
             "market_regime": regime.get("regime"),
 
-            # Scores
             "final_score": round(final_score, 2),
             "rs_score": round(scores["rs_score"], 3),
             "trend_score": round(trend_score, 3),
@@ -250,7 +257,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "options_confidence": options_score_data.get("options_confidence"),
             "options_crowded_bullish": options_score_data.get("options_crowded_bullish", False),
 
-            # Setup / trade plan
             "setup_type": structure.get("setup_type"),
             "trigger_confirmed": structure.get("trigger_confirmed", False),
             "trigger_level": structure.get("trigger_level"),
@@ -262,7 +268,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "relative_volume": latest.get("relative_volume"),
             "price": latest.get("close"),
 
-            # Liquidity details
             "avg_volume_20d": m.get("avg_volume_20d"),
             "avg_volume_60d": m.get("avg_volume_60d"),
             "median_volume_20d": m.get("median_volume_20d"),
@@ -276,7 +281,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "average_volume_10d_yf": m.get("average_volume_10d_yf"),
             "regular_market_volume_yf": m.get("regular_market_volume_yf"),
 
-            # Fundamentals / event risk
             "earnings_date": fund.get("earnings_date"),
             "days_to_earnings": fund.get("days_to_earnings"),
             "earnings_veto": fund.get("earnings_veto"),
@@ -298,7 +302,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "short_ratio": m.get("short_ratio"),
             "held_percent_institutions": m.get("held_percent_institutions"),
 
-            # Options metrics
             "options_data_available": options_metrics.get("options_data_available"),
             "options_source": options_metrics.get("options_source"),
             "options_expirations_used": options_metrics.get("options_expirations_used"),
@@ -328,7 +331,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "total_option_volume": options_metrics.get("total_option_volume"),
             "total_option_open_interest": options_metrics.get("total_option_open_interest"),
 
-            # Diagnostics
             "warnings": _join_warnings(
                 m.get("data_quality_warning"),
                 m.get("liquidity_warning"),
