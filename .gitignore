@@ -46,3 +46,14 @@ reports/tmp/
 reports/*_test.*
 reports/latest_scan_test.*
 *.zip
+
+# Phase 32A: Git hygiene - ignore cache and temporary files
+cache/
+reports/tmp/
+reports/*_test.*
+reports/latest_scan_test.*
+*.zip
+.venv/
+__pycache__/
+*.py[cod]
+*.class
