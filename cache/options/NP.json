@@ -1,6 +1,0 @@
-{
-  "ticker": "NP",
-  "options_data_available": false,
-  "options_source": "yfinance",
-  "options_warning": "sin vencimientos dentro de la ventana configurada"
-}
