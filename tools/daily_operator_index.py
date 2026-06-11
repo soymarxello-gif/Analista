@@ -499,6 +499,45 @@ def _format_report_status(report_status: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _append_encoding_audit_section(lines: list[str], data: dict) -> None:
+    encoding = data.get("encoding_audit", {}) or {}
+
+    lines.append("## Auditoría de encoding")
+    lines.append("")
+
+    if not encoding.get("available", False):
+        lines.append("- No hay reporte de encoding disponible.")
+        lines.append("- Ejecutar `python .\\tools\\encoding_audit.py` para generar diagnóstico.")
+        lines.append("")
+        return
+
+    encoding_status = str(encoding.get("status", "UNKNOWN")).upper()
+    files_scanned = encoding.get("files_scanned", 0)
+    warn_files = encoding.get("warn_files", 0)
+    error_files = encoding.get("error_files", 0)
+    total_marker_hits = encoding.get("total_marker_hits", 0)
+
+    lines.append(f"- status: {encoding_status}")
+    lines.append(f"- files_scanned: {files_scanned}")
+    lines.append(f"- warn_files: {warn_files}")
+    lines.append(f"- error_files: {error_files}")
+    lines.append(f"- total_marker_hits: {total_marker_hits}")
+    lines.append("- report: reports/encoding_audit_latest.md")
+
+    if encoding_status == "PASS":
+        lines.append("- Estado PASS: no se detectaron marcadores típicos de mojibake.")
+    elif encoding_status == "WARN":
+        lines.append("- Estado WARN: se detectaron textos mal codificados o posibles marcadores de mojibake.")
+        lines.append("- Revisar `reports/encoding_audit_latest.md`.")
+    elif encoding_status == "FAIL":
+        lines.append("- Estado FAIL: hay archivos que no pudieron leerse o auditarse correctamente.")
+        lines.append("- Revisar `reports/encoding_audit_latest.md`.")
+    else:
+        lines.append("- Estado desconocido: revisar `reports/encoding_audit_latest.md`.")
+
+    lines.append("")
+
+
 def build_daily_operator_index_markdown(data: dict) -> str:
     status = str(data.get("validation_status", "UNKNOWN")).upper()
     recheck_count = int(data.get("recheck_count", 0) or 0)
@@ -706,21 +745,41 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     encoding_total_marker_hits = int(encoding_audit.get("total_marker_hits", 0) or 0)
 
     lines.append("## Auditoría de encoding")
+    encoding = data.get("encoding_audit", {}) or {}
+
+    lines.append("## Auditoría de encoding")
     lines.append("")
 
-    if not encoding_available:
+    if not encoding.get("available", False):
         lines.append("- No hay reporte de encoding disponible.")
         lines.append("- Ejecutar `python .\\tools\\encoding_audit.py` para generar diagnóstico.")
     else:
-        lines.append(f"- status: {encoding_status}")
-        lines.append(f"- files_scanned: {encoding_files_scanned}")
-        lines.append(f"- warn_files: {encoding_warn_files}")
-        lines.append(f"- error_files: {encoding_error_files}")
-        lines.append(f"- total_marker_hits: {encoding_total_marker_hits}")
+        encoding_status = str(encoding.get("status", "UNKNOWN")).upper()
+        files_scanned = encoding.get("files_scanned", 0)
+        warn_files = encoding.get("warn_files", 0)
+        error_files = encoding.get("error_files", 0)
+        total_marker_hits = encoding.get("total_marker_hits", 0)
 
-        if encoding_status == "FAIL":
-            lines.append("- Estado FAIL: revisar archivos que no pudieron leerse correctamente.")
-            lines.append("- Abrir `reports/encoding_audit_latest.md`.")
+        lines.append(f"- status: {encoding_status}")
+        lines.append(f"- files_scanned: {files_scanned}")
+        lines.append(f"- warn_files: {warn_files}")
+        lines.append(f"- error_files: {error_files}")
+        lines.append(f"- total_marker_hits: {total_marker_hits}")
+        lines.append("- report: reports/encoding_audit_latest.md")
+
+        if encoding_status == "PASS":
+            lines.append("- Estado PASS: no se detectaron marcadores típicos de mojibake.")
+        elif encoding_status == "WARN":
+            lines.append("- Estado WARN: se detectaron textos mal codificados o posibles marcadores de mojibake.")
+            lines.append("- Revisar `reports/encoding_audit_latest.md`.")
+        elif encoding_status == "FAIL":
+            lines.append("- Estado FAIL: hay archivos que no pudieron leerse o auditarse correctamente.")
+            lines.append("- Revisar `reports/encoding_audit_latest.md`.")
+        else:
+            lines.append("- Estado desconocido: revisar `reports/encoding_audit_latest.md`.")
+
+    lines.append("")
+
     lines.append("## Daily run manifest")
     lines.append("")
     lines.append(f"- status: {data.get('manifest_status', 'UNKNOWN')}")

@@ -1,9 +1,0 @@
-{
-  "status": "PASS",
-  "mode": "DRY_RUN",
-  "reports_dir": "reports",
-  "archive_dir": "reports/tmp/temp_reports_20260611_010500",
-  "candidate_count": 0,
-  "moved_count": 0,
-  "items": []
-}
