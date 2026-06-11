@@ -1,0 +1,194 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pandas as pd
+
+from tools.daily_run_manifest import (
+    build_daily_run_manifest_markdown,
+    collect_daily_run_manifest,
+    save_daily_run_manifest,
+)
+
+
+def _make_project(tmp_path: Path) -> Path:
+    tools = tmp_path / "tools"
+    reports = tmp_path / "reports"
+    tools.mkdir()
+    reports.mkdir()
+
+    scripts = [
+        "run_scanner_audited.py",
+        "validate_latest_scan_p0.py",
+        "tools/daily_validation.py",
+        "tools/daily_operator_index.py",
+        "tools/project_preflight.py",
+        "tools/reports_cleanup.py",
+        "tools/trade_outcome_analytics.py",
+        "tools/trade_outcome_tracker.py",
+        "tools/open_trade_snapshot.py",
+        "tools/latest_scan_health.py",
+        "tools/source_coverage_audit.py",
+    ]
+
+    for script in scripts:
+        path = tmp_path / script
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"# {script}\n", encoding="utf-8")
+
+    (reports / "daily_validation_summary.txt").write_text(
+        "=== ANALISTA DAILY VALIDATION SUMMARY ===\nStatus: PASS\n",
+        encoding="utf-8",
+    )
+
+    preflight = {
+        "status": "PASS",
+        "summary": {
+            "missing_required_dirs": [],
+            "missing_required_files": [],
+            "missing_optional_files": [],
+            "failed_write_checks": [],
+        },
+    }
+    (reports / "project_preflight_latest.json").write_text(
+        json.dumps(preflight, indent=2),
+        encoding="utf-8",
+    )
+    (reports / "project_preflight_latest.md").write_text("# preflight\n", encoding="utf-8")
+
+    cleanup = {
+        "status": "PASS",
+        "mode": "DRY_RUN",
+        "candidate_count": 0,
+        "moved_count": 0,
+    }
+    (reports / "reports_cleanup_latest.json").write_text(
+        json.dumps(cleanup, indent=2),
+        encoding="utf-8",
+    )
+    (reports / "reports_cleanup_latest.md").write_text("# cleanup\n", encoding="utf-8")
+
+    pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "signal": "WATCHLIST",
+                "recommendation": "WATCHLIST_MONITOR",
+                "quote_recheck_priority": "",
+            },
+            {
+                "ticker": "BBB",
+                "signal": "WATCHLIST",
+                "recommendation": "RECHECK_LIVE_QUOTE",
+                "quote_recheck_priority": "HIGH",
+            },
+        ]
+    ).to_csv(reports / "latest_scan_audited.csv", index=False)
+
+    pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "signal": "WATCHLIST",
+                "recommendation": "WATCHLIST_MONITOR",
+                "quote_recheck_priority": "",
+            },
+            {
+                "ticker": "BBB",
+                "signal": "WATCHLIST",
+                "recommendation": "RECHECK_LIVE_QUOTE",
+                "quote_recheck_priority": "HIGH",
+            },
+        ]
+    ).to_csv(reports / "manual_review_latest.csv", index=False)
+
+    (reports / "latest_scan_audited.json").write_text("[]\n", encoding="utf-8")
+    (reports / "manual_review_latest.md").write_text("# manual\n", encoding="utf-8")
+    (reports / "manual_review_top.csv").write_text("ticker\nAAA\n", encoding="utf-8")
+    (reports / "manual_review_top.md").write_text("# top\n", encoding="utf-8")
+    (reports / "daily_operator_index.md").write_text("# index\n", encoding="utf-8")
+    (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
+    (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
+    (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")
+    (reports / "trade_outcome_analytics_latest.md").write_text("# analytics\n", encoding="utf-8")
+
+    return tmp_path
+
+
+def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
+    root = _make_project(tmp_path)
+
+    data = collect_daily_run_manifest(root=root)
+
+    assert data["status"] == "PASS"
+    assert data["daily_validation"]["status"] == "PASS"
+    assert data["project_preflight"]["status"] == "PASS"
+    assert data["reports_cleanup"]["status"] == "PASS"
+    assert data["reports_cleanup"]["mode"] == "DRY_RUN"
+    assert data["scan_snapshot"]["latest_scan_rows"] == 2
+    assert data["scan_snapshot"]["manual_review_rows"] == 2
+    assert data["scan_snapshot"]["recommendations"]["RECHECK_LIVE_QUOTE"] == 1
+    assert data["summary"]["missing_script_files"] == []
+
+    script_files = data["script_files"]
+    assert len(script_files) > 0
+    assert all(item["exists"] for item in script_files)
+    assert all(len(item["sha256"]) == 64 for item in script_files)
+
+
+def test_daily_run_manifest_markdown_contains_sections(tmp_path: Path):
+    root = _make_project(tmp_path)
+
+    data = collect_daily_run_manifest(root=root)
+    text = build_daily_run_manifest_markdown(data)
+
+    assert "Analista - daily run manifest" in text
+    assert "## Decision gate" in text
+    assert "## Core statuses" in text
+    assert "## Git" in text
+    assert "## Scan snapshot" in text
+    assert "## Script files" in text
+    assert "## Report files" in text
+    assert "## Summary" in text
+    assert "RECHECK_LIVE_QUOTE" in text
+
+
+def test_save_daily_run_manifest_writes_outputs(tmp_path: Path):
+    root = _make_project(tmp_path)
+
+    json_out = root / "reports" / "daily_run_manifest_latest.json"
+    markdown_out = root / "reports" / "daily_run_manifest_latest.md"
+
+    result = save_daily_run_manifest(
+        root=root,
+        json_out=json_out,
+        markdown_out=markdown_out,
+    )
+
+    assert result["status"] == "PASS"
+    assert result["daily_validation_status"] == "PASS"
+    assert result["project_preflight_status"] == "PASS"
+    assert result["cleanup_status"] == "PASS"
+    assert result["latest_scan_rows"] == 2
+    assert result["manual_review_rows"] == 2
+    assert result["missing_script_files"] == 0
+    assert json_out.exists()
+    assert markdown_out.exists()
+
+    data = json.loads(json_out.read_text(encoding="utf-8"))
+    assert data["status"] == "PASS"
+
+    text = markdown_out.read_text(encoding="utf-8")
+    assert "daily run manifest" in text
+
+
+def test_manifest_warns_when_script_file_missing(tmp_path: Path):
+    root = _make_project(tmp_path)
+
+    (root / "tools" / "reports_cleanup.py").unlink()
+
+    data = collect_daily_run_manifest(root=root)
+
+    assert data["status"] == "WARN"
+    assert "tools/reports_cleanup.py" in data["summary"]["missing_script_files"]

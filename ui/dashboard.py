@@ -223,9 +223,9 @@ def make_signal_bar(df: pd.DataFrame):
     if "signal" not in df.columns or df.empty:
         return None
 
-    order = ["BUY_SETUP_ACTIVE", "READY_WAIT_TRIGGER", "WATCHLIST", "AVOID", "VETO"]
+    order = ["TRIGGER_CONFIRMED", "READY_WAIT_TRIGGER", "WATCHLIST", "AVOID", "VETO"]
     colors = {
-        "BUY_SETUP_ACTIVE": "#22C55E",
+        "TRIGGER_CONFIRMED": "#22C55E",
         "READY_WAIT_TRIGGER": "#38BDF8",
         "WATCHLIST": "#F59E0B",
         "AVOID": "#94A3B8",
@@ -307,7 +307,7 @@ def make_score_scatter(df: pd.DataFrame):
         plot_df["signal"] = ""
 
     colors = {
-        "BUY_SETUP_ACTIVE": "#22C55E",
+        "TRIGGER_CONFIRMED": "#22C55E",
         "READY_WAIT_TRIGGER": "#38BDF8",
         "WATCHLIST": "#F59E0B",
         "AVOID": "#94A3B8",
@@ -315,10 +315,12 @@ def make_score_scatter(df: pd.DataFrame):
     }
 
     hover_cols = [c for c in ["setup_type", "sector", "industry", "options_bias", "reason_summary"] if c in plot_df.columns]
+    score_axis = "final_trade_score" if "final_trade_score" in plot_df.columns else "final_score"
+
     fig = px.scatter(
         plot_df,
         x="rr",
-        y="final_score",
+        y=score_axis,
         color="signal",
         color_discrete_map=colors,
         hover_name="ticker",
@@ -345,13 +347,22 @@ def make_options_bias_chart(df: pd.DataFrame):
     if "options_bias" not in df.columns or df.empty:
         return None
 
-    order = ["BULLISH", "NEUTRAL", "BEARISH", "NEUTRAL_NO_DATA", "NEUTRAL_DISABLED"]
+    order = [
+        "BULLISH_WITH_DATA",
+        "NEUTRAL_WITH_DATA",
+        "BEARISH_WITH_DATA",
+        "CROWDED_BULLISH",
+        "CROWDED_BEARISH",
+        "UNKNOWN_OPTIONS_FLOW",
+    ]
+
     colors = {
-        "BULLISH": "#22C55E",
-        "NEUTRAL": "#94A3B8",
-        "BEARISH": "#EF4444",
-        "NEUTRAL_NO_DATA": "#64748B",
-        "NEUTRAL_DISABLED": "#475569",
+        "BULLISH_WITH_DATA": "#22C55E",
+        "NEUTRAL_WITH_DATA": "#94A3B8",
+        "BEARISH_WITH_DATA": "#EF4444",
+        "CROWDED_BULLISH": "#F59E0B",
+        "CROWDED_BEARISH": "#A855F7",
+        "UNKNOWN_OPTIONS_FLOW": "#64748B",
     }
 
     counts = df["options_bias"].replace("", "NO_VALUE").value_counts().reset_index()
@@ -395,11 +406,12 @@ def make_options_score_chart(df: pd.DataFrame):
         plot_df["options_bias"] = ""
 
     colors = {
-        "BULLISH": "#22C55E",
-        "NEUTRAL": "#94A3B8",
-        "BEARISH": "#EF4444",
-        "NEUTRAL_NO_DATA": "#64748B",
-        "NEUTRAL_DISABLED": "#475569",
+        "BULLISH_WITH_DATA": "#22C55E",
+        "NEUTRAL_WITH_DATA": "#94A3B8",
+        "BEARISH_WITH_DATA": "#EF4444",
+        "CROWDED_BULLISH": "#F59E0B",
+        "CROWDED_BEARISH": "#A855F7",
+        "UNKNOWN_OPTIONS_FLOW": "#64748B",
     }
 
     hover_cols = [c for c in ["signal", "setup_type", "final_score", "call_volume_share", "near_call_oi_share"] if c in plot_df.columns]
@@ -509,7 +521,11 @@ with st.sidebar:
     st.markdown("### Filtros")
 
     signal_options = sorted(df["signal"].dropna().unique()) if "signal" in df.columns else []
-    default_signals = [s for s in ["BUY_SETUP_ACTIVE", "READY_WAIT_TRIGGER", "WATCHLIST", "AVOID"] if s in signal_options]
+    default_signals = [
+        s
+        for s in ["TRIGGER_CONFIRMED", "READY_WAIT_TRIGGER", "WATCHLIST", "AVOID"]
+        if s in signal_options
+    ]
     if not default_signals:
         default_signals = signal_options
 
@@ -569,21 +585,27 @@ if search:
     view = view[mask]
 
 counts = df["signal"].value_counts().to_dict() if "signal" in df.columns else {}
-active = counts.get("BUY_SETUP_ACTIVE", 0)
+active = counts.get("TRIGGER_CONFIRMED", 0)
 ready = counts.get("READY_WAIT_TRIGGER", 0)
 watch = counts.get("WATCHLIST", 0)
 veto = counts.get("VETO", 0)
-avg_score = df["final_score"].mean() if "final_score" in df.columns else 0
-best_score = df["final_score"].max() if "final_score" in df.columns else 0
+
+score_col = "final_trade_score" if "final_trade_score" in df.columns else "final_score"
+avg_score = df[score_col].mean() if score_col in df.columns else 0
+best_score = df[score_col].max() if score_col in df.columns else 0
 avg_rr = df["rr"].dropna().mean() if "rr" in df.columns else 0
 
-bullish_options = int((df["options_bias"] == "BULLISH").sum()) if "options_bias" in df.columns else 0
+bullish_options = (
+    int((df["options_bias"] == "BULLISH_WITH_DATA").sum())
+    if "options_bias" in df.columns
+    else 0
+)
 
 col1, col2, col3, col4, col5, col6 = st.columns(6)
 with col1:
     metric_card("Candidatos", f"{len(df):,.0f}", f"Filtrados: {len(view):,.0f}", "#38BDF8")
 with col2:
-    metric_card("BUY Active", f"{active:,.0f}", "Setup confirmado", "#22C55E")
+    metric_card("Trigger Confirmed", f"{active:,.0f}", "Revisión manual", "#22C55E")
 with col3:
     metric_card("Ready", f"{ready:,.0f}", "Esperando trigger", "#38BDF8")
 with col4:
@@ -626,17 +648,25 @@ with tab_overview:
 with tab_opportunities:
     st.markdown('<h3 class="section-title">Candidatos operativos</h3>', unsafe_allow_html=True)
 
-    priority = ["BUY_SETUP_ACTIVE", "READY_WAIT_TRIGGER", "WATCHLIST"]
+    priority = ["TRIGGER_CONFIRMED", "READY_WAIT_TRIGGER", "WATCHLIST"]
     opp = df[df["signal"].isin(priority)] if "signal" in df.columns else df.copy()
-    if "final_score" in opp.columns:
-        opp = opp.sort_values("final_score", ascending=False)
+    sort_col = "final_trade_score" if "final_trade_score" in opp.columns else "final_score"
+    if sort_col in opp.columns:
+        opp = opp.sort_values(sort_col, ascending=False)
 
     cols = [
-        "rank", "ticker", "company", "sector", "industry", "signal", "setup_type",
-        "final_score", "rs_score", "trend_score", "volume_score", "structure_score",
+        "rank", "ticker", "company", "sector", "industry",
+        "signal", "recommendation", "setup_type",
+        "final_trade_score", "asset_quality_score", "setup_quality_score", "final_score",
+        "rs_score", "trend_score", "volume_score", "structure_score",
         "options_score", "options_bias", "options_confidence",
-        "entry", "stop", "target", "rr", "atr_pct", "relative_volume",
-        "earnings_date", "days_to_earnings", "reason_summary",
+        "actionable_entry", "actionable_stop", "actionable_target",
+        "theoretical_entry", "theoretical_stop", "theoretical_target",
+        "rr", "atr", "atr_pct", "stop_atr_multiple", "stop_atr_status",
+        "quote_status", "execution_quote_quality",
+        "relative_volume",
+        "earnings_date", "days_to_earnings",
+        "penalty_reasons", "reason_summary",
     ]
     cols = [c for c in cols if c in opp.columns]
 
@@ -695,19 +725,27 @@ with tab_table:
     st.caption(f"Mostrando {len(view):,.0f} de {len(df):,.0f} filas del archivo seleccionado.")
 
     preferred_cols = [
-        "rank", "ticker", "company", "sector", "industry", "signal", "veto_reasons",
-        "setup_type", "final_score", "rs_score", "trend_score", "volume_score",
-        "sector_score", "structure_score", "rr_score", "liquidity_pass",
-        "liquidity_score", "momentum_score", "fundamental_score",
+        "rank", "ticker", "company", "sector", "industry",
+        "signal", "recommendation", "veto_reasons", "all_veto_reasons", "penalty_reasons",
+        "setup_type",
+        "final_trade_score", "asset_quality_score", "setup_quality_score",
+        "context_score", "institutional_score", "final_score",
+        "rs_score", "trend_score", "volume_score", "sector_score", "structure_score",
+        "rr_score", "liquidity_pass", "liquidity_score", "momentum_score", "fundamental_score",
         "options_score", "options_bias", "options_confidence", "options_data_available",
-        "put_call_volume_ratio", "put_call_oi_ratio", "call_volume_share", "near_call_oi_share",
-        "max_call_oi_strike", "max_put_oi_strike", "max_pain_approx",
-        "atm_implied_volatility", "total_option_volume", "total_option_open_interest",
-        "entry", "stop", "target", "rr", "price", "atr_pct", "relative_volume",
+        "options_crowded_bullish", "options_crowded_bearish",
+        "entry", "stop", "target",
+        "actionable_entry", "actionable_stop", "actionable_target",
+        "theoretical_entry", "theoretical_stop", "theoretical_target",
+        "rr", "risk_pct", "reward_pct",
+        "atr", "atr_pct", "stop_atr_multiple", "stop_atr_status",
+        "price", "trigger_level", "trigger_confirmed",
+        "quote_status", "execution_quote_quality",
+        "bid_ask_valid", "bid_ask_warning", "spread_validated_pct",
         "avg_volume_20d", "dollar_volume_20d", "spread_pct",
         "earnings_date", "days_to_earnings", "revenue_growth", "earnings_growth",
         "operating_margins", "debt_to_equity", "return_on_equity",
-        "market_regime", "warnings", "reason_summary",
+        "market_regime", "warnings", "reason_summary", "score_breakdown",
     ]
     ordered_cols = [c for c in preferred_cols if c in view.columns]
     remaining_cols = [c for c in view.columns if c not in ordered_cols]
@@ -734,9 +772,14 @@ with tab_diagnostics:
     st.markdown('<h3 class="section-title">Diagnóstico de calidad de datos</h3>', unsafe_allow_html=True)
 
     diag_cols = [
-        "ticker", "signal", "veto_reasons", "warnings", "liquidity_pass",
+        "ticker", "signal", "recommendation",
+        "veto_reasons", "all_veto_reasons", "penalty_reasons", "warnings",
+        "liquidity_pass",
+        "quote_status", "execution_quote_quality",
+        "bid_ask_valid", "bid_ask_warning", "spread_validated_pct",
         "sector", "industry", "earnings_date", "days_to_earnings",
-        "options_data_available", "options_source", "options_confidence",
+        "options_data_available", "options_source", "options_bias", "options_confidence",
+        "options_crowded_bullish", "options_crowded_bearish",
         "spread_pct", "bid", "ask", "quote_type", "exchange",
     ]
     diag_cols = [c for c in diag_cols if c in df.columns]

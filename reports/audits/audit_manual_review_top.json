@@ -1,0 +1,236 @@
+{
+  "status": "FAIL",
+  "summary": {
+    "rows": 35,
+    "signals": {
+      "WATCHLIST": 35
+    },
+    "veto_rate_pct": 0.0,
+    "buy_ready_watch_count": 35,
+    "missing_required_columns": [
+      "entry",
+      "stop",
+      "target",
+      "trend_score",
+      "liquidity_pass",
+      "data_quality_score",
+      "data_quality_confidence"
+    ],
+    "missing_recommended_columns": [
+      "pre_veto_signal",
+      "veto_reasons",
+      "bid_ask_valid",
+      "bid_ask_warning",
+      "spread_validated_pct",
+      "options_score",
+      "options_bias",
+      "options_confidence",
+      "options_liquidity_score",
+      "options_crowded_bullish",
+      "stop_method",
+      "target_method",
+      "risk_pct",
+      "reward_pct",
+      "all_veto_reasons",
+      "penalty_reasons",
+      "asset_quality_score",
+      "context_score",
+      "institutional_score",
+      "score_breakdown",
+      "stop_atr_multiple",
+      "options_crowded_bearish",
+      "legacy_rank",
+      "trade_score_rank",
+      "operational_rank",
+      "rank_delta_trade_vs_legacy",
+      "manual_quote_check_required",
+      "quote_recheck_priority",
+      "quote_recheck_reason"
+    ]
+  },
+  "score_stats": {
+    "final_score": {
+      "mean": 76.274,
+      "median": 74.98,
+      "min": 70.11,
+      "max": 84.06
+    },
+    "final_trade_score": {
+      "mean": 78.9057,
+      "median": 78.23,
+      "min": 72.97,
+      "max": 87.5
+    },
+    "setup_quality_score": {
+      "mean": 84.4326,
+      "median": 85.14,
+      "min": 73.17,
+      "max": 97.03
+    },
+    "rr": {
+      "mean": 2.7744,
+      "median": 2.0,
+      "min": 2.0,
+      "max": 4.0
+    }
+  },
+  "veto_reason_counts": {},
+  "sector_counts": {},
+  "setup_counts": {
+    "BREAKOUT": 18,
+    "PULLBACK": 16,
+    "RECLAIM": 1
+  },
+  "options_bias_counts": {},
+  "issues": [
+    "faltan columnas operativas requeridas: entry, stop, target, trend_score, liquidity_pass, data_quality_score, data_quality_confidence"
+  ],
+  "warnings": [
+    "faltan columnas recomendadas: pre_veto_signal, veto_reasons, bid_ask_valid, bid_ask_warning, spread_validated_pct, options_score, options_bias, options_confidence, options_liquidity_score, options_crowded_bullish, stop_method, target_method, risk_pct, reward_pct, all_veto_reasons, penalty_reasons, asset_quality_score, context_score, institutional_score, score_breakdown, stop_atr_multiple, options_crowded_bearish, legacy_rank, trade_score_rank, operational_rank, rank_delta_trade_vs_legacy, manual_quote_check_required, quote_recheck_priority, quote_recheck_reason"
+  ],
+  "recommendations": [
+    "Corregir engine/scanner_engine.py para incluir columnas operativas requeridas en row."
+  ],
+  "top_candidates": [
+    {
+      "rank": 1,
+      "ticker": "BROS",
+      "signal": "WATCHLIST",
+      "recommendation": "WATCHLIST_MONITOR",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 87.5,
+      "setup_quality_score": 97.03,
+      "final_score": 84.06,
+      "rr": 4.0,
+      "quote_status": "VALID",
+      "execution_quote_quality": "HIGH",
+      "reason_summary": "BREAKOUT | score 84.06 | RS 0.807 | trend 0.85 | R:R 4.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 2,
+      "ticker": "RSI",
+      "signal": "WATCHLIST",
+      "recommendation": "WATCHLIST_MONITOR",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 83.56,
+      "setup_quality_score": 87.75,
+      "final_score": 82.54,
+      "rr": 1.9999999999999976,
+      "quote_status": "VALID",
+      "execution_quote_quality": "HIGH",
+      "reason_summary": "BREAKOUT | score 82.54 | RS 0.766 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 3,
+      "ticker": "BFH",
+      "signal": "WATCHLIST",
+      "recommendation": "WATCHLIST_MONITOR",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 83.28,
+      "setup_quality_score": 86.88,
+      "final_score": 82.57,
+      "rr": 2.0,
+      "quote_status": "VALID",
+      "execution_quote_quality": "HIGH",
+      "reason_summary": "BREAKOUT | score 82.57 | RS 0.848 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 4,
+      "ticker": "FUN",
+      "signal": "WATCHLIST",
+      "recommendation": "WATCHLIST_MONITOR",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 83.16,
+      "setup_quality_score": 85.86,
+      "final_score": 81.88,
+      "rr": 2.0,
+      "quote_status": "VALID",
+      "execution_quote_quality": "HIGH",
+      "reason_summary": "BREAKOUT | score 81.88 | RS 0.92 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 5,
+      "ticker": "IMAX",
+      "signal": "WATCHLIST",
+      "recommendation": "WATCHLIST_MONITOR",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 82.96,
+      "setup_quality_score": 87.34,
+      "final_score": 81.65,
+      "rr": 2.0,
+      "quote_status": "VALID",
+      "execution_quote_quality": "HIGH",
+      "reason_summary": "BREAKOUT | score 81.65 | RS 0.729 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 31,
+      "ticker": "LAUR",
+      "signal": "WATCHLIST",
+      "recommendation": "RECHECK_LIVE_QUOTE",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 82.85,
+      "setup_quality_score": 87.24,
+      "final_score": 81.3,
+      "rr": 2.0000000000000044,
+      "quote_status": "STALE_POSSIBLE",
+      "execution_quote_quality": "LOW",
+      "reason_summary": "BREAKOUT | score 81.3 | RS 0.712 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 6,
+      "ticker": "CXW",
+      "signal": "WATCHLIST",
+      "recommendation": "WATCHLIST_MONITOR",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 82.59,
+      "setup_quality_score": 88.8,
+      "final_score": 80.74,
+      "rr": 2.0,
+      "quote_status": "VALID",
+      "execution_quote_quality": "HIGH",
+      "reason_summary": "BREAKOUT | score 80.74 | RS 0.942 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 32,
+      "ticker": "MRX",
+      "signal": "WATCHLIST",
+      "recommendation": "RECHECK_LIVE_QUOTE",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 82.15,
+      "setup_quality_score": 85.4,
+      "final_score": 80.97,
+      "rr": 2.0,
+      "quote_status": "STALE_POSSIBLE",
+      "execution_quote_quality": "LOW",
+      "reason_summary": "BREAKOUT | score 80.97 | RS 0.889 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 33,
+      "ticker": "TGTX",
+      "signal": "WATCHLIST",
+      "recommendation": "RECHECK_LIVE_QUOTE",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 82.01,
+      "setup_quality_score": 88.87,
+      "final_score": 79.91,
+      "rr": 2.0,
+      "quote_status": "STALE_POSSIBLE",
+      "execution_quote_quality": "LOW",
+      "reason_summary": "BREAKOUT | score 79.91 | RS 0.878 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    },
+    {
+      "rank": 7,
+      "ticker": "GEO",
+      "signal": "WATCHLIST",
+      "recommendation": "WATCHLIST_MONITOR",
+      "setup_type": "BREAKOUT",
+      "final_trade_score": 81.99,
+      "setup_quality_score": 86.87,
+      "final_score": 80.36,
+      "rr": 2.0,
+      "quote_status": "VALID",
+      "execution_quote_quality": "HIGH",
+      "reason_summary": "BREAKOUT | score 80.36 | RS 0.972 | trend 1.0 | R:R 2.0 | opt UNKNOWN_OPTIONS_FLOW"
+    }
+  ]
+}

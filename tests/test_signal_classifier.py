@@ -41,12 +41,10 @@ def test_veto_no_valid_setup():
     assert signal == "VETO"
     assert "no_valid_setup" in reasons
 
-
-def test_buy_setup_active():
+def test_buy_setup_active_is_not_emitted_when_disabled():
     signal, reasons = classify_signal(base_row(), BASE_CONFIG)
-    assert signal == "BUY_SETUP_ACTIVE"
-    assert reasons == []
 
+    assert signal != "BUY_SETUP_ACTIVE"
 
 def test_ready_wait_trigger_without_trigger():
     row = base_row()

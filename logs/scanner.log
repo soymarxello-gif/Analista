@@ -2955,3 +2955,47 @@ peewee.OperationalError: unable to open database file
 2026-06-05 21:50:42.840 | INFO     | engine.scanner_engine:run_scan:86 - Tickers tras screener/validación/enriquecimiento: 30
 2026-06-05 21:50:44.029 | INFO     | engine.scanner_engine:run_scan:136 - Tickers tras liquidez: 26
 2026-06-05 21:51:06.896 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 26
+2026-06-07 16:20:10.677 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 16:20:13.347 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 16:21:12.266 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 16:21:18.103 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 26
+2026-06-07 16:21:38.857 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 26
+2026-06-07 16:23:05.699 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 16:23:08.410 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 16:23:08.888 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 16:23:10.366 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 26
+2026-06-07 16:23:11.472 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 26
+2026-06-07 16:45:56.036 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 16:45:59.016 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 16:45:59.447 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 16:46:06.989 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 26
+2026-06-07 16:46:08.068 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 26
+2026-06-07 17:13:35.768 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 17:13:38.539 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 17:13:38.556 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 17:13:39.993 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 13
+2026-06-07 17:13:51.302 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 13
+2026-06-07 17:14:33.463 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 17:14:34.289 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 17:14:34.307 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 17:14:35.775 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 13
+2026-06-07 17:14:36.328 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 13
+2026-06-07 17:24:17.405 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 17:24:20.231 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 17:24:20.248 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 17:24:21.447 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 13
+2026-06-07 17:24:21.973 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 13
+2026-06-07 17:24:54.412 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 17:24:57.063 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 17:24:57.081 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 17:24:58.584 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 13
+2026-06-07 17:24:59.385 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 13
+2026-06-07 17:44:21.777 | INFO     | engine.scanner_engine:run_scan:64 - Iniciando scanner Analista MVP.
+2026-06-07 17:44:24.329 | INFO     | engine.scanner_engine:run_scan:78 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-07 17:44:24.349 | INFO     | engine.scanner_engine:run_scan:92 - Tickers tras screener/validación/enriquecimiento: 30
+2026-06-07 17:44:25.740 | INFO     | engine.scanner_engine:run_scan:142 - Tickers tras liquidez: 13
+2026-06-07 17:44:37.327 | INFO     | __main__:main:44 - Scanner completado. Candidatos: 13
+2026-06-08 07:24:08.379 | INFO     | engine.scanner_engine:run_scan:62 - Iniciando scanner Analista MVP.
+2026-06-08 07:24:12.682 | INFO     | engine.scanner_engine:run_scan:76 - Enriqueciendo metadata: sector, industry, earnings y fundamentales tácticos.
+2026-06-08 07:24:15.931 | INFO     | engine.scanner_engine:run_scan:87 - Tickers tras screener/validación/enriquecimiento: 424
+2026-06-08 07:24:30.960 | INFO     | engine.scanner_engine:run_scan:139 - Tickers tras liquidez: 271

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from loguru import logger
 import pandas as pd
 
@@ -7,6 +9,7 @@ from data.screener_client import run_screeners
 from data.price_client import download_daily_prices
 from data.fundamentals_client import enrich_metadata
 from data.options_client import fetch_options_metrics
+from data.data_quality import score_data_quality
 
 from universe.equity_validator import validate_universe
 from universe.liquidity_filter import compute_liquidity
@@ -24,9 +27,9 @@ from scoring.risk_reward_score import score_risk_reward
 from scoring.momentum_score import score_momentum
 from scoring.fundamental_score import score_fundamentals
 from scoring.options_score import score_options_flow
-from scoring.final_score import calculate_final_score
-from scoring.signal_classifier import classify_signal
-
+from scoring.final_score import calculate_final_score, calculate_trade_score_breakdown
+from scoring.signal_classifier import classify_signal, classify_base_signal
+from scoring.operational_priority import calculate_operational_priority
 
 def _clean_warning_value(value) -> str:
     if value is None:
@@ -74,10 +77,8 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
     meta = enrich_metadata(meta, config)
 
     # 2b. Revalidate after enrichment.
-    # Some screeners return incomplete quote_type/metadata. This second pass reduces
-    # the chance of ETFs, preferreds, units, warrants or funds reaching the scanner.
-    meta = validate_universe(meta, config)
-
+    meta = validate_universe(meta, config, strict_metadata=True)
+    
     if meta.empty:
         logger.warning("No hay tickers tras enriquecimiento y revalidación de universo.")
         return pd.DataFrame()
@@ -95,6 +96,8 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
 
     prices: dict[str, pd.DataFrame] = {}
     liquidity_rows: list[dict] = []
+    scan_timestamp = datetime.now(timezone.utc).isoformat()
+    rows: list[dict] = []
     base_rows: list[dict] = []
 
     meta_by_ticker = meta.set_index("ticker").to_dict(orient="index")
@@ -178,6 +181,8 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
     options_counter = 0
 
     # 7. Full scoring pass.
+    scan_timestamp = datetime.now(timezone.utc).isoformat()
+
     rows: list[dict] = []
 
     for _, m in meta.iterrows():
@@ -229,7 +234,16 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
 
         final_score = calculate_final_score(scores, config)
 
+        trade_scores = calculate_trade_score_breakdown(
+            scores,
+            {
+                "setup_type": structure.get("setup_type"),
+                "trigger_confirmed": structure.get("trigger_confirmed", False),
+            },
+        )
+
         row = {
+            "scan_timestamp": scan_timestamp,
             "ticker": ticker,
             "company": m.get("company"),
             "exchange": m.get("exchange"),
@@ -239,8 +253,13 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "industry": m.get("industry"),
             "market_cap": m.get("market_cap"),
             "market_regime": regime.get("regime"),
-
             "final_score": round(final_score, 2),
+            "asset_quality_score": trade_scores["asset_quality_score"],
+            "setup_quality_score": trade_scores["setup_quality_score"],
+            "context_score": trade_scores["context_score"],
+            "institutional_score": trade_scores["institutional_score"],
+            "final_trade_score": trade_scores["final_trade_score"],
+            "score_breakdown": trade_scores["score_breakdown_json"],
             "rs_score": round(scores["rs_score"], 3),
             "trend_score": round(trend_score, 3),
             "trend_status": trend_status,
@@ -256,18 +275,31 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "options_bias": options_score_data.get("options_bias"),
             "options_confidence": options_score_data.get("options_confidence"),
             "options_crowded_bullish": options_score_data.get("options_crowded_bullish", False),
-
+            "options_crowded_bearish": options_score_data.get("options_crowded_bearish", False),
+            "options_liquidity_score": options_score_data.get("options_liquidity_score"),
             "setup_type": structure.get("setup_type"),
             "trigger_confirmed": structure.get("trigger_confirmed", False),
             "trigger_level": structure.get("trigger_level"),
             "entry": rr_data.get("entry"),
             "stop": rr_data.get("stop"),
-            "target": rr_data.get("target"),
+            "target": rr_data.get("target"), 
             "rr": rr_data.get("rr"),
+            "theoretical_entry": rr_data.get("entry"),
+            "theoretical_stop": rr_data.get("stop"),
+            "theoretical_target": rr_data.get("target"),
+            "actionable_entry": rr_data.get("entry"),
+            "actionable_stop": rr_data.get("stop"),
+            "actionable_target": rr_data.get("target"),
+	        "stop_method": rr_data.get("stop_method"),
+            "target_method": rr_data.get("target_method"),
+            "risk_pct": rr_data.get("risk_pct"),
+            "reward_pct": rr_data.get("reward_pct"),
+            "atr": rr_data.get("atr"),
             "atr_pct": latest.get("atr_pct"),
+            "stop_atr_multiple": rr_data.get("stop_atr_multiple"),
+            "stop_atr_status": rr_data.get("stop_atr_status"),
             "relative_volume": latest.get("relative_volume"),
             "price": latest.get("close"),
-
             "avg_volume_20d": m.get("avg_volume_20d"),
             "avg_volume_60d": m.get("avg_volume_60d"),
             "median_volume_20d": m.get("median_volume_20d"),
@@ -277,10 +309,14 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "spread_pct": m.get("spread_pct"),
             "bid": m.get("bid"),
             "ask": m.get("ask"),
+            "bid_ask_valid": m.get("bid_ask_valid"),
+            "bid_ask_warning": m.get("bid_ask_warning"),
+            "spread_validated_pct": m.get("spread_validated_pct"),
+            "quote_status": m.get("quote_status"),
+            "execution_quote_quality": m.get("execution_quote_quality"),
             "average_volume_yf": m.get("average_volume_yf"),
             "average_volume_10d_yf": m.get("average_volume_10d_yf"),
             "regular_market_volume_yf": m.get("regular_market_volume_yf"),
-
             "earnings_date": fund.get("earnings_date"),
             "days_to_earnings": fund.get("days_to_earnings"),
             "earnings_veto": fund.get("earnings_veto"),
@@ -301,7 +337,6 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "short_percent_float": m.get("short_percent_float"),
             "short_ratio": m.get("short_ratio"),
             "held_percent_institutions": m.get("held_percent_institutions"),
-
             "options_data_available": options_metrics.get("options_data_available"),
             "options_source": options_metrics.get("options_source"),
             "options_expirations_used": options_metrics.get("options_expirations_used"),
@@ -330,19 +365,97 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "put_volume_to_oi": options_metrics.get("put_volume_to_oi"),
             "total_option_volume": options_metrics.get("total_option_volume"),
             "total_option_open_interest": options_metrics.get("total_option_open_interest"),
-
-            "warnings": _join_warnings(
-                m.get("data_quality_warning"),
-                m.get("liquidity_warning"),
-                fund.get("fundamental_warning"),
-                options_score_data.get("options_warning"),
-            ),
+            "source_channel": m.get("source_channel"),
+            "source_channels": m.get("source_channels"),
+            "screener_hit_count": m.get("screener_hit_count"),
+            "screener_weighted_hits": m.get("screener_weighted_hits"),
+            "avg_source_rank": m.get("avg_source_rank"),
+            "best_source_rank": m.get("best_source_rank"),
+            "source_quality_score": m.get("source_quality_score"),
         }
 
+        if not row.get("quote_status"):
+            if row.get("bid_ask_valid") is True:
+                row["quote_status"] = "VALID"
+                row["execution_quote_quality"] = "HIGH"
+            else:
+                warning = str(row.get("bid_ask_warning") or "").lower()
+
+                if "no disponible" in warning:
+                    row["quote_status"] = "MISSING"
+                elif "ask <= bid" in warning or "cero" in warning or "negativo" in warning:
+                    row["quote_status"] = "INVALID"
+                elif "stale" in warning or "alejado" in warning:
+                    row["quote_status"] = "STALE_POSSIBLE"
+                elif "spread" in warning:
+                    row["quote_status"] = "WIDE_OR_INCOHERENT"
+                else:
+                    row["quote_status"] = "MISSING"
+
+                row["execution_quote_quality"] = "LOW"
+
+        if not row.get("execution_quote_quality"):
+            row["execution_quote_quality"] = (
+                "HIGH" if row.get("quote_status") == "VALID" else "LOW"
+            )
+
+        row["warnings"] = _join_warnings(
+            m.get("data_quality_warning"),
+            m.get("liquidity_warning"),
+            fund.get("fundamental_warning"),
+            options_score_data.get("options_warning"),
+        )
+
+        dq = score_data_quality(row, config)
+        row.update(dq)
+        row["warnings"] = _join_warnings(
+            row.get("warnings"),
+            dq.get("data_quality_warning"),
+        )
+
+        row["pre_veto_signal"] = classify_base_signal(row, config)
+
         signal, veto = classify_signal(row, config)
+
+        penalty_reasons = []
+
+        if str(row.get("execution_quote_quality") or "").upper().strip() == "LOW":
+            if row.get("trigger_confirmed") is True:
+                penalty_reasons.append("execution_quote_unconfirmed")
+
+        stop_atr_status = str(row.get("stop_atr_status") or "").upper().strip()
+
+        if stop_atr_status == "BELOW_HARD_MIN":
+            penalty_reasons.append("stop_too_tight_below_0_6_atr")
+        elif stop_atr_status == "AGGRESSIVE_TIGHT":
+            penalty_reasons.append("aggressive_tight_stop")
+        elif stop_atr_status == "WIDE":
+            penalty_reasons.append("wide_stop")
+
         row["signal"] = signal
-        row["veto_reasons"] = ", ".join(veto)
+        row["all_veto_reasons"] = ", ".join(veto)
+        row["veto_reasons"] = row["all_veto_reasons"]  # backward compatibility
+        row["penalty_reasons"] = ", ".join(penalty_reasons)
+
+        if (
+            row["signal"] not in {"VETO", "AVOID"}
+            and stop_atr_status == "BELOW_HARD_MIN"
+        ):
+            row["signal"] = "AVOID"
+            row["penalty_reasons"] = _join_warnings(
+                row.get("penalty_reasons"),
+                "degraded_to_avoid_stop_below_0_6_atr",
+            )
+
+        if signal == "VETO":
+            row["actionable_entry"] = None
+            row["actionable_stop"] = None
+            row["actionable_target"] = None
+
         row["reason_summary"] = _reason_summary(row)
+
+        priority = calculate_operational_priority(row, config)
+        row.update(priority)
 
         rows.append(row)
 
@@ -352,23 +465,120 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
         return out
 
     signal_order = {
-        "BUY_SETUP_ACTIVE": 0,
+        "TRIGGER_CONFIRMED": 0,
         "READY_WAIT_TRIGGER": 1,
         "WATCHLIST": 2,
         "AVOID": 3,
         "VETO": 4,
+        "BUY_SETUP_ACTIVE": 99,  # legacy/disabled
     }
 
-    out["_signal_order"] = out["signal"].map(signal_order).fillna(9)
-    out = (
-        out.sort_values(["_signal_order", "final_score"], ascending=[True, False])
-        .drop(columns=["_signal_order"])
-        .reset_index(drop=True)
+    recommendation_order = {
+        "MANUAL_REVIEW_TRIGGER_CONFIRMED": 0,
+        "WAIT_FOR_TRIGGER": 1,
+        "WATCHLIST_MONITOR": 2,
+        "RECHECK_LIVE_QUOTE": 3,
+        "WATCHLIST_MONITOR_QUOTE": 4,
+        "WATCHLIST_NO_VALID_SETUP": 5,
+        "AVOID_FOR_NOW": 6,
+        "DO_NOT_TRADE": 7,
+        "REVIEW_MANUALLY": 8,
+    }
+
+    quote_quality_order = {
+        "HIGH": 0,
+        "MEDIUM": 1,
+        "LOW": 2,
+    }
+
+    out["_signal_order"] = (
+        out["signal"]
+        .map(signal_order)
+        .fillna(99)
+        .astype(int)
     )
-    out.insert(0, "rank", range(1, len(out) + 1))
+
+    if "recommendation" in out.columns:
+        out["_recommendation_order"] = (
+            out["recommendation"]
+            .map(recommendation_order)
+            .fillna(99)
+            .astype(int)
+        )
+    else:
+        out["_recommendation_order"] = 99
+
+    if "execution_quote_quality" in out.columns:
+        out["_quote_quality_order"] = (
+            out["execution_quote_quality"]
+            .map(quote_quality_order)
+            .fillna(99)
+            .astype(int)
+        )
+    else:
+        out["_quote_quality_order"] = 99
+
+    # Legacy rank: global old score view.
+    if "final_score" in out.columns:
+        out["legacy_rank"] = (
+            out["final_score"]
+            .rank(method="first", ascending=False)
+            .astype(int)
+        )
+    else:
+        out["legacy_rank"] = range(1, len(out) + 1)
+
+    # Raw trade-score rank: useful for diagnostics only.
+    if "final_trade_score" in out.columns:
+        out["trade_score_rank"] = (
+            out["final_trade_score"]
+            .rank(method="first", ascending=False)
+            .astype(int)
+        )
+    else:
+        out["trade_score_rank"] = out["legacy_rank"]
+
+    sort_cols = [
+        "_signal_order",
+        "_recommendation_order",
+        "_quote_quality_order",
+        "final_trade_score",
+        "setup_quality_score",
+        "final_score",
+    ]
+
+    sort_cols = [c for c in sort_cols if c in out.columns]
+
+    ascending_map = {
+        "_signal_order": True,
+        "_recommendation_order": True,
+        "_quote_quality_order": True,
+        "final_trade_score": False,
+        "setup_quality_score": False,
+        "final_score": False,
+    }
+
+    ascending = [ascending_map[c] for c in sort_cols]
+
+    out = out.sort_values(sort_cols, ascending=ascending).reset_index(drop=True)
+
+    out["operational_rank"] = range(1, len(out) + 1)
+    out["rank_delta_trade_vs_legacy"] = out["trade_score_rank"] - out["legacy_rank"]
+
+    # Keep existing rank as operational rank from this point.
+    # This is safe because signal_order still prevents VETO from rising above operable states.
+    out["rank"] = out["operational_rank"]
+
+    out = out.drop(
+        columns=[
+            "_signal_order",
+            "_recommendation_order",
+            "_quote_quality_order",
+        ],
+        errors="ignore",
+    )
 
     return out
-
 
 def _reason_summary(row: dict) -> str:
     if row.get("signal") == "VETO":

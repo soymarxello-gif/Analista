@@ -1,32 +1,31 @@
-Parche: calidad, tests y CI.
+Parche Phase 2.3: Operational Priority Score.
 
-Archivos a agregar/reemplazar:
-1) requirements-dev.txt
-2) pyproject.toml
-3) .github/workflows/ci.yml
-4) tests/test_config.py
-5) tests/test_final_score.py
-6) tests/test_signal_classifier.py
-7) tests/test_options_score.py
-8) tools/quick_check.py
+Objetivo:
+Crear una prioridad operativa separada del final_score.
 
-Qué agrega:
-- Tests de config.yaml sin duplicados.
-- Test de suma de scoring_weights = 100.
-- Test de pesos internos de options_flow = 1.
-- Tests de final_score.
-- Tests de signal_classifier.
-- Tests de options_score.
-- GitHub Actions CI en cada push/PR a main.
-- Script local tools/quick_check.py.
+final_score responde:
+- qué tan atractiva es la tesis/setup
 
-Uso local:
+operational_priority_score responde:
+- qué tan prioritario es revisar este candidato hoy considerando:
+  data quality, liquidez, fuente del screener, confianza en opciones, bid/ask y vetos
+
+Archivos:
+- scoring/operational_priority.py
+- tests/test_operational_priority_phase2_3.py
+- CONFIG_FRAGMENT_PHASE2_3.yaml
+- SCANNER_ENGINE_PHASE2_3_NOTES.md
+- DASHBOARD_PHASE2_3_NOTES.md
+
+Validación:
 cd "C:\Users\El otro Yo\Projects\ChatGPT\Analista"
 .\.venv\Scripts\activate
-pip install -r requirements-dev.txt
-python tools\quick_check.py
 
-Git:
-git add .
-git commit -m "Add tests and CI quality checks"
-git push
+python -m compileall .
+pytest tests\test_operational_priority_phase2_3.py
+
+Uso después de integrar en scanner_engine:
+python run_scanner_audited.py --max-candidates 300 --verbose --csv-out reports/latest_scan_phase2_3.csv --json-out reports/latest_scan_phase2_3.json
+
+Verificación:
+python -c "import pandas as pd; df=pd.read_csv('reports/latest_scan_phase2_3.csv'); cols=['ticker','pre_veto_signal','signal','final_score','operational_priority_score','operational_priority_bucket','source_quality_score','data_quality_confidence','options_bias','operational_priority_warning']; print(df[cols].head(20).to_string(index=False))"

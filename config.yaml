@@ -3,6 +3,14 @@ project:
   version: "0.1.1"
   description: "Scanner para detectar setups long-only de swing trading en acciones comunes estadounidenses."
 
+strategy:
+  direction: "long_only"
+  horizon_days:
+    min: 4
+    max: 21
+  portfolio_construction: false
+  execution_mode: "manual_review"
+
 trading_profile:
   market: "US"
   asset_class: "common_stocks"
@@ -13,10 +21,31 @@ trading_profile:
   allow_etfs_as_benchmarks: true
 
 universe:
+  mode: "us_listed_common_equities"
+
   allowed_exchanges: ["NMS", "NYQ", "ASE", "NAS", "NYE"]
   allowed_quote_types: ["EQUITY"]
   allow_adrs: true
+  allow_foreign_issuers_listed_in_us: true
   min_history_days: 252
+
+  allow:
+    - stocks_listed_in_us_exchanges
+    - liquid_adrs
+    - liquid_foreign_issuers_listed_in_us
+
+  exclude_security_types:
+    - ETF
+    - ETN
+    - closed_end_fund
+    - preferred_share
+    - warrant
+    - rights
+    - unit
+    - mutual_fund
+    - SPAC_pre_deal
+    - illiquid_ADR
+
   exclude_name_contains:
     - "ETF"
     - "ETN"
@@ -27,9 +56,15 @@ universe:
     - "Unit"
     - "Right"
 
+filters:
+  min_price: 10
+  min_market_cap_usd: 1500000000
+
 screener:
   max_results_per_query: 250
+  max_universe_after_dedupe: 700
   deduplicate_results: true
+
   fallback_tickers:
     - AAPL
     - MSFT
@@ -51,22 +86,63 @@ screener:
     - CRWD
     - NOW
     - SMCI
+
   channels:
     day_gainers:
       enabled: true
+      max_results: 250
+
     most_actives:
       enabled: true
+      max_results: 250
+
     growth_technology_stocks:
       enabled: true
+      max_results: 250
+
     undervalued_growth_stocks:
       enabled: true
+      max_results: 250
+
+    undervalued_large_caps:
+      enabled: true
+      max_results: 250
+
+    most_institutionally_bought_large_cap_stocks:
+      enabled: true
+      max_results: 250
+
+    small_cap_gainers:
+      enabled: false
+      max_results: 150
+
+  channel_source_weights:
+    day_gainers: 0.70
+    most_actives: 0.60
+    growth_technology_stocks: 0.90
+    undervalued_growth_stocks: 0.85
+    undervalued_large_caps: 0.85
+    most_institutionally_bought_large_cap_stocks: 1.00
+    small_cap_gainers: 0.55
+
+  bias_control:
+    max_single_source_share: 0.45
+    max_top_sector_share: 0.40
+    max_momentum_sources_share: 0.60
+    momentum_sources:
+      - day_gainers
+      - most_actives
+      - small_cap_gainers
 
 liquidity:
-  min_price: 5
+  min_price: 10
   min_avg_volume_20d: 300000
   min_avg_volume_60d: 250000
   min_dollar_volume_20d: 10000000
   min_median_to_mean_volume_ratio: 0.50
+  max_bid_ask_spread_pct: 0.01
+  max_quote_distance_pct: 0.10
+  invalid_bid_ask_score: 0.50
 
 benchmarks:
   broad_market: "SPY"
@@ -154,10 +230,26 @@ risk_reward:
   min_rr_acceptable: 1.7
   min_rr_ideal: 2.0
 
+risk_profile:
+  mode: "aggressive"
+
+  stop_atr_multiple:
+    hard_min: 0.60
+    preferred_min: 1.00
+    preferred_max: 2.50
+
+  tight_stop_policy:
+    below_hard_min_action: "avoid"
+    below_preferred_action: "penalize_only"
+
 data_sources:
   cache_ttl_minutes:
     fundamentals: 1440
     options: 30
+
+data_quality:
+  critical_missing_penalty: 0.20
+  important_missing_penalty: 0.03
 
 fundamentals:
   enabled: true
@@ -187,6 +279,12 @@ options_flow:
     call_wall_position: 0.15
     iv_risk: 0.10
     options_liquidity: 0.10
+  medium_total_option_volume: 300
+  medium_total_option_open_interest: 1000
+  high_total_option_volume: 1000
+  high_total_option_open_interest: 5000
+  crowded_bullish_score_cap: 0.60
+  crowded_bullish_bias: "NEUTRAL_CROWDED"
 
 scoring_weights:
   relative_strength: 11.4
@@ -202,14 +300,32 @@ scoring_weights:
   fundamentals: 5.1
   sentiment: 4.0
 
+signals:
+  buy_setup_active_enabled: false
+  allowed_states:
+    - VETO
+    - AVOID
+    - WATCHLIST
+    - READY_WAIT_TRIGGER
+    - TRIGGER_CONFIRMED
+
 signal_thresholds:
   buy_setup_active:
+    enabled: false
     min_score: 85
     require_trigger: true
     min_rr: 2.0
+
+  trigger_confirmed:
+    min_score: 85
+    require_trigger: true
+    min_rr: 2.0
+
   ready_wait_trigger:
     min_score: 80
+    require_trigger: false
     min_rr: 1.7
+
   watchlist:
     min_score: 70
 
@@ -217,6 +333,10 @@ veto_rules:
   thresholds:
     min_trend_score: 0.55
     min_rr: 1.5
+  data_quality:
+    veto_low_confidence: true
+    veto_missing_critical: true
+  veto_invalid_bid_ask: false
 
 outputs:
   files:
@@ -232,3 +352,44 @@ logging:
 development:
   save_raw_screener_response: true
   fail_soft_on_missing_data: true
+
+operational_priority:
+  data_quality_weight: 0.30
+  liquidity_weight: 0.20
+  source_quality_weight: 0.20
+  options_confidence_weight: 0.15
+  bid_ask_weight: 0.05
+  crowded_penalty_weight: 0.10
+
+  data_confidence_factor:
+    HIGH: 1.00
+    MEDIUM: 0.88
+    LOW: 0.65
+    DEFAULT: 0.80
+
+  options_confidence_factor:
+    HIGH: 1.00
+    MEDIUM: 0.92
+    LOW: 0.82
+    DEFAULT: 0.90
+
+  missing_bid_ask_factor: 0.92
+  invalid_bid_ask_factor: 0.88
+  crowded_bullish_factor: 0.88
+  recoverable_veto_factor: 0.55
+
+  signal_factor:
+    BUY_SETUP_ACTIVE: 1.00
+    READY_WAIT_TRIGGER: 0.94
+    WATCHLIST: 0.86
+    AVOID: 0.65
+    VETO: 0.35
+    DEFAULT: 0.75
+
+  pre_veto_signal_factor:
+    BUY_SETUP_ACTIVE: 1.00
+    READY_WAIT_TRIGGER: 0.96
+    WATCHLIST: 0.90
+    AVOID: 0.75
+    VETO: 0.60
+    DEFAULT: 0.80

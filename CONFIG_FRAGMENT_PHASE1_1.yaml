@@ -1,0 +1,16 @@
+# Fusionar en config.yaml
+
+liquidity:
+  max_bid_ask_spread_pct: 0.01
+  max_quote_distance_pct: 0.10
+  invalid_bid_ask_score: 0.50
+
+data_quality:
+  critical_missing_penalty: 0.20
+  important_missing_penalty: 0.03
+
+options_flow:
+  medium_total_option_volume: 300
+  medium_total_option_open_interest: 1000
+  high_total_option_volume: 1000
+  high_total_option_open_interest: 5000

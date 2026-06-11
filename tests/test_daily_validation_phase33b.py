@@ -1,0 +1,130 @@
+from __future__ import annotations
+
+from tools.daily_validation import (
+    DEFAULT_STEPS,
+    POST_SUMMARY_STEPS,
+    build_summary_text,
+    collect_output_status,
+)
+
+
+def test_daily_quality_gate_is_last_post_summary_step():
+    default_names = [step["name"] for step in DEFAULT_STEPS]
+    post_names = [step["name"] for step in POST_SUMMARY_STEPS]
+
+    assert "daily_quality_gate" not in default_names
+    assert "daily_quality_gate" in post_names
+
+    assert "daily_operator_index" in post_names
+    assert "daily_run_manifest" in post_names
+    assert "encoding_audit" in post_names
+
+    assert post_names.index("daily_operator_index") < post_names.index("daily_run_manifest")
+    assert post_names.index("daily_run_manifest") < post_names.index("encoding_audit")
+    assert post_names.index("encoding_audit") < post_names.index("daily_quality_gate")
+
+    assert post_names[-1] == "daily_quality_gate"
+
+
+def test_daily_quality_gate_post_step_is_optional_and_safe():
+    matches = [
+        step
+        for step in POST_SUMMARY_STEPS
+        if step.get("name") == "daily_quality_gate"
+    ]
+
+    assert len(matches) == 1
+
+    step = matches[0]
+
+    assert step["required"] is False
+    assert step["timeout_seconds"] == 60
+
+    assert "tools/daily_quality_gate.py" in step["cmd"]
+    assert "--json-out" in step["cmd"]
+    assert "reports/daily_quality_gate_latest.json" in step["cmd"]
+    assert "--markdown-out" in step["cmd"]
+    assert "reports/daily_quality_gate_latest.md" in step["cmd"]
+
+    # Seguridad: el gate no debe ejecutar scanner ni aplicar cambios.
+    assert "run_scanner_audited.py" not in step["cmd"]
+    assert "run_scanner.py" not in step["cmd"]
+    assert "--apply" not in step["cmd"]
+    assert "--fix" not in step["cmd"]
+
+
+def test_daily_validation_tracks_daily_quality_gate_outputs():
+    status = collect_output_status()
+    paths = {item["path"] for item in status["files"]}
+
+    assert "reports/daily_quality_gate_latest.json" in paths
+    assert "reports/daily_quality_gate_latest.md" in paths
+
+
+def test_daily_validation_summary_includes_daily_quality_gate_reports():
+    results = [
+        {
+            "name": "daily_quality_gate",
+            "cmd": (
+                "python tools/daily_quality_gate.py "
+                "--json-out reports/daily_quality_gate_latest.json "
+                "--markdown-out reports/daily_quality_gate_latest.md"
+            ),
+            "required": False,
+            "returncode": 0,
+            "stdout": (
+                "=== ANALISTA DAILY QUALITY GATE ===\n"
+                "Status: WARN\n"
+                "Manual review allowed: True\n"
+                "Manual review mode: REINFORCED\n"
+                "Issues: 1\n"
+            ),
+            "stderr": "",
+            "passed": True,
+            "timeout_seconds": 60,
+            "timed_out": False,
+        }
+    ]
+
+    output_status = {
+        "files": [
+            {
+                "path": "reports/daily_quality_gate_latest.json",
+                "exists": True,
+                "size_bytes": 100,
+                "modified": "2026-06-10T12:00:00",
+            },
+            {
+                "path": "reports/daily_quality_gate_latest.md",
+                "exists": True,
+                "size_bytes": 100,
+                "modified": "2026-06-10T12:00:00",
+            },
+        ]
+    }
+
+    snapshot = {
+        "scan_rows": 364,
+        "manual_review_rows": 45,
+        "signals": {"WATCHLIST": 45, "AVOID": 54, "VETO": 265},
+        "recommendations": {
+            "WATCHLIST_MONITOR": 30,
+            "RECHECK_LIVE_QUOTE": 15,
+        },
+        "quote_recheck_priority": {},
+    }
+
+    text = build_summary_text(
+        results=results,
+        output_status=output_status,
+        snapshot=snapshot,
+        status="PASS",
+    )
+
+    assert "daily_quality_gate" in text
+    assert "ANALISTA DAILY QUALITY GATE" in text
+    assert "Manual review allowed: True" in text
+    assert "Manual review mode: REINFORCED" in text
+    assert "reports/daily_quality_gate_latest.json" in text
+    assert "reports/daily_quality_gate_latest.md" in text
+    assert "[Critical reports]" in text

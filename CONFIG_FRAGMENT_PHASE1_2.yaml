@@ -1,0 +1,11 @@
+# Fusionar en config.yaml sin duplicar bloques
+
+veto_rules:
+  data_quality:
+    veto_low_confidence: true
+    veto_missing_critical: true
+  veto_invalid_bid_ask: false
+
+options_flow:
+  crowded_bullish_score_cap: 0.60
+  crowded_bullish_bias: "NEUTRAL_CROWDED"

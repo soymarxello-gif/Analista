@@ -27,6 +27,8 @@ def main():
     parser.add_argument("--max-candidates", type=int, default=None)
     parser.add_argument("--json-out", default=None)
     parser.add_argument("--csv-out", default=None)
+    parser.add_argument("--markdown-out", default=None)
+    parser.add_argument("--html-out", default=None)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--no-intraday", action="store_true", help="Reservado para compatibilidad futura.")
     args = parser.parse_args()
@@ -40,19 +42,32 @@ def main():
         logger.warning("Scanner terminó sin candidatos.")
         return
 
-    save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
+    save_reports(
+        df,
+        config,
+        json_out=args.json_out,
+        csv_out=args.csv_out,
+        markdown_out=args.markdown_out,
+        html_out=args.html_out,
+    )
+    
     logger.info(f"Scanner completado. Candidatos: {len(df)}")
 
     display_cols = [
         "rank",
         "ticker",
         "signal",
+        "recommendation",
         "setup_type",
+        "final_trade_score",
+        "setup_quality_score",
         "final_score",
-        "entry",
-        "stop",
-        "target",
+        "actionable_entry",
+        "actionable_stop",
+        "actionable_target",
         "rr",
+        "quote_status",
+        "options_bias",
         "reason_summary",
     ]
 

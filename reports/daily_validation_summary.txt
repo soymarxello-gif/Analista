@@ -1,0 +1,468 @@
+=== ANALISTA DAILY VALIDATION SUMMARY ===
+Timestamp: 2026-06-10T23:01:52
+Status: FAIL
+
+[Executive summary]
+- Required steps failed: 1
+- Optional steps failed: 2
+- Scan rows: 362
+- Manual review rows: 45
+
+[Operational next steps]
+- NO usar candidatos operativamente hasta revisar los errores requeridos.
+- Revisar primero la sección [Steps] y corregir el primer step requerido fallido.
+- Luego volver a correr: python .\tools\daily_validation.py
+
+[Steps]
+- PASS: project_preflight (required)
+  cmd: C:\Python314\python.exe tools/project_preflight.py --json-out reports/project_preflight_latest.json --markdown-out reports/project_preflight_latest.md
+  returncode: 0
+  timeout_seconds: 60
+  stdout:
+  === ANALISTA PROJECT PREFLIGHT ===
+  Status: WARN
+  Missing required dirs: 0
+  Missing required files: 0
+  Missing optional files: 2
+  Failed write checks: 0
+  JSON: reports/project_preflight_latest.json
+  Markdown: reports/project_preflight_latest.md
+- FAIL: run_scanner_audited (required)
+  cmd: C:\Python314\python.exe run_scanner_audited.py
+  returncode: 1
+  timeout_seconds: 900
+  stderr:
+  2026-06-10 23:01:43.539 | INFO     | engine.scanner_engine:run_scan:62 - Iniciando scanner Analista MVP.
+  Traceback (most recent call last):
+    File "C:\Python314\Lib\site-packages\pandas\core\indexes\base.py", line 3641, in get_loc
+      return self._engine.get_loc(casted_key)
+             ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+    File "pandas/_libs/index.pyx", line 168, in pandas._libs.index.IndexEngine.get_loc
+    File "pandas/_libs/index.pyx", line 197, in pandas._libs.index.IndexEngine.get_loc
+    File "pandas/_libs/hashtable_class_helper.pxi", line 7668, in pandas._libs.hashtable.PyObjectHashTable.get_item
+    File "pandas/_libs/hashtable_class_helper.pxi", line 7676, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  KeyError: 'source_weight'
+  
+  The above exception was the direct cause of the following exception:
+  
+  Traceback (most recent call last):
+    File "C:\Users\El otro Yo\Projects\ChatGPT\Analista\run_scanner_audited.py", line 124, in <module>
+      raise SystemExit(main())
+                       ~~~~^^
+    File "C:\Users\El otro Yo\Projects\ChatGPT\Analista\run_scanner_audited.py", line 82, in main
+      df = run_scan(config, max_candidates=args.max_candidates)
+    File "C:\Users\El otro Yo\Projects\ChatGPT\Analista\engine\scanner_engine.py", line 65, in run_scan
+      screen = run_screeners(config)
+    File "C:\Users\El otro Yo\Projects\ChatGPT\Analista\data\screener_client.py", line 230, in run_screeners
+      df = _aggregate_rows(df, screener_cfg)
+    File "C:\Users\El otro Yo\Projects\ChatGPT\Analista\data\screener_client.py", line 104, in _aggregate_rows
+      weighted_hits = float(g.drop_duplicates("source_channel")["source_weight"].sum())
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+    File "C:\Python314\Lib\site-packages\pandas\core\frame.py", line 4378, in __getitem__
+      indexer = self.columns.get_loc(key)
+    File "C:\Python314\Lib\site-packages\pandas\core\indexes\base.py", line 3648, in get_loc
+      raise KeyError(key) from err
+  KeyError: 'source_weight'
+- PASS: validate_latest_scan_p0 (required)
+  cmd: C:\Python314\python.exe validate_latest_scan_p0.py reports/latest_scan_audited.csv
+  returncode: 0
+  timeout_seconds: 120
+  stdout:
+  Auditando: reports\latest_scan_audited.csv
+  Filas: 362
+  
+  Distribución de señales:
+  signal
+  VETO         263
+  AVOID         54
+  WATCHLIST     45
+  Name: count, dtype: int64
+  
+  Distribución de quote_status:
+  quote_status
+  VALID             150
+  MISSING           139
+  STALE_POSSIBLE     53
+  INVALID            20
+  Name: count, dtype: int64
+  
+  Distribución de execution_quote_quality:
+  execution_quote_quality
+  LOW     212
+  HIGH    150
+  Name: count, dtype: int64
+  
+  Checks P0:
+  - BUY_SETUP_ACTIVE: 0
+  - READY_WAIT_TRIGGER + trigger_confirmed=true: 0
+  - TRIGGER_CONFIRMED + execution_quote_quality=LOW: 0
+  - WATCHLIST_or_better + price<10: 0
+  - WATCHLIST_or_better + market_cap<1.5B: 0
+  - NO_VALID_SETUP fuera de VETO: 0
+  - VETO con actionable_entry no nulo: 0
+  - VETO con actionable_stop no nulo: 0
+  - VETO con actionable_target no nulo: 0
+  
+  Bloque F OK: el nuevo scan cumple invariantes P0.
+- PASS: latest_scan_health (required)
+  cmd: C:\Python314\python.exe tools/latest_scan_health.py --reports-dir reports
+  returncode: 0
+  timeout_seconds: 120
+  stdout:
+  CSV más reciente: reports\manual_review_top.csv
+  
+  === ANALISTA SCAN AUDIT ===
+  Status: FAIL
+  Rows: 35
+  Veto rate: 0.0%
+  Signals: {'WATCHLIST': 35}
+  
+  ISSUES:
+  - faltan columnas operativas requeridas: entry, stop, target, trend_score, liquidity_pass, data_quality_score, data_quality_confidence
+  
+  WARNINGS:
+  - faltan columnas recomendadas: pre_veto_signal, veto_reasons, bid_ask_valid, bid_ask_warning, spread_validated_pct, options_score, options_bias, options_confidence, options_liquidity_score, options_crowded_bullish, stop_method, target_method, risk_pct, reward_pct, all_veto_reasons, penalty_reasons, asset_quality_score, context_score, institutional_score, score_breakdown, stop_atr_multiple, options_crowded_bearish, legacy_rank, trade_score_rank, operational_rank, rank_delta_trade_vs_legacy, manual_quote_check_required, quote_recheck_priority, quote_recheck_reason
+  
+  RECOMMENDATIONS:
+  - Corregir engine/scanner_engine.py para incluir columnas operativas requeridas en row.
+  
+  Audit JSON: reports\audits\audit_manual_review_top.json
+- PASS: project_consistency_audit (required)
+  cmd: C:\Python314\python.exe tools/project_consistency_audit.py
+  returncode: 0
+  timeout_seconds: 120
+  stdout:
+  === ANALISTA PROJECT CONSISTENCY AUDIT ===
+  
+  [legacy_terms]
+  - OK
+  
+  [config]
+  - OK
+  
+  [latest_scan]
+  - OK
+  
+  Resultado: PASS
+- PASS: source_coverage_audit (optional)
+  cmd: C:\Python314\python.exe tools/source_coverage_audit.py --json-out reports/source_coverage_latest.json
+  returncode: 0
+  timeout_seconds: 120
+  stdout:
+  === SOURCE COVERAGE AUDIT ===
+  Rows: 362
+  
+  [Counts]
+  
+  signal:
+    VETO: 263
+    AVOID: 54
+    WATCHLIST: 45
+  
+  recommendation:
+    DO_NOT_TRADE: 263
+    AVOID_FOR_NOW: 54
+    WATCHLIST_MONITOR: 30
+    RECHECK_LIVE_QUOTE: 15
+  
+  quote_status:
+    VALID: 150
+    MISSING: 139
+    STALE_POSSIBLE: 53
+    INVALID: 20
+  
+  execution_quote_quality:
+    LOW: 212
+    HIGH: 150
+  
+  options_source:
+    disabled_or_limit: 332
+    cache: 30
+  
+  options_bias:
+    UNKNOWN_OPTIONS_FLOW: 332
+    NEUTRAL_WITH_DATA: 11
+    CROWDED_BULLISH: 10
+    BULLISH_WITH_DATA: 4
+    CROWDED_BEARISH: 3
+    BEARISH_WITH_DATA: 2
+  
+  options_confidence:
+    UNKNOWN: 332
+    HIGH: 18
+    MEDIUM: 8
+    LOW: 4
+  
+  data_quality_confidence:
+    HIGH: 223
+    MEDIUM: 139
+  
+  metadata_missing:
+    OK: 223
+    MISSING_SECTOR_OR_INDUSTRY: 139
+  
+  [Missing rates]
+    sector: 38.4%
+    industry: 38.4%
+    quote_status: 0.0%
+    execution_quote_quality: 0.0%
+    market_cap: 0.0%
+    avg_volume_20d: 0.0%
+    dollar_volume_20d: 0.0%
+    rr: 0.0%
+    atr: 0.0%
+    setup_type: 0.0%
+  
+  [Cross tabs]
+  
+  metadata_missing_by_signal:
+  {
+    "AVOID": {
+      "false": 33,
+      "true": 21
+    },
+    "VETO": {
+      "false": 149,
+      "true": 114
+    },
+    "WATCHLIST": {
+      "false": 41,
+      "true": 4
+    }
+  }
+  
+  metadata_missing_by_quote_status:
+  {
+    "INVALID": {
+      "false": 20,
+      "true": 0
+    },
+    "MISSING": {
+      "false": 0,
+      "true": 139
+    },
+    "STALE_POSSIBLE": {
+      "false": 53,
+      "true": 0
+    },
+    "VALID": {
+      "false": 150,
+      "true": 0
+    }
+  }
+  
+  [Top missing metadata]
+  {'rank': 39, 'ticker': 'BAX', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 41, 'ticker': 'MRK', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 42, 'ticker': 'KDP', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 43, 'ticker': 'STM', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 72, 'ticker': 'USB', 'signal': 'AVOID', 'recommendation': 'AVOID_FOR_NOW', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 74, 'ticker': 'TFC', 'signal': 'AVOID', 'recommendation': 'AVOID_FOR_NOW', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 76, 'ticker': 'CORZ', 'signal': 'AVOID', 'recommendation': 'AVOID_FOR_NOW', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 77, 'ticker': 'CSCO', 'signal': 'AVOID', 'recommendation': 'AVOID_FOR_NOW', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 80, 'ticker': 'SIRI', 'signal': 'AVOID', 'recommendation': 'AVOID_FOR_NOW', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 81, 'ticker': 'KEY', 'signal': 'AVOID', 'recommendation': 'AVOID_FOR_NOW', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  
+  [Operable missing metadata]
+  {'rank': 39, 'ticker': 'BAX', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 41, 'ticker': 'MRK', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 42, 'ticker': 'KDP', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  {'rank': 43, 'ticker': 'STM', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'sector': nan, 'industry': nan, 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'data_quality_score': 0.88, 'core_data_quality_score': 1.0, 'fundamental_data_quality_score': 0.64, 'options_bias': 'UNKNOWN_OPTIONS_FLOW'}
+  
+  [Top LOW execution quote]
+  {'rank': 31, 'ticker': 'LAUR', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Consumer Defensive', 'industry': 'Education & Training Services', 'final_trade_score': 82.85, 'setup_quality_score': 87.24, 'penalty_reasons': 'execution_quote_unconfirmed'}
+  {'rank': 32, 'ticker': 'MRX', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Financial Services', 'industry': 'Capital Markets', 'final_trade_score': 82.15, 'setup_quality_score': 85.4, 'penalty_reasons': 'execution_quote_unconfirmed'}
+  {'rank': 33, 'ticker': 'TGTX', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Healthcare', 'industry': 'Biotechnology', 'final_trade_score': 82.01, 'setup_quality_score': 88.87, 'penalty_reasons': 'execution_quote_unconfirmed'}
+  {'rank': 34, 'ticker': 'CASY', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Consumer Cyclical', 'industry': 'Specialty Retail', 'final_trade_score': 81.79, 'setup_quality_score': 87.02, 'penalty_reasons': 'execution_quote_unconfirmed'}
+  {'rank': 35, 'ticker': 'AMRX', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Healthcare', 'industry': 'Drug Manufacturers - Specialty & Generic', 'final_trade_score': 81.24, 'setup_quality_score': 88.82, 'penalty_reasons': 'execution_quote_unconfirmed'}
+  {'rank': 36, 'ticker': 'ALHC', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Healthcare', 'industry': 'Healthcare Plans', 'final_trade_score': 80.61, 'setup_quality_score': 93.16, 'penalty_reasons': 'execution_quote_unconfirmed, aggressive_tight_stop'}
+  {'rank': 37, 'ticker': 'COCO', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Consumer Defensive', 'industry': 'Beverages - Non-Alcoholic', 'final_trade_score': 80.07, 'setup_quality_score': 80.91, 'penalty_reasons': 'execution_quote_unconfirmed'}
+  {'rank': 38, 'ticker': 'GTX', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'STALE_POSSIBLE', 'execution_quote_quality': 'LOW', 'sector': 'Consumer Cyclical', 'industry': 'Auto Parts', 'final_trade_score': 78.23, 'setup_quality_score': 80.9, 'penalty_reasons': 'execution_quote_unconfirmed, aggressive_tight_stop'}
+  {'rank': 39, 'ticker': 'BAX', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'MISSING', 'execution_quote_quality': 'LOW', 'sector': nan, 'industry': nan, 'final_trade_score': 77.15, 'setup_quality_score': 89.1, 'penalty_reasons': 'execution_quote_unconfirmed'}
+  {'rank': 40, 'ticker': 'MUR', 'signal': 'WATCHLIST', 'recommendation': 'RECHECK_LIVE_QUOTE', 'quote_status': 'INVALID', 'execution_quote_quality': 'LOW', 'sector': 'Energy', 'industry': 'Oil & Gas E&P', 'final_trade_score': 76.16, 'setup_quality_score': 83.63, 'penalty_reasons': 'execution_quote_unconfirmed, aggressive_tight_stop'}
+  
+  JSON escrito en: C:\Users\El otro Yo\Projects\ChatGPT\Analista\reports\source_coverage_latest.json
+- PASS: trade_outcome_analytics (optional)
+  cmd: C:\Python314\python.exe tools/trade_outcome_analytics.py
+  returncode: 0
+  timeout_seconds: 60
+  stdout:
+  === ANALISTA TRADE OUTCOME ANALYTICS ===
+  Status: PASS
+  Closed trades: 0
+  Rows: 0
+  CSV: C:\Users\El otro Yo\Projects\ChatGPT\Analista\reports\trade_outcome_analytics_latest.csv
+  Markdown: C:\Users\El otro Yo\Projects\ChatGPT\Analista\reports\trade_outcome_analytics_latest.md
+- PASS: reports_cleanup (optional)
+  cmd: C:\Python314\python.exe tools/reports_cleanup.py --json-out reports/reports_cleanup_latest.json --markdown-out reports/reports_cleanup_latest.md
+  returncode: 0
+  timeout_seconds: 60
+  stdout:
+  === ANALISTA REPORTS CLEANUP ===
+  Status: PASS
+  Mode: DRY_RUN
+  Candidates: 0
+  Moved: 0
+  JSON: reports/reports_cleanup_latest.json
+  Markdown: reports/reports_cleanup_latest.md
+- PASS: daily_operator_index (optional)
+  cmd: C:\Python314\python.exe tools/daily_operator_index.py --output-path reports/daily_operator_index.md
+  returncode: 0
+  timeout_seconds: 60
+  stdout:
+  === ANALISTA DAILY OPERATOR INDEX ===
+  Status: PASS
+  Validation status: FAIL
+  Scan rows: 362
+  Manual review rows: 45
+  RECHECK_LIVE_QUOTE: 15
+  TRIGGER_CONFIRMED: 0
+  Output: C:\Users\El otro Yo\Projects\ChatGPT\Analista\reports\daily_operator_index.md
+- FAIL: daily_run_manifest (optional)
+  cmd: C:\Python314\python.exe tools/daily_run_manifest.py --json-out reports/daily_run_manifest_latest.json --markdown-out reports/daily_run_manifest_latest.md
+  returncode: 1
+  timeout_seconds: 60
+  stdout:
+  === ANALISTA DAILY RUN MANIFEST ===
+  Status: FAIL
+  Daily validation: FAIL
+  Project preflight: WARN
+  Reports cleanup: PASS
+  Latest scan rows: 362
+  Manual review rows: 45
+  Missing script files: 0
+  Missing report files: 2
+  JSON: reports/daily_run_manifest_latest.json
+  Markdown: reports/daily_run_manifest_latest.md
+- PASS: encoding_audit (optional)
+  cmd: C:\Python314\python.exe tools/encoding_audit.py --scan-dir reports --json-out reports/encoding_audit_latest.json --markdown-out reports/encoding_audit_latest.md
+  returncode: 0
+  timeout_seconds: 60
+  stdout:
+  === ANALISTA ENCODING AUDIT ===
+  Status: PASS
+  Files scanned: 547
+  Warn files: 0
+  Error files: 0
+  Total marker hits: 0
+  JSON: reports/encoding_audit_latest.json
+  Markdown: reports/encoding_audit_latest.md
+- FAIL: daily_quality_gate (optional)
+  cmd: C:\Python314\python.exe tools/daily_quality_gate.py --json-out reports/daily_quality_gate_latest.json --markdown-out reports/daily_quality_gate_latest.md
+  returncode: 1
+  timeout_seconds: 60
+  stdout:
+  === ANALISTA DAILY QUALITY GATE ===
+  Status: FAIL
+  Manual review allowed: False
+  Manual review mode: BLOCKED
+  Issues: 4
+  Latest scan rows: 362
+  Manual review rows: 45
+  JSON: reports/daily_quality_gate_latest.json
+  Markdown: reports/daily_quality_gate_latest.md
+
+[Output files]
+- OK: reports/project_preflight_latest.json (5249 bytes, modified=2026-06-10T23:01:42)
+- OK: reports/project_preflight_latest.md (2607 bytes, modified=2026-06-10T23:01:42)
+- OK: reports/latest_scan_audited.csv (783379 bytes, modified=2026-06-10T21:56:47)
+- OK: reports/latest_scan_audited.json (2268078 bytes, modified=2026-06-10T21:56:47)
+- OK: reports/manual_review_latest.csv (32785 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/manual_review_latest.md (19748 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/manual_review_top.csv (18754 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/manual_review_top.md (10495 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/daily_validation_summary.txt (23887 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/daily_operator_index.md (7512 bytes, modified=2026-06-10T23:01:47)
+- OK: reports/daily_quality_gate_latest.json (4534 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/daily_quality_gate_latest.md (2312 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/source_coverage_latest.json (28540 bytes, modified=2026-06-10T23:01:45)
+- OK: reports/history_evolution_latest.csv (461927 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/history_evolution_latest.md (9342 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/setup_persistence_latest.csv (641472 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/setup_persistence_latest.md (16442 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/trade_outcome_analytics_latest.csv (199 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/trade_outcome_analytics_latest.md (136 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/reports_cleanup_latest.json (199 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/reports_cleanup_latest.md (561 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/daily_run_manifest_latest.json (17238 bytes, modified=2026-06-10T23:01:47)
+- OK: reports/daily_run_manifest_latest.md (13200 bytes, modified=2026-06-10T23:01:47)
+- OK: reports/encoding_audit_latest.json (127752 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/encoding_audit_latest.md (334 bytes, modified=2026-06-10T23:01:50)
+
+[Critical reports]
+- OK: reports/project_preflight_latest.json (5249 bytes, modified=2026-06-10T23:01:42)
+- OK: reports/project_preflight_latest.md (2607 bytes, modified=2026-06-10T23:01:42)
+- OK: reports/latest_scan_audited.csv (783379 bytes, modified=2026-06-10T21:56:47)
+- OK: reports/latest_scan_audited.json (2268078 bytes, modified=2026-06-10T21:56:47)
+- OK: reports/manual_review_latest.csv (32785 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/manual_review_latest.md (19748 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/manual_review_top.csv (18754 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/manual_review_top.md (10495 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/daily_validation_summary.txt (23887 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/daily_operator_index.md (7512 bytes, modified=2026-06-10T23:01:47)
+- OK: reports/daily_quality_gate_latest.json (4534 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/daily_quality_gate_latest.md (2312 bytes, modified=2026-06-10T23:01:50)
+
+[Secondary reports]
+- OK: reports/source_coverage_latest.json (28540 bytes, modified=2026-06-10T23:01:45)
+- OK: reports/history_evolution_latest.csv (461927 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/history_evolution_latest.md (9342 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/setup_persistence_latest.csv (641472 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/setup_persistence_latest.md (16442 bytes, modified=2026-06-10T23:01:52)
+- OK: reports/trade_outcome_analytics_latest.csv (199 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/trade_outcome_analytics_latest.md (136 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/reports_cleanup_latest.json (199 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/reports_cleanup_latest.md (561 bytes, modified=2026-06-10T23:01:46)
+- OK: reports/daily_run_manifest_latest.json (17238 bytes, modified=2026-06-10T23:01:47)
+- OK: reports/daily_run_manifest_latest.md (13200 bytes, modified=2026-06-10T23:01:47)
+- OK: reports/encoding_audit_latest.json (127752 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/encoding_audit_latest.md (334 bytes, modified=2026-06-10T23:01:50)
+
+[Scan snapshot]
+- scan_rows: 362
+- manual_review_rows: 45
+
+Signals:
+- VETO: 263
+- AVOID: 54
+- WATCHLIST: 45
+
+Recommendations:
+- DO_NOT_TRADE: 263
+- AVOID_FOR_NOW: 54
+- WATCHLIST_MONITOR: 30
+- RECHECK_LIVE_QUOTE: 15
+
+Quote recheck priority:
+
+[Manual operating reminder]
+- VETO y AVOID no son operables.
+- RECHECK_LIVE_QUOTE no es entrada; requiere validación live quote.
+- TRIGGER_CONFIRMED requiere revisión manual final.
+- WATCHLIST es monitoreo, no compra automática.
+- Confirmar siempre gráfico, quote, R/R, stop, target, earnings y contexto de mercado.
+[History archive]
+- status: PASS
+- archive_dir: reports\history\20260610_230150
+- copied: 6
+- missing_required: 0
+
+[History evolution]
+- status: PASS
+- history_runs: 35
+- tickers: 669
+
+[Setup persistence]
+- status: PASS
+- rows: 669
+
+[Manual review persistence]
+- status: PASS
+- rows: 45
+- matched: 45
+- missing: 0
+
+[Manual review top]
+- status: PASS
+- rows: 35
+- groups: {'1_ALTA_CALIDAD_OPERATIVA': 20, '2_REQUIERE_RECHECK_QUOTE': 15}

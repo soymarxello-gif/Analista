@@ -17,7 +17,7 @@
   "ask": 102.73,
   "bid_size": 1.0,
   "ask_size": 1.0,
-  "regular_market_volume": 6324786.0,
+  "regular_market_volume": 6361015.0,
   "spread_pct": 0.10017377082694466,
   "trailing_pe": 19.156673,
   "forward_pe": 13.071499,
@@ -45,6 +45,6 @@
   "short_percent_float": 0.1455,
   "short_ratio": 9.44,
   "earnings_date": "2026-08-10",
-  "days_to_earnings": 64,
+  "days_to_earnings": 63,
   "fundamental_warning": ""
 }

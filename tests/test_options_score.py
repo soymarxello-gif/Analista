@@ -24,8 +24,8 @@ CONFIG = {
 def test_options_no_data_neutral():
     result = score_options_flow({"options_data_available": False, "options_warning": "missing"}, 100, CONFIG)
     assert result["options_score"] == 0.5
-    assert result["options_bias"] == "NEUTRAL_NO_DATA"
-
+    assert result["options_bias"] == "UNKNOWN_OPTIONS_FLOW"
+    assert result["options_confidence"] == "UNKNOWN"
 
 def test_options_bullish_case():
     metrics = {
@@ -41,7 +41,7 @@ def test_options_bullish_case():
     }
     result = score_options_flow(metrics, 100, CONFIG)
     assert result["options_score"] >= 0.65
-    assert result["options_bias"] == "BULLISH"
+    assert result["options_bias"] == "BULLISH_WITH_DATA"
 
 
 def test_extremely_low_put_call_sets_crowded_warning():
@@ -59,3 +59,4 @@ def test_extremely_low_put_call_sets_crowded_warning():
     result = score_options_flow(metrics, 100, CONFIG)
     assert result["options_crowded_bullish"] is True
     assert "crowded trade" in result["options_warning"]
+    assert result["options_bias"] == "CROWDED_BULLISH"

@@ -24,7 +24,7 @@
   "max_put_oi_strike": 15.0,
   "max_put_oi": 293.0,
   "max_pain_approx": 20.0,
-  "atm_implied_volatility": 0.446294599609375,
+  "atm_implied_volatility": 0.46484910156250003,
   "call_volume_to_oi": 0.21766917293233082,
   "put_volume_to_oi": 0.0768025078369906,
   "total_option_volume": 628.0,

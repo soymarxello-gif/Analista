@@ -13,12 +13,12 @@
   "shares_outstanding": 2328598978.0,
   "average_volume": 9545731.0,
   "average_volume_10d": 9008920.0,
-  "bid": 0.0,
-  "ask": 0.0,
+  "bid": 146.44,
+  "ask": 146.6,
   "bid_size": 100.0,
   "ask_size": 300.0,
   "regular_market_volume": 10816786.0,
-  "spread_pct": null,
+  "spread_pct": 0.0010920010920010689,
   "trailing_pe": 21.423975,
   "forward_pe": 20.680593,
   "price_to_book": 6.3489447,
@@ -45,6 +45,6 @@
   "short_percent_float": 0.0127,
   "short_ratio": 3.36,
   "earnings_date": "2026-07-29",
-  "days_to_earnings": 52,
+  "days_to_earnings": 51,
   "fundamental_warning": ""
 }

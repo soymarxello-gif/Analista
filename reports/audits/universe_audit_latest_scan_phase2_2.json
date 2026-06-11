@@ -1,0 +1,54 @@
+{
+  "status": "WARN",
+  "summary": {
+    "rows": 94,
+    "source_counts": {
+      "day_gainers": 12,
+      "undervalued_growth_stocks": 51,
+      "most_actives": 15,
+      "growth_technology_stocks": 26,
+      "undervalued_large_caps": 28
+    },
+    "source_shares_pct": {
+      "day_gainers": 12.77,
+      "undervalued_growth_stocks": 54.26,
+      "most_actives": 15.96,
+      "growth_technology_stocks": 27.66,
+      "undervalued_large_caps": 29.79
+    },
+    "momentum_source_share_pct": 24.47,
+    "sector_counts": {
+      "Technology": 27,
+      "Financial Services": 24,
+      "Basic Materials": 9,
+      "Healthcare": 7,
+      "Consumer Cyclical": 7,
+      "Energy": 7,
+      "Real Estate": 4,
+      "Industrials": 3,
+      "Consumer Defensive": 3,
+      "Communication Services": 3
+    },
+    "sector_shares_pct": {
+      "Technology": 28.72,
+      "Financial Services": 25.53,
+      "Basic Materials": 9.57,
+      "Healthcare": 7.45,
+      "Consumer Cyclical": 7.45,
+      "Energy": 7.45,
+      "Real Estate": 4.26,
+      "Industrials": 3.19,
+      "Consumer Defensive": 3.19,
+      "Communication Services": 3.19
+    },
+    "avg_screener_hit_count": 1.4043,
+    "low_confirmation_rate_pct": 62.77
+  },
+  "issues": [],
+  "warnings": [
+    "concentración alta en fuente 'undervalued_growth_stocks': 54.26%"
+  ],
+  "recommendations": [
+    "Diversificar canales de screener o bajar peso del canal dominante."
+  ]
+}

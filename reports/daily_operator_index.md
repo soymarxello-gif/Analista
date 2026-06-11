@@ -1,0 +1,167 @@
+# Analista - daily operator index
+
+- generated_at: 2026-06-10T23:07:56
+- validation_status: FAIL
+- scan_rows: 362
+- manual_review_rows: 45
+- manual_top_rows: 35
+- open_trades_rows: 0
+- analytics_rows: 0
+
+## Daily quality gate
+
+- status: FAIL
+- manual_review_allowed: False
+- manual_review_mode: BLOCKED
+- issue_count: 4
+- fail_issues: 1
+- warn_issues: 3
+- Estado FAIL: no usar candidatos operativamente hasta corregir errores.
+- Abrir `reports/daily_quality_gate_latest.md`.
+
+## Decision gate
+
+- Estado FAIL: no usar candidatos operativamente hasta corregir errores requeridos.
+- Hay 15 candidatos RECHECK_LIVE_QUOTE: no operar sin validar quote en vivo.
+- Hay 45 WATCHLIST: monitoreo, no compra automática.
+
+## Abrir primero
+
+1. `reports/daily_validation_summary.txt`
+2. `reports/daily_quality_gate_latest.md`
+3. `reports/daily_run_manifest_latest.md`
+4. `reports/project_preflight_latest.md`
+5. `reports/encoding_audit_latest.md`
+6. `reports/manual_review_top.md`
+7. `reports/manual_review_latest.md`
+8. `reports/open_trades_snapshot_latest.md`
+9. `reports/trade_outcome_analytics_latest.md`
+10. `reports/reports_cleanup_latest.md`
+11. `reports/latest_scan_audited.csv`
+
+## Señales
+
+- VETO: 263
+- AVOID: 54
+- WATCHLIST: 45
+
+## Recomendaciones
+
+- WATCHLIST_MONITOR: 30
+- RECHECK_LIVE_QUOTE: 15
+
+## Prioridad quote recheck
+
+- Sin datos.
+
+## Top manual review
+
+| rank | ticker | signal | recommendation | setup_type | final_trade_score | setup_persistence_score | quote_status | execution_quote_quality | rr | stop_atr_status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | BROS | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 87.5 | 89.0 | VALID | HIGH | 4.0 | AGGRESSIVE_TIGHT |
+| 2 | RSI | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 83.56 | 89.0 | VALID | HIGH | 1.9999999999999976 | IDEAL |
+| 3 | BFH | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 83.28 | 89.0 | VALID | HIGH | 2.0 | IDEAL |
+| 4 | FUN | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 83.16 | 89.0 | VALID | HIGH | 2.0 | IDEAL |
+| 5 | IMAX | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 82.96 | 89.0 | VALID | HIGH | 2.0 | IDEAL |
+| 6 | CXW | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 82.59 | 89.0 | VALID | HIGH | 2.0 | IDEAL |
+| 7 | GEO | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 81.99 | 89.0 | VALID | HIGH | 2.0 | IDEAL |
+| 8 | CNK | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 81.94 | 89.0 | VALID | HIGH | 2.0 | IDEAL |
+| 9 | UNM | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 81.92 | 89.0 | VALID | HIGH | 2.0000000000000053 | IDEAL |
+| 10 | MUSA | WATCHLIST | WATCHLIST_MONITOR | BREAKOUT | 80.75 | 89.0 | VALID | HIGH | 1.9999999999999964 | IDEAL |
+| 11 | SPNT | WATCHLIST | WATCHLIST_MONITOR | PULLBACK | 77.8 | 89.0 | VALID | HIGH | 4.0 | AGGRESSIVE_TIGHT |
+| 12 | TRGP | WATCHLIST | WATCHLIST_MONITOR | PULLBACK | 77.68 | 89.0 | VALID | HIGH | 3.899032762061216 | AGGRESSIVE_TIGHT |
+
+## RECHECK_LIVE_QUOTE
+
+| rank | ticker | signal | recommendation | setup_type | final_trade_score | quote_status | execution_quote_quality | rr |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 31 | LAUR | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 82.85 | STALE_POSSIBLE | LOW | 2.0000000000000044 |
+| 32 | MRX | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 82.15 | STALE_POSSIBLE | LOW | 2.0 |
+| 33 | TGTX | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 82.01 | STALE_POSSIBLE | LOW | 2.0 |
+| 34 | CASY | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 81.79 | STALE_POSSIBLE | LOW | 2.0 |
+| 35 | AMRX | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 81.24 | STALE_POSSIBLE | LOW | 2.0 |
+| 36 | ALHC | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 80.61 | STALE_POSSIBLE | LOW | 3.999999999999996 |
+| 37 | COCO | WATCHLIST | RECHECK_LIVE_QUOTE | RECLAIM | 80.07 | STALE_POSSIBLE | LOW | 2.24698476360559 |
+| 38 | GTX | WATCHLIST | RECHECK_LIVE_QUOTE | PULLBACK | 78.23 | STALE_POSSIBLE | LOW | 3.3954006042286218 |
+| 39 | BAX | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 77.15 | MISSING | LOW | 2.448264978710556 |
+| 40 | MUR | WATCHLIST | RECHECK_LIVE_QUOTE | PULLBACK | 76.16 | INVALID | LOW | 3.999999999999994 |
+| 41 | MRK | WATCHLIST | RECHECK_LIVE_QUOTE | PULLBACK | 75.1 | MISSING | LOW | 3.999999999999989 |
+| 42 | KDP | WATCHLIST | RECHECK_LIVE_QUOTE | BREAKOUT | 74.86 | MISSING | LOW | 2.0 |
+
+## Trades abiertos
+
+_Sin datos._
+
+## Analytics de trades cerrados
+
+_Sin datos._
+
+## Project preflight
+
+- status: WARN
+- cwd_matches_root: True
+- missing_required_dirs: 0
+- missing_required_files: 0
+- missing_optional_files: 2
+- failed_write_checks: 0
+- Estado WARN: revisar advertencias antes de usar el flujo operativo.
+- Revisar `reports/project_preflight_latest.md`.
+
+## Limpieza de reportes temporales
+
+- mode: DRY_RUN
+- candidate_count: 0
+- moved_count: 0
+- archive_dir: `reports/tmp/temp_reports_20260610_230146`
+- No hay reportes temporales pendientes.
+
+## Auditoría de encoding
+
+- status: PASS
+- files_scanned: 547
+- warn_files: 0
+- error_files: 0
+- total_marker_hits: 0
+## Daily run manifest
+
+- status: FAIL
+- daily_validation: FAIL
+- project_preflight: WARN
+- reports_cleanup: PASS
+- git_dirty: True
+- missing_script_files: 0
+- missing_report_files: 2
+
+
+## Archivos monitoreados
+
+| file | status | size_bytes | modified |
+| --- | --- | --- | --- |
+| reports/daily_validation_summary.txt | OK | 24350 | 2026-06-10T23:01:52 |
+| reports/daily_operator_index.md | OK | 7512 | 2026-06-10T23:01:47 |
+| reports/daily_quality_gate_latest.json | OK | 4534 | 2026-06-10T23:01:50 |
+| reports/daily_quality_gate_latest.md | OK | 2312 | 2026-06-10T23:01:50 |
+| reports/project_preflight_latest.json | OK | 5249 | 2026-06-10T23:01:42 |
+| reports/project_preflight_latest.md | OK | 2607 | 2026-06-10T23:01:42 |
+| reports/daily_run_manifest_latest.json | OK | 17238 | 2026-06-10T23:01:47 |
+| reports/daily_run_manifest_latest.md | OK | 13200 | 2026-06-10T23:01:47 |
+| reports/encoding_audit_latest.json | OK | 127752 | 2026-06-10T23:01:50 |
+| reports/encoding_audit_latest.md | OK | 334 | 2026-06-10T23:01:50 |
+| reports/manual_review_top.md | OK | 10495 | 2026-06-10T23:01:52 |
+| reports/manual_review_latest.md | OK | 19748 | 2026-06-10T23:01:52 |
+| reports/open_trades_snapshot_latest.md | MISSING | 0 |  |
+| reports/trade_outcome_analytics_latest.md | OK | 136 | 2026-06-10T23:01:46 |
+| reports/reports_cleanup_latest.json | OK | 199 | 2026-06-10T23:01:46 |
+| reports/reports_cleanup_latest.md | OK | 561 | 2026-06-10T23:01:46 |
+| reports/latest_scan_audited.csv | OK | 783379 | 2026-06-10T21:56:47 |
+| reports/manual_review_top.csv | OK | 18754 | 2026-06-10T23:01:52 |
+| reports/manual_review_latest.csv | OK | 32785 | 2026-06-10T23:01:52 |
+| reports/trade_outcome_analytics_latest.csv | OK | 199 | 2026-06-10T23:01:46 |
+
+## Recordatorio operativo
+
+- VETO y AVOID no son operables.
+- WATCHLIST es monitoreo, no entrada automática.
+- RECHECK_LIVE_QUOTE requiere validación live quote antes de cualquier decisión.
+- TRIGGER_CONFIRMED requiere revisión manual final.
+- Confirmar siempre gráfico, quote, entrada, stop, target, R/R, earnings y contexto macro.
