@@ -47,6 +47,7 @@ def build_source_coverage_report(df: pd.DataFrame, top_n: int = 30) -> dict:
         "counts": {},
         "missing_rates": {},
         "cross_tabs": {},
+        "options_flow": {},
         "top_missing_metadata": [],
         "top_quote_low": [],
         "operable_missing_metadata": [],
@@ -61,6 +62,9 @@ def build_source_coverage_report(df: pd.DataFrame, top_n: int = 30) -> dict:
         "quote_status",
         "execution_quote_quality",
         "options_source",
+        "options_available",
+        "options_data_available",
+        "options_error",
         "options_bias",
         "options_confidence",
         "data_quality_confidence",
@@ -161,6 +165,20 @@ def build_source_coverage_report(df: pd.DataFrame, top_n: int = 30) -> dict:
 
         report["top_quote_low"] = low_quote.head(top_n)[cols].to_dict(orient="records")
 
+    option_summary_cols = [
+        "options_bias",
+        "options_confidence",
+        "options_source",
+        "options_available",
+        "options_data_available",
+        "options_error",
+    ]
+    report["options_flow"] = {
+        col: _safe_counts(df, col)
+        for col in option_summary_cols
+        if col in df.columns
+    }
+
     return report
 
 
@@ -178,6 +196,13 @@ def print_report(report: dict) -> None:
     print("\n[Missing rates]")
     for col, rate in report.get("missing_rates", {}).items():
         print(f"  {col}: {rate}%")
+
+    print("\n[Options / institutional flow]")
+    for col, counts in report.get("options_flow", {}).items():
+        if counts:
+            print(f"\n{col}:")
+            for key, value in counts.items():
+                print(f"  {key}: {value}")
 
     print("\n[Cross tabs]")
     for name, table in report.get("cross_tabs", {}).items():

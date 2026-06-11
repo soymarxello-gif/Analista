@@ -19,6 +19,8 @@ from indicators.pipeline import add_all_indicators
 from market.market_regime import classify_market_regime
 from market.sector_rotation import calculate_sector_rotation
 
+from engine.options_flow import build_options_flow_fields
+
 from scoring.relative_strength import add_relative_strength_scores
 from scoring.trend_score import score_trend
 from scoring.volume_score import score_volume
@@ -212,8 +214,11 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
         else:
             options_metrics = {
                 "options_data_available": False,
+                "options_available": False,
                 "options_source": "disabled_or_limit",
+                "options_error": "disabled_or_limit",
                 "options_warning": "options_flow desactivado, sin spot válido o límite max_tickers_per_run alcanzado",
+                "options_notes": "options_flow desactivado, sin spot válido o límite max_tickers_per_run alcanzado",
             }
             options_score_data = score_options_flow(options_metrics, spot, config)
 
@@ -277,6 +282,7 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "options_crowded_bullish": options_score_data.get("options_crowded_bullish", False),
             "options_crowded_bearish": options_score_data.get("options_crowded_bearish", False),
             "options_liquidity_score": options_score_data.get("options_liquidity_score"),
+            "options_notes": options_score_data.get("options_notes") or options_metrics.get("options_notes"),
             "setup_type": structure.get("setup_type"),
             "trigger_confirmed": structure.get("trigger_confirmed", False),
             "trigger_level": structure.get("trigger_level"),
@@ -348,26 +354,67 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "short_ratio": m.get("short_ratio"),
             "held_percent_institutions": m.get("held_percent_institutions"),
             "options_data_available": options_metrics.get("options_data_available"),
+            "options_available": options_metrics.get(
+                "options_available",
+                options_metrics.get("options_data_available"),
+            ),
             "options_source": options_metrics.get("options_source"),
+            "options_error": options_metrics.get("options_error"),
             "options_expirations_used": options_metrics.get("options_expirations_used"),
+            "options_expiration_used": options_metrics.get(
+                "options_expiration_used",
+                options_metrics.get("options_expirations_used"),
+            ),
             "call_volume": options_metrics.get("call_volume"),
             "put_volume": options_metrics.get("put_volume"),
             "call_open_interest": options_metrics.get("call_open_interest"),
             "put_open_interest": options_metrics.get("put_open_interest"),
+            "options_total_call_oi": options_metrics.get(
+                "options_total_call_oi",
+                options_metrics.get("call_open_interest"),
+            ),
+            "options_total_put_oi": options_metrics.get(
+                "options_total_put_oi",
+                options_metrics.get("put_open_interest"),
+            ),
             "put_call_volume_ratio": options_metrics.get("put_call_volume_ratio"),
             "put_call_oi_ratio": options_metrics.get("put_call_oi_ratio"),
+            "options_put_call_oi_ratio": options_metrics.get(
+                "options_put_call_oi_ratio",
+                options_metrics.get("put_call_oi_ratio"),
+            ),
             "call_volume_share": options_metrics.get("call_volume_share"),
             "call_oi_share": options_metrics.get("call_oi_share"),
             "near_call_volume": options_metrics.get("near_call_volume"),
             "near_put_volume": options_metrics.get("near_put_volume"),
             "near_call_open_interest": options_metrics.get("near_call_open_interest"),
             "near_put_open_interest": options_metrics.get("near_put_open_interest"),
+            "options_near_price_call_oi": options_metrics.get(
+                "options_near_price_call_oi",
+                options_metrics.get("near_call_open_interest"),
+            ),
+            "options_near_price_put_oi": options_metrics.get(
+                "options_near_price_put_oi",
+                options_metrics.get("near_put_open_interest"),
+            ),
             "near_put_call_volume_ratio": options_metrics.get("near_put_call_volume_ratio"),
             "near_put_call_oi_ratio": options_metrics.get("near_put_call_oi_ratio"),
+            "options_near_price_put_call_ratio": options_metrics.get(
+                "options_near_price_put_call_ratio",
+                options_metrics.get("near_put_call_oi_ratio"),
+            ),
             "near_call_oi_share": options_metrics.get("near_call_oi_share"),
             "max_call_oi_strike": options_metrics.get("max_call_oi_strike"),
+            "options_top_call_strike": options_metrics.get(
+                "options_top_call_strike",
+                options_metrics.get("max_call_oi_strike"),
+            ),
             "max_call_oi": options_metrics.get("max_call_oi"),
             "max_put_oi_strike": options_metrics.get("max_put_oi_strike"),
+            "options_top_put_strike": options_metrics.get(
+                "options_top_put_strike",
+                options_metrics.get("max_put_oi_strike"),
+            ),
             "max_put_oi": options_metrics.get("max_put_oi"),
             "max_pain_approx": options_metrics.get("max_pain_approx"),
             "atm_implied_volatility": options_metrics.get("atm_implied_volatility"),
@@ -383,6 +430,8 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "best_source_rank": m.get("best_source_rank"),
             "source_quality_score": m.get("source_quality_score"),
         }
+
+        row.update(build_options_flow_fields(options_metrics, options_score_data))
 
         if not row.get("quote_status"):
             if row.get("bid_ask_valid") is True:

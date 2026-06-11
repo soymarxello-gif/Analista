@@ -350,6 +350,12 @@ def collect_daily_run_manifest(
                 "recommendation",
             ),
             "quote_recheck_priority": _safe_value_counts(manual_review_path, "quote_recheck_priority"),
+            "options_bias": _safe_value_counts(latest_scan_path, "options_bias"),
+            "options_confidence": _safe_value_counts(latest_scan_path, "options_confidence"),
+            "options_source": _safe_value_counts(latest_scan_path, "options_source"),
+            "options_available": _safe_value_counts(latest_scan_path, "options_available")
+            or _safe_value_counts(latest_scan_path, "options_data_available"),
+            "options_error": _safe_value_counts(latest_scan_path, "options_error"),
             "live_quote_recheck": _load_json(live_quote_recheck_path),
         },
         "script_files": script_files,
@@ -464,6 +470,19 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append("")
     lines.append("Quote recheck priority:")
     lines.extend(_format_counts(scan.get("quote_recheck_priority", {})))
+    lines.append("")
+
+    lines.append("Options / institutional flow:")
+    lines.append("options_bias:")
+    lines.extend(_format_counts(scan.get("options_bias", {})))
+    lines.append("options_confidence:")
+    lines.extend(_format_counts(scan.get("options_confidence", {})))
+    lines.append("options_source:")
+    lines.extend(_format_counts(scan.get("options_source", {})))
+    lines.append("options_available:")
+    lines.extend(_format_counts(scan.get("options_available", {})))
+    lines.append("options_error:")
+    lines.extend(_format_counts(scan.get("options_error", {})))
     lines.append("")
 
     live_recheck = scan.get("live_quote_recheck", {}) or {}

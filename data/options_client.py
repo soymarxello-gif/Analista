@@ -27,6 +27,27 @@ def _safe_sum(df: pd.DataFrame, col: str) -> float:
     return float(pd.to_numeric(df[col], errors='coerce').fillna(0).sum())
 
 
+def _base_metrics(
+    ticker: str,
+    *,
+    available: bool,
+    source: str,
+    error: str = "",
+    notes: str = "",
+    warning: str = "",
+) -> dict:
+    message = warning or notes or error
+    return {
+        'ticker': ticker,
+        'options_data_available': bool(available),
+        'options_available': bool(available),
+        'options_source': source,
+        'options_error': error,
+        'options_warning': message,
+        'options_notes': notes or message,
+    }
+
+
 def _load_cache(ticker: str, ttl_minutes: int) -> dict | None:
     path = Path('cache/options') / f'{ticker}.json'
     if not path.exists():
@@ -38,6 +59,9 @@ def _load_cache(ticker: str, ttl_minutes: int) -> dict | None:
         with path.open('r', encoding='utf-8') as f:
             cached = json.load(f)
         cached['options_source'] = 'cache'
+        cached.setdefault('options_available', bool(cached.get('options_data_available', False)))
+        cached.setdefault('options_error', '')
+        cached.setdefault('options_notes', cached.get('options_warning', ''))
         return cached
     except Exception:
         return None
@@ -108,7 +132,13 @@ def _approx_max_pain(calls: pd.DataFrame, puts: pd.DataFrame) -> float | None:
 def fetch_options_metrics(ticker: str, spot: float, config: dict) -> dict:
     cfg = config.get('options_flow', {})
     if not cfg.get('enabled', False):
-        return {'ticker': ticker, 'options_data_available': False, 'options_source': 'disabled', 'options_warning': 'options_flow desactivado'}
+        return _base_metrics(
+            ticker,
+            available=False,
+            source='disabled',
+            error='options_flow_disabled',
+            notes='options_flow desactivado; se informa como UNKNOWN_OPTIONS_FLOW',
+        )
 
     ttl = config.get('data_sources', {}).get('cache_ttl_minutes', {}).get('options', cfg.get('cache_ttl_minutes', 30))
     cached = _load_cache(ticker, ttl)
@@ -116,14 +146,38 @@ def fetch_options_metrics(ticker: str, spot: float, config: dict) -> dict:
         return cached
 
     if yf is None:
-        return {'ticker': ticker, 'options_data_available': False, 'options_source': 'none', 'options_warning': 'yfinance no disponible'}
+        return _base_metrics(
+            ticker,
+            available=False,
+            source='yfinance',
+            error='yfinance_unavailable',
+            notes='yfinance no disponible para consultar opciones',
+        )
 
     warnings = []
     try:
         tk = yf.Ticker(ticker)
-        selected_exps = _select_expirations(list(getattr(tk, 'options', []) or []), config)
+        raw_expirations = list(getattr(tk, 'options', []) or [])
+        if not raw_expirations:
+            data = _base_metrics(
+                ticker,
+                available=False,
+                source='yfinance',
+                error='no_options_listed',
+                notes='Yahoo no devolvió vencimientos de opciones; posible activo sin opciones listadas',
+            )
+            _save_cache(ticker, data)
+            return data
+
+        selected_exps = _select_expirations(raw_expirations, config)
         if not selected_exps:
-            data = {'ticker': ticker, 'options_data_available': False, 'options_source': 'yfinance', 'options_warning': 'sin vencimientos dentro de la ventana configurada'}
+            data = _base_metrics(
+                ticker,
+                available=False,
+                source='yfinance',
+                error='no_expiration_in_config_window',
+                notes='sin vencimientos dentro de la ventana configurada',
+            )
             _save_cache(ticker, data)
             return data
 
@@ -139,7 +193,15 @@ def fetch_options_metrics(ticker: str, spot: float, config: dict) -> dict:
         calls = pd.concat(calls_list, ignore_index=True) if calls_list else pd.DataFrame()
         puts = pd.concat(puts_list, ignore_index=True) if puts_list else pd.DataFrame()
         if calls.empty and puts.empty:
-            data = {'ticker': ticker, 'options_data_available': False, 'options_source': 'yfinance', 'options_warning': 'option_chain vacío; ' + '; '.join(warnings)}
+            data = _base_metrics(
+                ticker,
+                available=False,
+                source='yfinance',
+                error='empty_option_chain',
+                notes='option_chain vacío; ' + '; '.join(warnings),
+            )
+            data['options_expirations_used'] = ','.join(selected_exps)
+            data['options_expiration_used'] = selected_exps[0] if selected_exps else ''
             _save_cache(ticker, data)
             return data
 
@@ -181,27 +243,37 @@ def fetch_options_metrics(ticker: str, spot: float, config: dict) -> dict:
         data = {
             'ticker': ticker,
             'options_data_available': True,
+            'options_available': True,
             'options_source': 'yfinance',
             'options_expirations_used': ','.join(selected_exps),
+            'options_expiration_used': selected_exps[0] if selected_exps else '',
             'options_expiration_count': len(selected_exps),
             'call_volume': total_call_volume,
             'put_volume': total_put_volume,
             'call_open_interest': total_call_oi,
             'put_open_interest': total_put_oi,
+            'options_total_call_oi': total_call_oi,
+            'options_total_put_oi': total_put_oi,
             'put_call_volume_ratio': total_put_volume / total_call_volume if total_call_volume > 0 else None,
             'put_call_oi_ratio': total_put_oi / total_call_oi if total_call_oi > 0 else None,
+            'options_put_call_oi_ratio': total_put_oi / total_call_oi if total_call_oi > 0 else None,
             'call_volume_share': total_call_volume / total_option_volume if total_option_volume > 0 else None,
             'call_oi_share': total_call_oi / total_option_oi if total_option_oi > 0 else None,
             'near_call_volume': near_call_volume,
             'near_put_volume': near_put_volume,
             'near_call_open_interest': near_call_oi,
             'near_put_open_interest': near_put_oi,
+            'options_near_price_call_oi': near_call_oi,
+            'options_near_price_put_oi': near_put_oi,
             'near_put_call_volume_ratio': near_put_volume / near_call_volume if near_call_volume > 0 else None,
             'near_put_call_oi_ratio': near_put_oi / near_call_oi if near_call_oi > 0 else None,
+            'options_near_price_put_call_ratio': near_put_oi / near_call_oi if near_call_oi > 0 else None,
             'near_call_oi_share': near_call_oi / (near_call_oi + near_put_oi) if (near_call_oi + near_put_oi) > 0 else None,
             'max_call_oi_strike': max_call_oi_strike,
+            'options_top_call_strike': max_call_oi_strike,
             'max_call_oi': max_call_oi,
             'max_put_oi_strike': max_put_oi_strike,
+            'options_top_put_strike': max_put_oi_strike,
             'max_put_oi': max_put_oi,
             'max_pain_approx': _approx_max_pain(calls, puts),
             'atm_implied_volatility': atm_iv,
@@ -209,10 +281,18 @@ def fetch_options_metrics(ticker: str, spot: float, config: dict) -> dict:
             'put_volume_to_oi': total_put_volume / total_put_oi if total_put_oi > 0 else None,
             'total_option_volume': total_option_volume,
             'total_option_open_interest': total_option_oi,
+            'options_error': '',
             'options_warning': '; '.join(warnings),
+            'options_notes': '; '.join(warnings),
         }
         _save_cache(ticker, data)
         return data
     except Exception as exc:
         logger.warning(f'Opciones fallaron para {ticker}: {exc}')
-        return {'ticker': ticker, 'options_data_available': False, 'options_source': 'error', 'options_warning': str(exc)}
+        return _base_metrics(
+            ticker,
+            available=False,
+            source='yfinance',
+            error='query_error',
+            notes=str(exc),
+        )

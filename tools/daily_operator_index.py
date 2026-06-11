@@ -450,6 +450,13 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     signals = _value_counts(scan_df, "signal")
     recommendations = _value_counts(manual_df if not manual_df.empty else scan_df, "recommendation")
     quote_recheck_priority = _value_counts(manual_df, "quote_recheck_priority")
+    options_bias = _value_counts(scan_df, "options_bias")
+    options_confidence = _value_counts(scan_df, "options_confidence")
+    options_source = _value_counts(scan_df, "options_source")
+    options_available = _value_counts(scan_df, "options_available")
+    if not options_available:
+        options_available = _value_counts(scan_df, "options_data_available")
+    options_error = _value_counts(scan_df, "options_error")
 
     trigger_count = int(signals.get("TRIGGER_CONFIRMED", 0) or 0)
     watchlist_count = int(signals.get("WATCHLIST", 0) or 0)
@@ -492,6 +499,11 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "signals": signals,
         "recommendations": recommendations,
         "quote_recheck_priority": quote_recheck_priority,
+        "options_bias": options_bias,
+        "options_confidence": options_confidence,
+        "options_source": options_source,
+        "options_available": options_available,
+        "options_error": options_error,
         "trigger_count": trigger_count,
         "watchlist_count": watchlist_count,
         "recheck_count": recheck_count,
@@ -717,6 +729,26 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("## Prioridad quote recheck")
     lines.append("")
     lines.extend(_format_counts(data.get("quote_recheck_priority", {})))
+    lines.append("")
+
+    lines.append("## Options / institutional flow")
+    lines.append("")
+    lines.append("Options bias:")
+    lines.extend(_format_counts(data.get("options_bias", {})))
+    lines.append("")
+    lines.append("Options confidence:")
+    lines.extend(_format_counts(data.get("options_confidence", {})))
+    lines.append("")
+    lines.append("Options source:")
+    lines.extend(_format_counts(data.get("options_source", {})))
+    lines.append("")
+    lines.append("Options available:")
+    lines.extend(_format_counts(data.get("options_available", {})))
+    lines.append("")
+    lines.append("Options error:")
+    lines.extend(_format_counts(data.get("options_error", {})))
+    lines.append("")
+    lines.append("- Options flow es contexto/institutional_score conservador; no es veto duro ni gatillo automatico.")
     lines.append("")
 
     lines.append("## Top manual review")

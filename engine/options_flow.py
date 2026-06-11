@@ -1,0 +1,138 @@
+from __future__ import annotations
+
+
+LEGACY_OPTIONS_COLUMNS = [
+    "options_data_available",
+    "options_source",
+    "options_expirations_used",
+    "call_volume",
+    "put_volume",
+    "call_open_interest",
+    "put_open_interest",
+    "put_call_volume_ratio",
+    "put_call_oi_ratio",
+    "call_volume_share",
+    "call_oi_share",
+    "near_call_volume",
+    "near_put_volume",
+    "near_call_open_interest",
+    "near_put_open_interest",
+    "near_put_call_volume_ratio",
+    "near_put_call_oi_ratio",
+    "near_call_oi_share",
+    "max_call_oi_strike",
+    "max_call_oi",
+    "max_put_oi_strike",
+    "max_put_oi",
+    "max_pain_approx",
+    "atm_implied_volatility",
+    "call_volume_to_oi",
+    "put_volume_to_oi",
+    "total_option_volume",
+    "total_option_open_interest",
+]
+
+AUDITABLE_OPTIONS_COLUMNS = [
+    "options_available",
+    "options_error",
+    "options_expiration_used",
+    "options_total_call_oi",
+    "options_total_put_oi",
+    "options_put_call_oi_ratio",
+    "options_near_price_call_oi",
+    "options_near_price_put_oi",
+    "options_near_price_put_call_ratio",
+    "options_top_call_strike",
+    "options_top_put_strike",
+    "options_bias",
+    "options_confidence",
+    "options_liquidity_score",
+    "options_crowded_bullish",
+    "options_crowded_bearish",
+    "options_notes",
+]
+
+OPTIONS_FLOW_COLUMNS = LEGACY_OPTIONS_COLUMNS + AUDITABLE_OPTIONS_COLUMNS
+
+
+def build_options_flow_fields(options_metrics: dict, options_score_data: dict) -> dict:
+    metrics = options_metrics or {}
+    score = options_score_data or {}
+
+    return {
+        "options_data_available": metrics.get("options_data_available"),
+        "options_available": metrics.get(
+            "options_available",
+            metrics.get("options_data_available"),
+        ),
+        "options_source": metrics.get("options_source"),
+        "options_error": metrics.get("options_error"),
+        "options_expirations_used": metrics.get("options_expirations_used"),
+        "options_expiration_used": metrics.get(
+            "options_expiration_used",
+            metrics.get("options_expirations_used"),
+        ),
+        "call_volume": metrics.get("call_volume"),
+        "put_volume": metrics.get("put_volume"),
+        "call_open_interest": metrics.get("call_open_interest"),
+        "put_open_interest": metrics.get("put_open_interest"),
+        "options_total_call_oi": metrics.get(
+            "options_total_call_oi",
+            metrics.get("call_open_interest"),
+        ),
+        "options_total_put_oi": metrics.get(
+            "options_total_put_oi",
+            metrics.get("put_open_interest"),
+        ),
+        "put_call_volume_ratio": metrics.get("put_call_volume_ratio"),
+        "put_call_oi_ratio": metrics.get("put_call_oi_ratio"),
+        "options_put_call_oi_ratio": metrics.get(
+            "options_put_call_oi_ratio",
+            metrics.get("put_call_oi_ratio"),
+        ),
+        "call_volume_share": metrics.get("call_volume_share"),
+        "call_oi_share": metrics.get("call_oi_share"),
+        "near_call_volume": metrics.get("near_call_volume"),
+        "near_put_volume": metrics.get("near_put_volume"),
+        "near_call_open_interest": metrics.get("near_call_open_interest"),
+        "near_put_open_interest": metrics.get("near_put_open_interest"),
+        "options_near_price_call_oi": metrics.get(
+            "options_near_price_call_oi",
+            metrics.get("near_call_open_interest"),
+        ),
+        "options_near_price_put_oi": metrics.get(
+            "options_near_price_put_oi",
+            metrics.get("near_put_open_interest"),
+        ),
+        "near_put_call_volume_ratio": metrics.get("near_put_call_volume_ratio"),
+        "near_put_call_oi_ratio": metrics.get("near_put_call_oi_ratio"),
+        "options_near_price_put_call_ratio": metrics.get(
+            "options_near_price_put_call_ratio",
+            metrics.get("near_put_call_oi_ratio"),
+        ),
+        "near_call_oi_share": metrics.get("near_call_oi_share"),
+        "max_call_oi_strike": metrics.get("max_call_oi_strike"),
+        "options_top_call_strike": metrics.get(
+            "options_top_call_strike",
+            metrics.get("max_call_oi_strike"),
+        ),
+        "max_call_oi": metrics.get("max_call_oi"),
+        "max_put_oi_strike": metrics.get("max_put_oi_strike"),
+        "options_top_put_strike": metrics.get(
+            "options_top_put_strike",
+            metrics.get("max_put_oi_strike"),
+        ),
+        "max_put_oi": metrics.get("max_put_oi"),
+        "max_pain_approx": metrics.get("max_pain_approx"),
+        "atm_implied_volatility": metrics.get("atm_implied_volatility"),
+        "call_volume_to_oi": metrics.get("call_volume_to_oi"),
+        "put_volume_to_oi": metrics.get("put_volume_to_oi"),
+        "total_option_volume": metrics.get("total_option_volume"),
+        "total_option_open_interest": metrics.get("total_option_open_interest"),
+        "options_bias": score.get("options_bias"),
+        "options_confidence": score.get("options_confidence"),
+        "options_crowded_bullish": score.get("options_crowded_bullish", False),
+        "options_crowded_bearish": score.get("options_crowded_bearish", False),
+        "options_liquidity_score": score.get("options_liquidity_score"),
+        "options_notes": score.get("options_notes") or metrics.get("options_notes"),
+    }

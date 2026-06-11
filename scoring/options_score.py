@@ -12,6 +12,24 @@ def _num(value, default=None):
         return default
 
 
+def _text(value) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if text.lower() in {"", "nan", "none", "null"}:
+        return ""
+    return text
+
+
+def _metric(metrics: dict, *keys: str, default=None):
+    for key in keys:
+        if key in metrics:
+            value = _num(metrics.get(key), None)
+            if value is not None:
+                return value
+    return default
+
+
 def _clip01(x: float) -> float:
     return max(0.0, min(float(x), 1.0))
 
@@ -137,28 +155,50 @@ def score_options_flow(metrics: dict, spot: float | None, config: dict) -> dict:
             "options_crowded_bearish": False,
             "options_liquidity_score": 0.0,
             "options_warning": "options_flow desactivado",
+            "options_notes": "options_flow desactivado; no se usa como señal operativa",
         }
 
-    if not metrics or not metrics.get("options_data_available", False):
+    options_available = bool(
+        metrics
+        and metrics.get("options_available", metrics.get("options_data_available", False))
+    )
+
+    if not metrics or not options_available:
+        error = _text(metrics.get("options_error")) if metrics else ""
+        warning = _text(metrics.get("options_warning")) if metrics else "sin datos de opciones"
+        no_options_errors = {"no_options_listed", "no_expirations", "no_options_available"}
+        bias = "NO_OPTIONS_AVAILABLE" if error in no_options_errors else "UNKNOWN_OPTIONS_FLOW"
+        notes = warning
+        if bias == "NO_OPTIONS_AVAILABLE":
+            notes = "sin opciones listadas o sin vencimientos disponibles en Yahoo"
+        elif error:
+            notes = f"datos de opciones no disponibles: {error}; {warning}".strip("; ")
+
         return {
             "options_score": 0.5,
-            "options_bias": "UNKNOWN_OPTIONS_FLOW",
+            "options_bias": bias,
             "options_confidence": "UNKNOWN",
             "options_crowded_bullish": False,
             "options_crowded_bearish": False,
             "options_liquidity_score": 0.0,
-            "options_warning": metrics.get("options_warning", "sin datos de opciones") if metrics else "sin datos de opciones",
+            "options_warning": warning,
+            "options_notes": notes,
         }
 
     cfg = config.get("options_flow", {})
 
     pc_volume = _num(metrics.get("put_call_volume_ratio"))
+    pc_oi = _metric(metrics, "options_put_call_oi_ratio", "put_call_oi_ratio")
     call_volume_share = _num(metrics.get("call_volume_share"))
-    near_call_oi_share = _num(metrics.get("near_call_oi_share"))
-    max_call_oi_strike = _num(metrics.get("max_call_oi_strike"))
+    near_call_oi_share = _metric(metrics, "near_call_oi_share")
+    max_call_oi_strike = _metric(metrics, "options_top_call_strike", "max_call_oi_strike")
     atm_iv = _num(metrics.get("atm_implied_volatility"))
     total_volume = _num(metrics.get("total_option_volume"), 0)
-    total_oi = _num(metrics.get("total_option_open_interest"), 0)
+    total_call_oi = _metric(metrics, "options_total_call_oi", "call_open_interest", default=0)
+    total_put_oi = _metric(metrics, "options_total_put_oi", "put_open_interest", default=0)
+    total_oi = _num(metrics.get("total_option_open_interest"), None)
+    if total_oi is None:
+        total_oi = (total_call_oi or 0) + (total_put_oi or 0)
 
     pc_score = _score_put_call_volume_ratio(pc_volume)
     call_share_score = _score_call_share(call_volume_share)
@@ -180,26 +220,49 @@ def score_options_flow(metrics: dict, spot: float | None, config: dict) -> dict:
     score = _clip01(score)
 
     warning = metrics.get("options_warning") or ""
+    notes = metrics.get("options_notes") or warning or ""
 
     crowded_bullish = False
     crowded_bearish = False
 
     bullish_crowded_threshold = cfg.get("extreme_bullish_put_call_below", 0.35)
     bearish_crowded_threshold = cfg.get("extreme_bearish_put_call_above", 1.80)
+    ratio_for_sentiment = pc_oi if pc_oi is not None else pc_volume
 
-    if pc_volume is not None and pc_volume < bullish_crowded_threshold:
+    if ratio_for_sentiment is not None and ratio_for_sentiment < bullish_crowded_threshold:
         crowded_bullish = True
         warning = (warning + "; " if warning else "") + "put/call extremadamente bajo: posible crowded trade / crowded bullish trade"
+        notes = (
+            (notes + "; " if notes else "")
+            + "Extremo bullish en opciones; lectura contrarian: no tratar como confirmacion limpia."
+        )
 
         # Crowded bullish flow should not be labelled clean bullish.
         cap = cfg.get("crowded_bullish_score_cap", 0.60)
         score = min(score, cap)
 
-    if pc_volume is not None and pc_volume > bearish_crowded_threshold:
+    if ratio_for_sentiment is not None and ratio_for_sentiment > bearish_crowded_threshold:
         crowded_bearish = True
         warning = (warning + "; " if warning else "") + "put/call extremadamente alto: posible crowded bearish trade"
+        notes = (
+            (notes + "; " if notes else "")
+            + "Extremo bearish en opciones; lectura contrarian: posible pesimismo crowded, requiere confirmacion de precio."
+        )
 
-    if crowded_bullish:
+    confidence = _options_confidence(total_volume, total_oi, config)
+    min_total_volume = cfg.get("min_total_option_volume", 0)
+    min_total_oi = cfg.get("min_total_option_open_interest", 0)
+    low_liquidity = total_volume < min_total_volume or total_oi < min_total_oi
+
+    if low_liquidity:
+        bias = "NEUTRAL_WITH_DATA"
+        confidence = "LOW"
+        score = 0.5
+        notes = (
+            (notes + "; " if notes else "")
+            + "datos disponibles pero con liquidez/OI bajo; se informa neutral y no se usa como confirmacion fuerte"
+        )
+    elif crowded_bullish:
         bias = "CROWDED_BULLISH"
     elif crowded_bearish:
         bias = "CROWDED_BEARISH"
@@ -210,8 +273,6 @@ def score_options_flow(metrics: dict, spot: float | None, config: dict) -> dict:
     else:
         bias = "NEUTRAL_WITH_DATA"
 
-    confidence = _options_confidence(total_volume, total_oi, config)
-
     return {
         "options_score": round(score, 4),
         "options_bias": bias,
@@ -220,4 +281,5 @@ def score_options_flow(metrics: dict, spot: float | None, config: dict) -> dict:
         "options_crowded_bearish": crowded_bearish,
         "options_liquidity_score": round(liquidity_score, 4),
         "options_warning": warning,
+        "options_notes": notes,
     }
