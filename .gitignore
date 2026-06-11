@@ -40,3 +40,9 @@ Thumbs.db
 *.parquet
 *.sqlite
 *.db
+
+# Additional ignores for Phase 32A
+reports/tmp/
+reports/*_test.*
+reports/latest_scan_test.*
+*.zip
