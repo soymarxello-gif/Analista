@@ -1,0 +1,171 @@
+{
+  "status": "FAIL",
+  "generated_at": "2026-06-11T01:05:13",
+  "root": "C:/Users/El otro Yo/Projects/ChatGPT/Analista",
+  "manual_review_allowed": false,
+  "manual_review_mode": "BLOCKED",
+  "components": {
+    "daily_validation": {
+      "status": "FAIL",
+      "path": "reports/daily_validation_summary.txt",
+      "error": ""
+    },
+    "project_preflight": {
+      "status": "WARN",
+      "available": true,
+      "path": "reports/project_preflight_latest.json",
+      "error": ""
+    },
+    "daily_run_manifest": {
+      "status": "FAIL",
+      "available": true,
+      "path": "reports/daily_run_manifest_latest.json",
+      "error": ""
+    },
+    "reports_cleanup": {
+      "status": "PASS",
+      "available": true,
+      "path": "reports/reports_cleanup_latest.json",
+      "candidate_count": 0,
+      "error": ""
+    },
+    "encoding_audit": {
+      "status": "PASS",
+      "available": true,
+      "path": "reports/encoding_audit_latest.json",
+      "warn_files": 0,
+      "error_files": 0,
+      "total_marker_hits": 0,
+      "error": ""
+    }
+  },
+  "scan_snapshot": {
+    "latest_scan_rows": 362,
+    "manual_review_rows": 45,
+    "signals": {
+      "VETO": 263,
+      "AVOID": 54,
+      "WATCHLIST": 45
+    },
+    "recommendations": {
+      "WATCHLIST_MONITOR": 30,
+      "RECHECK_LIVE_QUOTE": 15
+    },
+    "quote_status": {
+      "VALID": 150,
+      "MISSING": 139,
+      "STALE_POSSIBLE": 53,
+      "INVALID": 20
+    },
+    "execution_quote_quality": {
+      "LOW": 212,
+      "HIGH": 150
+    },
+    "manual_quote_recheck_priority": {}
+  },
+  "logic_checks": {
+    "disabled_buy_signal_rows": 0,
+    "trigger_with_low_quote_rows": 0,
+    "no_valid_setup_not_veto_rows": 0,
+    "veto_with_actionable_levels_rows": 0,
+    "manual_recheck_quote_rows": 15
+  },
+  "issues": [
+    {
+      "severity": "FAIL",
+      "source": "daily_validation_summary.txt",
+      "message": "daily_validation terminó en FAIL."
+    },
+    {
+      "severity": "WARN",
+      "source": "project_preflight",
+      "message": "project_preflight terminó en WARN."
+    },
+    {
+      "severity": "WARN",
+      "source": "daily_run_manifest",
+      "message": "daily_run_manifest terminó en FAIL; revisar trazabilidad."
+    },
+    {
+      "severity": "WARN",
+      "source": "latest_scan_audited.csv",
+      "message": "Hay candidatos que requieren RECHECK_LIVE_QUOTE antes de revisión operativa."
+    }
+  ],
+  "files": {
+    "critical": [
+      {
+        "path": "reports/daily_validation_summary.txt",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 21819,
+        "modified": "2026-06-11T01:05:00"
+      },
+      {
+        "path": "reports/project_preflight_latest.json",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 5249,
+        "modified": "2026-06-11T01:04:55"
+      },
+      {
+        "path": "reports/latest_scan_audited.csv",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 783379,
+        "modified": "2026-06-10T21:56:47"
+      },
+      {
+        "path": "reports/manual_review_latest.csv",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 32785,
+        "modified": "2026-06-10T23:35:26"
+      }
+    ],
+    "support": [
+      {
+        "path": "reports/daily_run_manifest_latest.json",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 8360,
+        "modified": "2026-06-11T01:05:01"
+      },
+      {
+        "path": "reports/encoding_audit_latest.json",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 132064,
+        "modified": "2026-06-11T01:05:13"
+      },
+      {
+        "path": "reports/reports_cleanup_latest.json",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 199,
+        "modified": "2026-06-11T01:05:00"
+      },
+      {
+        "path": "reports/daily_operator_index.md",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 7638,
+        "modified": "2026-06-11T01:05:00"
+      },
+      {
+        "path": "reports/manual_review_top.csv",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 18754,
+        "modified": "2026-06-10T23:35:26"
+      },
+      {
+        "path": "reports/manual_review_top.md",
+        "exists": true,
+        "is_file": true,
+        "size_bytes": 10495,
+        "modified": "2026-06-10T23:35:26"
+      }
+    ]
+  }
+}

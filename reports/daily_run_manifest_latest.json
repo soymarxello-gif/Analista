@@ -1,0 +1,291 @@
+{
+  "generated_at": "2026-06-11T01:17:26",
+  "status": "FAIL",
+  "root": "C:/Users/El otro Yo/Projects/ChatGPT/Analista",
+  "cwd": "C:/Users/El otro Yo/Projects/ChatGPT/Analista",
+  "python": {
+    "executable": "C:\\Python314\\python.exe",
+    "version": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+    "version_info": {
+      "major": 3,
+      "minor": 14,
+      "micro": 4
+    }
+  },
+  "environment": {
+    "virtual_env": ""
+  },
+  "git": {
+    "available": true,
+    "reason": "",
+    "branch": "main",
+    "commit": "7bec19f160d0cbb456ab0302dfd853189e7ea7bb",
+    "dirty": true,
+    "status_short": "M reports/daily_operator_index.md\n M reports/daily_quality_gate_latest.md\n M reports/daily_run_manifest_latest.md\n M reports/daily_validation_summary.txt\n M reports/encoding_audit_latest.md\n M reports/history_evolution_latest.md\n M reports/manual_review_latest.md\n M reports/project_preflight_latest.md\n M reports/reports_cleanup_latest.md\n M reports/setup_persistence_latest.md\n M reports/trade_outcome_analytics_latest.md\n?? reports/daily_operator_index.md.bak2\n?? reports/daily_operator_index.md.new2\n?? temp_content.txt",
+    "errors": {
+      "branch": "",
+      "commit": "",
+      "status": ""
+    }
+  },
+  "daily_validation": {
+    "status": "FAIL",
+    "summary_path": "reports/daily_validation_summary.txt"
+  },
+  "project_preflight": {
+    "available": true,
+    "status": "WARN",
+    "missing_required_dirs": 0,
+    "missing_required_files": 0,
+    "missing_optional_files": 2,
+    "failed_write_checks": 0
+  },
+  "reports_cleanup": {
+    "available": true,
+    "status": "PASS",
+    "mode": "DRY_RUN",
+    "candidate_count": 0,
+    "moved_count": 0
+  },
+  "scan_snapshot": {
+    "latest_scan_rows": 362,
+    "manual_review_rows": 45,
+    "signals": {
+      "VETO": 263,
+      "AVOID": 54,
+      "WATCHLIST": 45
+    },
+    "recommendations": {
+      "WATCHLIST_MONITOR": 30,
+      "RECHECK_LIVE_QUOTE": 15
+    },
+    "quote_recheck_priority": {}
+  },
+  "script_files": [
+    {
+      "path": "run_scanner_audited.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 3877,
+      "modified": "2026-06-09T13:13:25",
+      "sha256": "ca4ffb1f7eea06bfcb34bc2f817f616dba97a5fa22023473075999a29f7d93a9"
+    },
+    {
+      "path": "validate_latest_scan_p0.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 3657,
+      "modified": "2026-06-08T07:35:49",
+      "sha256": "49412f6dae813960838755cce7ba993aeff39baf5bec6ac4810acc7eb50cb6a0"
+    },
+    {
+      "path": "tools/daily_validation.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 25029,
+      "modified": "2026-06-10T20:49:13",
+      "sha256": "ae22b71744bda2c8354b6f5277610b1647b3b14c82ffe241091f2b4db65e66f0"
+    },
+    {
+      "path": "tools/daily_operator_index.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 30405,
+      "modified": "2026-06-10T23:07:03",
+      "sha256": "a26e4ed481e912ec86645202ef8f3ea2545de4310234d2da185972d61324eced"
+    },
+    {
+      "path": "tools/project_preflight.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 11631,
+      "modified": "2026-06-10T14:40:51",
+      "sha256": "8ce0cb07aa5b18bac6cd9c3d01509eae7f0cd1725ffc80d5516d12b723be7776"
+    },
+    {
+      "path": "tools/reports_cleanup.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 9150,
+      "modified": "2026-06-10T13:35:47",
+      "sha256": "5ad2242390818ea93bd18e7636a706e5f33a58aeda71998beb815463370753a9"
+    },
+    {
+      "path": "tools/trade_outcome_analytics.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 11863,
+      "modified": "2026-06-10T11:33:42",
+      "sha256": "203f9aea7b47182db95a91ac4a67e327b546ded4030ef6adb8a948545e48a2ae"
+    },
+    {
+      "path": "tools/trade_outcome_tracker.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 20483,
+      "modified": "2026-06-09T22:58:00",
+      "sha256": "6cd29b0eb647aa2e9aafddb1ff07851f398b47c989c4445914571bf8cfe768fe"
+    },
+    {
+      "path": "tools/open_trade_snapshot.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 11609,
+      "modified": "2026-06-09T23:03:11",
+      "sha256": "fe745f85010caff0d0baa9231e434a5da396aaba361b4eae3e881dc0dd8b9fc9"
+    },
+    {
+      "path": "tools/latest_scan_health.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 1345,
+      "modified": "2026-06-07T18:04:17",
+      "sha256": "6a476fa6b062cc5b732445fae205a25050ef4e28b088efc2a5ff911f0ac41bd0"
+    },
+    {
+      "path": "tools/source_coverage_audit.py",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 6710,
+      "modified": "2026-06-09T12:00:05",
+      "sha256": "9ebf56d78941ed4402da22391f7b1c59b789f05ed9c641444509ee64561926c5"
+    }
+  ],
+  "report_files": [
+    {
+      "path": "reports/project_preflight_latest.json",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 5249,
+      "modified": "2026-06-11T01:04:55",
+      "sha256": ""
+    },
+    {
+      "path": "reports/project_preflight_latest.md",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 2607,
+      "modified": "2026-06-11T01:04:55",
+      "sha256": ""
+    },
+    {
+      "path": "reports/latest_scan_audited.csv",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 783379,
+      "modified": "2026-06-10T21:56:47",
+      "sha256": ""
+    },
+    {
+      "path": "reports/latest_scan_audited.json",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 2268078,
+      "modified": "2026-06-10T21:56:47",
+      "sha256": ""
+    },
+    {
+      "path": "reports/manual_review_latest.csv",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 32785,
+      "modified": "2026-06-11T01:05:15",
+      "sha256": ""
+    },
+    {
+      "path": "reports/manual_review_latest.md",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 19748,
+      "modified": "2026-06-11T01:05:15",
+      "sha256": ""
+    },
+    {
+      "path": "reports/manual_review_top.csv",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 18754,
+      "modified": "2026-06-11T01:05:15",
+      "sha256": ""
+    },
+    {
+      "path": "reports/manual_review_top.md",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 10495,
+      "modified": "2026-06-11T01:05:15",
+      "sha256": ""
+    },
+    {
+      "path": "reports/daily_validation_summary.txt",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 24346,
+      "modified": "2026-06-11T01:05:15",
+      "sha256": ""
+    },
+    {
+      "path": "reports/daily_operator_index.md",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 251,
+      "modified": "2026-06-11T01:15:31",
+      "sha256": ""
+    },
+    {
+      "path": "reports/reports_cleanup_latest.json",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 199,
+      "modified": "2026-06-11T01:05:00",
+      "sha256": ""
+    },
+    {
+      "path": "reports/reports_cleanup_latest.md",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 561,
+      "modified": "2026-06-11T01:05:00",
+      "sha256": ""
+    },
+    {
+      "path": "reports/open_trades_snapshot_latest.csv",
+      "exists": false,
+      "is_file": false,
+      "size_bytes": 0,
+      "modified": "",
+      "sha256": ""
+    },
+    {
+      "path": "reports/open_trades_snapshot_latest.md",
+      "exists": false,
+      "is_file": false,
+      "size_bytes": 0,
+      "modified": "",
+      "sha256": ""
+    },
+    {
+      "path": "reports/trade_outcome_analytics_latest.csv",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 199,
+      "modified": "2026-06-11T01:05:00",
+      "sha256": ""
+    },
+    {
+      "path": "reports/trade_outcome_analytics_latest.md",
+      "exists": true,
+      "is_file": true,
+      "size_bytes": 136,
+      "modified": "2026-06-11T01:05:00",
+      "sha256": ""
+    }
+  ],
+  "summary": {
+    "missing_script_files": [],
+    "missing_report_files": [
+      "reports/open_trades_snapshot_latest.csv",
+      "reports/open_trades_snapshot_latest.md"
+    ]
+  }
+}

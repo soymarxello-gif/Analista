@@ -1,9 +1,9 @@
 # Analista - encoding audit
 
-- generated_at: 2026-06-10T23:01:50
+- generated_at: 2026-06-11T01:05:13
 - status: PASS
 - scan_dir: `reports`
-- files_scanned: 547
+- files_scanned: 565
 - warn_files: 0
 - error_files: 0
 - total_marker_hits: 0

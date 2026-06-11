@@ -1,5 +1,5 @@
 === ANALISTA DAILY VALIDATION SUMMARY ===
-Timestamp: 2026-06-10T23:01:52
+Timestamp: 2026-06-11T01:05:15
 Status: FAIL
 
 [Executive summary]
@@ -32,7 +32,7 @@ Status: FAIL
   returncode: 1
   timeout_seconds: 900
   stderr:
-  2026-06-10 23:01:43.539 | INFO     | engine.scanner_engine:run_scan:62 - Iniciando scanner Analista MVP.
+  2026-06-11 01:04:56.281 | INFO     | engine.scanner_engine:run_scan:62 - Iniciando scanner Analista MVP.
   Traceback (most recent call last):
     File "C:\Python314\Lib\site-packages\pandas\core\indexes\base.py", line 3641, in get_loc
       return self._engine.get_loc(casted_key)
@@ -341,7 +341,7 @@ Status: FAIL
   stdout:
   === ANALISTA ENCODING AUDIT ===
   Status: PASS
-  Files scanned: 547
+  Files scanned: 565
   Warn files: 0
   Error files: 0
   Total marker hits: 0
@@ -363,60 +363,60 @@ Status: FAIL
   Markdown: reports/daily_quality_gate_latest.md
 
 [Output files]
-- OK: reports/project_preflight_latest.json (5249 bytes, modified=2026-06-10T23:01:42)
-- OK: reports/project_preflight_latest.md (2607 bytes, modified=2026-06-10T23:01:42)
+- OK: reports/project_preflight_latest.json (5249 bytes, modified=2026-06-11T01:04:55)
+- OK: reports/project_preflight_latest.md (2607 bytes, modified=2026-06-11T01:04:55)
 - OK: reports/latest_scan_audited.csv (783379 bytes, modified=2026-06-10T21:56:47)
 - OK: reports/latest_scan_audited.json (2268078 bytes, modified=2026-06-10T21:56:47)
-- OK: reports/manual_review_latest.csv (32785 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/manual_review_latest.md (19748 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/manual_review_top.csv (18754 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/manual_review_top.md (10495 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/daily_validation_summary.txt (23887 bytes, modified=2026-06-10T23:01:50)
-- OK: reports/daily_operator_index.md (7512 bytes, modified=2026-06-10T23:01:47)
-- OK: reports/daily_quality_gate_latest.json (4534 bytes, modified=2026-06-10T23:01:50)
-- OK: reports/daily_quality_gate_latest.md (2312 bytes, modified=2026-06-10T23:01:50)
-- OK: reports/source_coverage_latest.json (28540 bytes, modified=2026-06-10T23:01:45)
-- OK: reports/history_evolution_latest.csv (461927 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/history_evolution_latest.md (9342 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/setup_persistence_latest.csv (641472 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/setup_persistence_latest.md (16442 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/trade_outcome_analytics_latest.csv (199 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/trade_outcome_analytics_latest.md (136 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/reports_cleanup_latest.json (199 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/reports_cleanup_latest.md (561 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/daily_run_manifest_latest.json (17238 bytes, modified=2026-06-10T23:01:47)
-- OK: reports/daily_run_manifest_latest.md (13200 bytes, modified=2026-06-10T23:01:47)
-- OK: reports/encoding_audit_latest.json (127752 bytes, modified=2026-06-10T23:01:50)
-- OK: reports/encoding_audit_latest.md (334 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/manual_review_latest.csv (32785 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/manual_review_latest.md (19748 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/manual_review_top.csv (18754 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/manual_review_top.md (10495 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/daily_validation_summary.txt (23883 bytes, modified=2026-06-11T01:05:13)
+- OK: reports/daily_operator_index.md (7638 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/daily_quality_gate_latest.json (4533 bytes, modified=2026-06-11T01:05:13)
+- OK: reports/daily_quality_gate_latest.md (2311 bytes, modified=2026-06-11T01:05:13)
+- OK: reports/source_coverage_latest.json (28540 bytes, modified=2026-06-11T01:04:59)
+- OK: reports/history_evolution_latest.csv (479811 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/history_evolution_latest.md (9342 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/setup_persistence_latest.csv (659356 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/setup_persistence_latest.md (16442 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/trade_outcome_analytics_latest.csv (199 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/trade_outcome_analytics_latest.md (136 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/reports_cleanup_latest.json (199 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/reports_cleanup_latest.md (561 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/daily_run_manifest_latest.json (8360 bytes, modified=2026-06-11T01:05:01)
+- OK: reports/daily_run_manifest_latest.md (4322 bytes, modified=2026-06-11T01:05:01)
+- OK: reports/encoding_audit_latest.json (132064 bytes, modified=2026-06-11T01:05:13)
+- OK: reports/encoding_audit_latest.md (334 bytes, modified=2026-06-11T01:05:13)
 
 [Critical reports]
-- OK: reports/project_preflight_latest.json (5249 bytes, modified=2026-06-10T23:01:42)
-- OK: reports/project_preflight_latest.md (2607 bytes, modified=2026-06-10T23:01:42)
+- OK: reports/project_preflight_latest.json (5249 bytes, modified=2026-06-11T01:04:55)
+- OK: reports/project_preflight_latest.md (2607 bytes, modified=2026-06-11T01:04:55)
 - OK: reports/latest_scan_audited.csv (783379 bytes, modified=2026-06-10T21:56:47)
 - OK: reports/latest_scan_audited.json (2268078 bytes, modified=2026-06-10T21:56:47)
-- OK: reports/manual_review_latest.csv (32785 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/manual_review_latest.md (19748 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/manual_review_top.csv (18754 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/manual_review_top.md (10495 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/daily_validation_summary.txt (23887 bytes, modified=2026-06-10T23:01:50)
-- OK: reports/daily_operator_index.md (7512 bytes, modified=2026-06-10T23:01:47)
-- OK: reports/daily_quality_gate_latest.json (4534 bytes, modified=2026-06-10T23:01:50)
-- OK: reports/daily_quality_gate_latest.md (2312 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/manual_review_latest.csv (32785 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/manual_review_latest.md (19748 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/manual_review_top.csv (18754 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/manual_review_top.md (10495 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/daily_validation_summary.txt (23883 bytes, modified=2026-06-11T01:05:13)
+- OK: reports/daily_operator_index.md (7638 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/daily_quality_gate_latest.json (4533 bytes, modified=2026-06-11T01:05:13)
+- OK: reports/daily_quality_gate_latest.md (2311 bytes, modified=2026-06-11T01:05:13)
 
 [Secondary reports]
-- OK: reports/source_coverage_latest.json (28540 bytes, modified=2026-06-10T23:01:45)
-- OK: reports/history_evolution_latest.csv (461927 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/history_evolution_latest.md (9342 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/setup_persistence_latest.csv (641472 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/setup_persistence_latest.md (16442 bytes, modified=2026-06-10T23:01:52)
-- OK: reports/trade_outcome_analytics_latest.csv (199 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/trade_outcome_analytics_latest.md (136 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/reports_cleanup_latest.json (199 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/reports_cleanup_latest.md (561 bytes, modified=2026-06-10T23:01:46)
-- OK: reports/daily_run_manifest_latest.json (17238 bytes, modified=2026-06-10T23:01:47)
-- OK: reports/daily_run_manifest_latest.md (13200 bytes, modified=2026-06-10T23:01:47)
-- OK: reports/encoding_audit_latest.json (127752 bytes, modified=2026-06-10T23:01:50)
-- OK: reports/encoding_audit_latest.md (334 bytes, modified=2026-06-10T23:01:50)
+- OK: reports/source_coverage_latest.json (28540 bytes, modified=2026-06-11T01:04:59)
+- OK: reports/history_evolution_latest.csv (479811 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/history_evolution_latest.md (9342 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/setup_persistence_latest.csv (659356 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/setup_persistence_latest.md (16442 bytes, modified=2026-06-11T01:05:15)
+- OK: reports/trade_outcome_analytics_latest.csv (199 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/trade_outcome_analytics_latest.md (136 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/reports_cleanup_latest.json (199 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/reports_cleanup_latest.md (561 bytes, modified=2026-06-11T01:05:00)
+- OK: reports/daily_run_manifest_latest.json (8360 bytes, modified=2026-06-11T01:05:01)
+- OK: reports/daily_run_manifest_latest.md (4322 bytes, modified=2026-06-11T01:05:01)
+- OK: reports/encoding_audit_latest.json (132064 bytes, modified=2026-06-11T01:05:13)
+- OK: reports/encoding_audit_latest.md (334 bytes, modified=2026-06-11T01:05:13)
 
 [Scan snapshot]
 - scan_rows: 362
@@ -443,13 +443,13 @@ Quote recheck priority:
 - Confirmar siempre gráfico, quote, R/R, stop, target, earnings y contexto de mercado.
 [History archive]
 - status: PASS
-- archive_dir: reports\history\20260610_230150
+- archive_dir: reports\history\20260611_010513
 - copied: 6
 - missing_required: 0
 
 [History evolution]
 - status: PASS
-- history_runs: 35
+- history_runs: 37
 - tickers: 669
 
 [Setup persistence]

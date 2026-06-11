@@ -1,0 +1,211 @@
+{
+  "status": "WARN",
+  "generated_at": "2026-06-11T01:04:55",
+  "root": "C:/Users/El otro Yo/Projects/ChatGPT/Analista",
+  "cwd": "C:/Users/El otro Yo/Projects/ChatGPT/Analista",
+  "cwd_matches_root": true,
+  "python": {
+    "executable": "C:\\Python314\\python.exe",
+    "version": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+    "version_info": {
+      "major": 3,
+      "minor": 14,
+      "micro": 4
+    }
+  },
+  "environment": {
+    "virtual_env": ""
+  },
+  "required_dirs": [
+    {
+      "path": "tools",
+      "exists": true,
+      "is_file": false,
+      "is_dir": true,
+      "size_bytes": 0,
+      "modified": "2026-06-10T23:07:34"
+    },
+    {
+      "path": "tests",
+      "exists": true,
+      "is_file": false,
+      "is_dir": true,
+      "size_bytes": 0,
+      "modified": "2026-06-10T21:45:39"
+    },
+    {
+      "path": "reports",
+      "exists": true,
+      "is_file": false,
+      "is_dir": true,
+      "size_bytes": 0,
+      "modified": "2026-06-10T23:51:37"
+    }
+  ],
+  "required_files": [
+    {
+      "path": "tools/daily_validation.py",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 25029,
+      "modified": "2026-06-10T20:49:13"
+    },
+    {
+      "path": "tools/daily_operator_index.py",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 30405,
+      "modified": "2026-06-10T23:07:03"
+    },
+    {
+      "path": "tools/reports_cleanup.py",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 9150,
+      "modified": "2026-06-10T13:35:47"
+    }
+  ],
+  "optional_files": [
+    {
+      "path": "config.yaml",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 7629,
+      "modified": "2026-06-08T12:56:51"
+    },
+    {
+      "path": "reports/latest_scan_audited.csv",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 783379,
+      "modified": "2026-06-10T21:56:47"
+    },
+    {
+      "path": "reports/latest_scan_audited.json",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 2268078,
+      "modified": "2026-06-10T21:56:47"
+    },
+    {
+      "path": "reports/manual_review_latest.csv",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 32785,
+      "modified": "2026-06-10T23:35:26"
+    },
+    {
+      "path": "reports/manual_review_latest.md",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 19748,
+      "modified": "2026-06-10T23:35:26"
+    },
+    {
+      "path": "reports/manual_review_top.csv",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 18754,
+      "modified": "2026-06-10T23:35:26"
+    },
+    {
+      "path": "reports/manual_review_top.md",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 10495,
+      "modified": "2026-06-10T23:35:26"
+    },
+    {
+      "path": "reports/daily_validation_summary.txt",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 24346,
+      "modified": "2026-06-10T23:35:26"
+    },
+    {
+      "path": "reports/daily_operator_index.md",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 7638,
+      "modified": "2026-06-10T23:52:58"
+    },
+    {
+      "path": "reports/reports_cleanup_latest.json",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 199,
+      "modified": "2026-06-10T23:35:19"
+    },
+    {
+      "path": "reports/reports_cleanup_latest.md",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 561,
+      "modified": "2026-06-10T23:35:19"
+    },
+    {
+      "path": "reports/open_trades_snapshot_latest.csv",
+      "exists": false,
+      "is_file": false,
+      "is_dir": false,
+      "size_bytes": 0,
+      "modified": ""
+    },
+    {
+      "path": "reports/open_trades_snapshot_latest.md",
+      "exists": false,
+      "is_file": false,
+      "is_dir": false,
+      "size_bytes": 0,
+      "modified": ""
+    },
+    {
+      "path": "reports/trade_outcome_analytics_latest.csv",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 199,
+      "modified": "2026-06-10T23:35:19"
+    },
+    {
+      "path": "reports/trade_outcome_analytics_latest.md",
+      "exists": true,
+      "is_file": true,
+      "is_dir": false,
+      "size_bytes": 136,
+      "modified": "2026-06-10T23:35:19"
+    }
+  ],
+  "write_checks": [
+    {
+      "path": "C:\\Users\\El otro Yo\\Projects\\ChatGPT\\Analista\\reports",
+      "exists": true,
+      "is_dir": true,
+      "writeable": true,
+      "error": ""
+    }
+  ],
+  "summary": {
+    "missing_required_dirs": [],
+    "missing_required_files": [],
+    "missing_optional_files": [
+      "reports/open_trades_snapshot_latest.csv",
+      "reports/open_trades_snapshot_latest.md"
+    ],
+    "failed_write_checks": []
+  }
+}

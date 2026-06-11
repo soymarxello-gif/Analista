@@ -1,0 +1,5105 @@
+{
+  "status": "PASS",
+  "generated_at": "2026-06-11T01:05:13",
+  "root": "C:/Users/El otro Yo/Projects/ChatGPT/Analista",
+  "scan_dir": "reports",
+  "patterns": [
+    "*.md",
+    "*.txt",
+    "*.csv",
+    "*.json"
+  ],
+  "summary": {
+    "files_scanned": 565,
+    "warn_files": 0,
+    "error_files": 0,
+    "total_marker_hits": 0
+  },
+  "results": [
+    {
+      "path": "reports/audits/audit_latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 10323,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/audits/audit_latest_scan_phase1_4.json",
+      "status": "PASS",
+      "size_bytes": 5479,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/audits/audit_latest_scan_phase2_2.json",
+      "status": "PASS",
+      "size_bytes": 5488,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/audits/audit_manual_review_latest.json",
+      "status": "PASS",
+      "size_bytes": 9376,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/audits/audit_manual_review_top.json",
+      "status": "PASS",
+      "size_bytes": 7543,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/audits/universe_audit_latest_scan_phase2_2.json",
+      "status": "PASS",
+      "size_bytes": 1475,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/calibration/posttest_summary.json",
+      "status": "PASS",
+      "size_bytes": 130,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/calibration/weight_calibration.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/daily_operator_index.md",
+      "status": "PASS",
+      "size_bytes": 7638,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/daily_quality_gate_latest.json",
+      "status": "PASS",
+      "size_bytes": 4533,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/daily_quality_gate_latest.md",
+      "status": "PASS",
+      "size_bytes": 2311,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/daily_run_manifest_latest.json",
+      "status": "PASS",
+      "size_bytes": 8360,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/daily_run_manifest_latest.md",
+      "status": "PASS",
+      "size_bytes": 4322,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 21819,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/encoding_audit_latest.json",
+      "status": "PASS",
+      "size_bytes": 129907,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/encoding_audit_latest.md",
+      "status": "PASS",
+      "size_bytes": 334,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_134527/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2220,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_134527/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 899981,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_134527/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2579065,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_134527/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_134527/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 7797,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_134527/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 8930,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_134527/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27599,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135053/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2220,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135053/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 899981,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135053/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2579065,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135053/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135053/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 7797,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135053/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 8930,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135053/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27599,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135135/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2220,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135135/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 899981,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135135/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2579065,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135135/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135135/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 7797,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135135/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 8930,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135135/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27599,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135534/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2220,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135534/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 899981,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135534/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2579065,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135534/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135534/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 7797,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135534/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 8930,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_135534/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27599,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_140019/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2342,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_140019/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1001256,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_140019/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2860351,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_140019/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_140019/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 8552,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_140019/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 9775,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_140019/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27856,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_153732/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2419,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_153732/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1002396,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_153732/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2855996,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_153732/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_153732/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 13251,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_153732/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 15022,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_153732/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27971,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_161712/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2419,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_161712/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1012527,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_161712/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2874785,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_161712/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_161712/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 18738,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_161712/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 21145,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_161712/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29747,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_172900/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2419,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_172900/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013514,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_172900/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879566,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_172900/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_172900/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 19584,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_172900/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 22081,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_172900/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29769,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_175045/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2299,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_175045/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_175045/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_175045/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_175045/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 19584,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_175045/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 22081,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_175045/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29766,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_182356/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2388,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_182356/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013714,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_182356/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879798,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_182356/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_182356/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 36816,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_182356/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 22271,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_182356/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29769,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183234/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2388,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183234/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183234/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183234/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183234/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 36816,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183234/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 22271,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183234/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29766,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183330/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2388,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183330/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183330/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183330/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183330/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 36816,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183330/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 22271,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_183330/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29766,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2668,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013514,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879566,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 36816,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 22271,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 17496,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10227,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_185800/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29769,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2668,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 36820,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 22275,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 17496,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10227,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_190929/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29766,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2668,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013514,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879566,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 37692,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 23147,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18077,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10808,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_195923/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29769,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 2668,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 37692,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 23147,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18077,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10808,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260609_201356/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 29766,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 24330,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 720069,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2100100,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 18550,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 10730,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 12541,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 7729,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_124403/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 26836,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 27497,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 717930,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2093607,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 20745,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 12352,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 14762,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 8439,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_133139/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27359,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 28401,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 762054,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2217286,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 18436,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 11134,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 13153,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 7484,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_140150/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 26862,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 28349,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 726206,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2114984,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 17102,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 10338,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 12181,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 7093,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142611/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 26828,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 28333,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 721882,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2102175,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 17842,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 10794,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 12738,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 7397,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_142724/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 26810,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 29523,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 755310,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2193848,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 19298,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 11715,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 13837,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 7957,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_145234/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 27245,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 30214,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 787702,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2280958,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32763,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19722,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18693,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10581,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_164717/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28939,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 31259,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 790846,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2288114,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 33515,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 20170,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18705,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_183908/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28546,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 31256,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 790756,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2288024,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 33541,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 20196,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18731,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10498,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_190346/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28543,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 32143,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 785728,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2274581,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 33598,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 20241,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18767,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10528,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_192646/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28547,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 32140,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 785638,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2274491,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 33598,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 20241,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18767,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10528,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_195109/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28544,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 33026,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 785728,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2274580,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 33599,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 20242,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18767,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10528,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_201134/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28547,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 33258,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783469,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268171,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19746,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_205638/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28543,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 33258,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783469,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268168,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19746,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_212820/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28543,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 33255,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32793,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19748,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214008/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28540,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 33255,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32794,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19749,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_214344/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28540,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 33255,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32794,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19749,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_215655/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28540,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 22476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32787,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19748,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230055/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28540,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 24350,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32785,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19748,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_230150/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28540,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/daily_validation_summary.txt",
+      "status": "PASS",
+      "size_bytes": 24346,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/manifest.json",
+      "status": "PASS",
+      "size_bytes": 430,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32785,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19748,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/20260610_233523/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28540,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/latest.txt",
+      "status": "PASS",
+      "size_bytes": 31,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_211013.csv",
+      "status": "PASS",
+      "size_bytes": 222586,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_211013.json",
+      "status": "PASS",
+      "size_bytes": 570488,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_233733.csv",
+      "status": "PASS",
+      "size_bytes": 30533,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_233733.json",
+      "status": "PASS",
+      "size_bytes": 88791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_233919.csv",
+      "status": "PASS",
+      "size_bytes": 30533,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_233919.json",
+      "status": "PASS",
+      "size_bytes": 88791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_234025.csv",
+      "status": "PASS",
+      "size_bytes": 30533,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_234025.json",
+      "status": "PASS",
+      "size_bytes": 88791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_234921.csv",
+      "status": "PASS",
+      "size_bytes": 30533,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260604_234921.json",
+      "status": "PASS",
+      "size_bytes": 88791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_003649.csv",
+      "status": "PASS",
+      "size_bytes": 29711,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_003649.json",
+      "status": "PASS",
+      "size_bytes": 88274,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_005236.csv",
+      "status": "PASS",
+      "size_bytes": 23020,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_005236.json",
+      "status": "PASS",
+      "size_bytes": 83372,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_005622.csv",
+      "status": "PASS",
+      "size_bytes": 23020,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_005622.json",
+      "status": "PASS",
+      "size_bytes": 83372,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_005846.csv",
+      "status": "PASS",
+      "size_bytes": 23020,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_005846.json",
+      "status": "PASS",
+      "size_bytes": 83372,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_201405.csv",
+      "status": "PASS",
+      "size_bytes": 21476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_201405.json",
+      "status": "PASS",
+      "size_bytes": 78291,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_215106.csv",
+      "status": "PASS",
+      "size_bytes": 21474,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260605_215106.json",
+      "status": "PASS",
+      "size_bytes": 78287,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_162138.csv",
+      "status": "PASS",
+      "size_bytes": 25869,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_162138.json",
+      "status": "PASS",
+      "size_bytes": 87965,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_162311.csv",
+      "status": "PASS",
+      "size_bytes": 25791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_162311.json",
+      "status": "PASS",
+      "size_bytes": 87887,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_164608.csv",
+      "status": "PASS",
+      "size_bytes": 24810,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_164608.json",
+      "status": "PASS",
+      "size_bytes": 87826,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_171351.csv",
+      "status": "PASS",
+      "size_bytes": 14678,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_171351.json",
+      "status": "PASS",
+      "size_bytes": 45297,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_171436.csv",
+      "status": "PASS",
+      "size_bytes": 14639,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_171436.json",
+      "status": "PASS",
+      "size_bytes": 45258,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_172421.csv",
+      "status": "PASS",
+      "size_bytes": 14370,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_172421.json",
+      "status": "PASS",
+      "size_bytes": 46321,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_172459.csv",
+      "status": "PASS",
+      "size_bytes": 14370,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_172459.json",
+      "status": "PASS",
+      "size_bytes": 46321,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_174437.csv",
+      "status": "PASS",
+      "size_bytes": 14610,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_174437.json",
+      "status": "PASS",
+      "size_bytes": 46866,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_175643.csv",
+      "status": "PASS",
+      "size_bytes": 14571,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_175643.json",
+      "status": "PASS",
+      "size_bytes": 46827,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_175737.csv",
+      "status": "PASS",
+      "size_bytes": 14571,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_175737.json",
+      "status": "PASS",
+      "size_bytes": 46827,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_190044.csv",
+      "status": "PASS",
+      "size_bytes": 98266,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_190044.json",
+      "status": "PASS",
+      "size_bytes": 350387,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_190309.csv",
+      "status": "PASS",
+      "size_bytes": 105844,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260607_190309.json",
+      "status": "PASS",
+      "size_bytes": 374429,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_073051.csv",
+      "status": "PASS",
+      "size_bytes": 373940,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_073051.json",
+      "status": "PASS",
+      "size_bytes": 1258821,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_073239.csv",
+      "status": "PASS",
+      "size_bytes": 373940,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_073239.json",
+      "status": "PASS",
+      "size_bytes": 1258821,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_080859.csv",
+      "status": "PASS",
+      "size_bytes": 379300,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_080859.json",
+      "status": "PASS",
+      "size_bytes": 1278949,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_081045.csv",
+      "status": "PASS",
+      "size_bytes": 379210,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_081045.json",
+      "status": "PASS",
+      "size_bytes": 1278859,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_110436.csv",
+      "status": "PASS",
+      "size_bytes": 581792,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_110436.json",
+      "status": "PASS",
+      "size_bytes": 1614973,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_121001.csv",
+      "status": "PASS",
+      "size_bytes": 633664,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_121001.json",
+      "status": "PASS",
+      "size_bytes": 1752910,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_134319.csv",
+      "status": "PASS",
+      "size_bytes": 625680,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_134319.json",
+      "status": "PASS",
+      "size_bytes": 1731230,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_135021.csv",
+      "status": "PASS",
+      "size_bytes": 660520,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_135021.json",
+      "status": "PASS",
+      "size_bytes": 1824397,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_142808.csv",
+      "status": "PASS",
+      "size_bytes": 711506,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_142808.json",
+      "status": "PASS",
+      "size_bytes": 1968380,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_151900.csv",
+      "status": "PASS",
+      "size_bytes": 689837,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_151900.json",
+      "status": "PASS",
+      "size_bytes": 1910854,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_151900.md",
+      "status": "PASS",
+      "size_bytes": 19774,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_162805.csv",
+      "status": "PASS",
+      "size_bytes": 730611,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_162805.json",
+      "status": "PASS",
+      "size_bytes": 2018554,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_162805.md",
+      "status": "PASS",
+      "size_bytes": 19786,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_174315.csv",
+      "status": "PASS",
+      "size_bytes": 728961,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_174315.json",
+      "status": "PASS",
+      "size_bytes": 2041321,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_174315.md",
+      "status": "PASS",
+      "size_bytes": 19687,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_184631.csv",
+      "status": "PASS",
+      "size_bytes": 748613,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_184631.json",
+      "status": "PASS",
+      "size_bytes": 2079731,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260608_184631.md",
+      "status": "PASS",
+      "size_bytes": 19610,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_085858.csv",
+      "status": "PASS",
+      "size_bytes": 824821,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_085858.json",
+      "status": "PASS",
+      "size_bytes": 2298515,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_085858.md",
+      "status": "PASS",
+      "size_bytes": 19621,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_115308.csv",
+      "status": "PASS",
+      "size_bytes": 669155,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_115308.json",
+      "status": "PASS",
+      "size_bytes": 1920191,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_115308.md",
+      "status": "PASS",
+      "size_bytes": 19829,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_123137.csv",
+      "status": "PASS",
+      "size_bytes": 762314,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_123137.json",
+      "status": "PASS",
+      "size_bytes": 2198668,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_123137.md",
+      "status": "PASS",
+      "size_bytes": 21507,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_131555.csv",
+      "status": "PASS",
+      "size_bytes": 753569,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_131555.json",
+      "status": "PASS",
+      "size_bytes": 2173338,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_131555.md",
+      "status": "PASS",
+      "size_bytes": 21841,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_131911.csv",
+      "status": "PASS",
+      "size_bytes": 788626,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_131911.json",
+      "status": "PASS",
+      "size_bytes": 2270778,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_131911.md",
+      "status": "PASS",
+      "size_bytes": 21665,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_132424.csv",
+      "status": "PASS",
+      "size_bytes": 850674,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_132424.json",
+      "status": "PASS",
+      "size_bytes": 2441600,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_132424.md",
+      "status": "PASS",
+      "size_bytes": 21490,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_133248.csv",
+      "status": "PASS",
+      "size_bytes": 899981,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_133248.json",
+      "status": "PASS",
+      "size_bytes": 2579065,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_133248.md",
+      "status": "PASS",
+      "size_bytes": 21576,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_140016.csv",
+      "status": "PASS",
+      "size_bytes": 1001256,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_140016.json",
+      "status": "PASS",
+      "size_bytes": 2860351,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_140016.md",
+      "status": "PASS",
+      "size_bytes": 21744,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_153728.csv",
+      "status": "PASS",
+      "size_bytes": 1002396,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_153728.json",
+      "status": "PASS",
+      "size_bytes": 2855996,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_153728.md",
+      "status": "PASS",
+      "size_bytes": 22685,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_161709.csv",
+      "status": "PASS",
+      "size_bytes": 1012527,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_161709.json",
+      "status": "PASS",
+      "size_bytes": 2874785,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_161709.md",
+      "status": "PASS",
+      "size_bytes": 24154,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_172857.csv",
+      "status": "PASS",
+      "size_bytes": 1013514,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_172857.json",
+      "status": "PASS",
+      "size_bytes": 2879566,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_172857.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_175042.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_175042.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_175042.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_182353.csv",
+      "status": "PASS",
+      "size_bytes": 1013714,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_182353.json",
+      "status": "PASS",
+      "size_bytes": 2879798,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_182353.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_183231.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_183231.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_183231.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_183327.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_183327.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_183327.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_185757.csv",
+      "status": "PASS",
+      "size_bytes": 1013514,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_185757.json",
+      "status": "PASS",
+      "size_bytes": 2879566,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_185757.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_190926.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_190926.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_190926.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_195913.csv",
+      "status": "PASS",
+      "size_bytes": 1013514,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_195913.json",
+      "status": "PASS",
+      "size_bytes": 2879566,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_195913.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_201353.csv",
+      "status": "PASS",
+      "size_bytes": 1013424,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_201353.json",
+      "status": "PASS",
+      "size_bytes": 2879476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260609_201353.md",
+      "status": "PASS",
+      "size_bytes": 24309,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_123444.csv",
+      "status": "PASS",
+      "size_bytes": 700752,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_123444.json",
+      "status": "PASS",
+      "size_bytes": 2046879,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_123444.md",
+      "status": "PASS",
+      "size_bytes": 20485,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_124400.csv",
+      "status": "PASS",
+      "size_bytes": 720069,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_124400.json",
+      "status": "PASS",
+      "size_bytes": 2100100,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_124400.md",
+      "status": "PASS",
+      "size_bytes": 20304,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_133135.csv",
+      "status": "PASS",
+      "size_bytes": 717930,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_133135.json",
+      "status": "PASS",
+      "size_bytes": 2093607,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_133135.md",
+      "status": "PASS",
+      "size_bytes": 20677,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_140146.csv",
+      "status": "PASS",
+      "size_bytes": 762054,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_140146.json",
+      "status": "PASS",
+      "size_bytes": 2217286,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_140146.md",
+      "status": "PASS",
+      "size_bytes": 20553,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_142607.csv",
+      "status": "PASS",
+      "size_bytes": 726206,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_142607.json",
+      "status": "PASS",
+      "size_bytes": 2114984,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_142607.md",
+      "status": "PASS",
+      "size_bytes": 20668,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_142720.csv",
+      "status": "PASS",
+      "size_bytes": 721882,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_142720.json",
+      "status": "PASS",
+      "size_bytes": 2102175,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_142720.md",
+      "status": "PASS",
+      "size_bytes": 20644,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_145230.csv",
+      "status": "PASS",
+      "size_bytes": 755310,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_145230.json",
+      "status": "PASS",
+      "size_bytes": 2193848,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_145230.md",
+      "status": "PASS",
+      "size_bytes": 20832,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_164713.csv",
+      "status": "PASS",
+      "size_bytes": 787702,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_164713.json",
+      "status": "PASS",
+      "size_bytes": 2280958,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_164713.md",
+      "status": "PASS",
+      "size_bytes": 21701,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_183903.csv",
+      "status": "PASS",
+      "size_bytes": 790846,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_183903.json",
+      "status": "PASS",
+      "size_bytes": 2288114,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_183903.md",
+      "status": "PASS",
+      "size_bytes": 21709,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_190341.csv",
+      "status": "PASS",
+      "size_bytes": 790756,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_190341.json",
+      "status": "PASS",
+      "size_bytes": 2288024,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_190341.md",
+      "status": "PASS",
+      "size_bytes": 21709,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_192639.csv",
+      "status": "PASS",
+      "size_bytes": 785728,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_192639.json",
+      "status": "PASS",
+      "size_bytes": 2274581,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_192639.md",
+      "status": "PASS",
+      "size_bytes": 21710,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_195102.csv",
+      "status": "PASS",
+      "size_bytes": 785638,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_195102.json",
+      "status": "PASS",
+      "size_bytes": 2274491,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_195102.md",
+      "status": "PASS",
+      "size_bytes": 21710,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_201126.csv",
+      "status": "PASS",
+      "size_bytes": 785728,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_201126.json",
+      "status": "PASS",
+      "size_bytes": 2274580,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_201126.md",
+      "status": "PASS",
+      "size_bytes": 21710,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_205631.csv",
+      "status": "PASS",
+      "size_bytes": 783469,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_205631.json",
+      "status": "PASS",
+      "size_bytes": 2268171,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_205631.md",
+      "status": "PASS",
+      "size_bytes": 21675,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_212813.csv",
+      "status": "PASS",
+      "size_bytes": 783469,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_212813.json",
+      "status": "PASS",
+      "size_bytes": 2268168,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_212813.md",
+      "status": "PASS",
+      "size_bytes": 21675,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_214001.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_214001.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_214001.md",
+      "status": "PASS",
+      "size_bytes": 21675,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_214336.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_214336.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_214336.md",
+      "status": "PASS",
+      "size_bytes": 21675,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_215647.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_215647.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history/scan_20260610_215647.md",
+      "status": "PASS",
+      "size_bytes": 21675,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history_evolution_latest.csv",
+      "status": "PASS",
+      "size_bytes": 470869,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/history_evolution_latest.md",
+      "status": "PASS",
+      "size_bytes": 9342,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan.csv",
+      "status": "PASS",
+      "size_bytes": 23020,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan.json",
+      "status": "PASS",
+      "size_bytes": 83372,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_2d.csv",
+      "status": "PASS",
+      "size_bytes": 23020,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_2d.json",
+      "status": "PASS",
+      "size_bytes": 83372,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_audit_fix.csv",
+      "status": "PASS",
+      "size_bytes": 21474,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_audit_fix.json",
+      "status": "PASS",
+      "size_bytes": 78287,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_audited.csv",
+      "status": "PASS",
+      "size_bytes": 783379,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_audited.json",
+      "status": "PASS",
+      "size_bytes": 2268078,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_audited.md",
+      "status": "PASS",
+      "size_bytes": 21675,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_options.csv",
+      "status": "PASS",
+      "size_bytes": 21476,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_options.json",
+      "status": "PASS",
+      "size_bytes": 78291,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1.csv",
+      "status": "PASS",
+      "size_bytes": 25791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1.json",
+      "status": "PASS",
+      "size_bytes": 87887,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_1.csv",
+      "status": "PASS",
+      "size_bytes": 14370,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_1.json",
+      "status": "PASS",
+      "size_bytes": 46321,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_2.csv",
+      "status": "PASS",
+      "size_bytes": 14610,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_2.json",
+      "status": "PASS",
+      "size_bytes": 46866,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_4.csv",
+      "status": "PASS",
+      "size_bytes": 14571,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_4.json",
+      "status": "PASS",
+      "size_bytes": 46827,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_fix.csv",
+      "status": "PASS",
+      "size_bytes": 24810,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase1_fix.json",
+      "status": "PASS",
+      "size_bytes": 87826,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase2_2.csv",
+      "status": "PASS",
+      "size_bytes": 105844,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_phase2_2.json",
+      "status": "PASS",
+      "size_bytes": 374429,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_test3.csv",
+      "status": "PASS",
+      "size_bytes": 29711,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/latest_scan_test3.json",
+      "status": "PASS",
+      "size_bytes": 88274,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/live_quote_recheck_latest.csv",
+      "status": "PASS",
+      "size_bytes": 3352,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/live_quote_recheck_latest.md",
+      "status": "PASS",
+      "size_bytes": 3355,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/manual_review_latest.csv",
+      "status": "PASS",
+      "size_bytes": 32785,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/manual_review_latest.md",
+      "status": "PASS",
+      "size_bytes": 19748,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/manual_review_top.csv",
+      "status": "PASS",
+      "size_bytes": 18754,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/manual_review_top.md",
+      "status": "PASS",
+      "size_bytes": 10495,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/posttests/posttest_batch_summary.json",
+      "status": "PASS",
+      "size_bytes": 191,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/project_preflight_latest.json",
+      "status": "PASS",
+      "size_bytes": 5249,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/project_preflight_latest.md",
+      "status": "PASS",
+      "size_bytes": 2607,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/release_readiness_latest.json",
+      "status": "PASS",
+      "size_bytes": 6996,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/release_readiness_latest.md",
+      "status": "PASS",
+      "size_bytes": 4121,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/report_consistency_latest.json",
+      "status": "PASS",
+      "size_bytes": 808,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/report_consistency_latest.md",
+      "status": "PASS",
+      "size_bytes": 630,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/reports_cleanup_latest.json",
+      "status": "PASS",
+      "size_bytes": 199,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/reports_cleanup_latest.md",
+      "status": "PASS",
+      "size_bytes": 561,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/setup_persistence_latest.csv",
+      "status": "PASS",
+      "size_bytes": 650414,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/setup_persistence_latest.md",
+      "status": "PASS",
+      "size_bytes": 16442,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/source_coverage_latest.json",
+      "status": "PASS",
+      "size_bytes": 28540,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/latest_scan_test.csv",
+      "status": "PASS",
+      "size_bytes": 30533,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/latest_scan_test.json",
+      "status": "PASS",
+      "size_bytes": 88791,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/open_trades_snapshot_test.csv",
+      "status": "PASS",
+      "size_bytes": 638,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/open_trades_snapshot_test.md",
+      "status": "PASS",
+      "size_bytes": 832,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/trade_outcome_analytics_test.csv",
+      "status": "PASS",
+      "size_bytes": 679,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/trade_outcome_analytics_test.md",
+      "status": "PASS",
+      "size_bytes": 2259,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/trade_outcomes_analytics_test.csv",
+      "status": "PASS",
+      "size_bytes": 520,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/trade_outcomes_analytics_test_summary.md",
+      "status": "PASS",
+      "size_bytes": 368,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/trade_outcomes_from_manual_test.csv",
+      "status": "PASS",
+      "size_bytes": 523,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/trade_outcomes_from_manual_test_summary.md",
+      "status": "PASS",
+      "size_bytes": 707,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/tmp/temp_reports_20260610_135608/trade_outcomes_test.csv",
+      "status": "PASS",
+      "size_bytes": 571,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/trade_outcome_analytics_latest.csv",
+      "status": "PASS",
+      "size_bytes": 199,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/trade_outcome_analytics_latest.md",
+      "status": "PASS",
+      "size_bytes": 136,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/trade_outcomes.csv",
+      "status": "PASS",
+      "size_bytes": 308,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/trade_outcomes_summary.md",
+      "status": "PASS",
+      "size_bytes": 124,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    },
+    {
+      "path": "reports/trade_outcomes_test_summary.md",
+      "status": "PASS",
+      "size_bytes": 378,
+      "marker_hits": {},
+      "total_marker_hits": 0,
+      "samples": [],
+      "error": ""
+    }
+  ]
+}

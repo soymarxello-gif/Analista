@@ -1,10 +1,10 @@
 # Analista - reports cleanup
 
-- generated_at: 2026-06-10T23:01:46
+- generated_at: 2026-06-11T01:05:00
 - status: PASS
 - mode: DRY_RUN
 - reports_dir: reports
-- archive_dir: reports/tmp/temp_reports_20260610_230146
+- archive_dir: reports/tmp/temp_reports_20260611_010500
 - candidate_count: 0
 - moved_count: 0
 

@@ -1,6 +1,6 @@
 # Analista - daily quality gate
 
-- generated_at: 2026-06-10T23:01:50
+- generated_at: 2026-06-11T01:05:13
 - status: FAIL
 - manual_review_allowed: False
 - manual_review_mode: BLOCKED
@@ -62,18 +62,18 @@ Execution quote quality:
 
 | path | exists | size_bytes | modified |
 | --- | --- | --- | --- |
-| reports/daily_validation_summary.txt | True | 21823 | 2026-06-10T23:01:46 |
-| reports/project_preflight_latest.json | True | 5249 | 2026-06-10T23:01:42 |
+| reports/daily_validation_summary.txt | True | 21819 | 2026-06-11T01:05:00 |
+| reports/project_preflight_latest.json | True | 5249 | 2026-06-11T01:04:55 |
 | reports/latest_scan_audited.csv | True | 783379 | 2026-06-10T21:56:47 |
-| reports/manual_review_latest.csv | True | 32787 | 2026-06-10T23:00:57 |
+| reports/manual_review_latest.csv | True | 32785 | 2026-06-10T23:35:26 |
 
 ## Archivos de soporte
 
 | path | exists | size_bytes | modified |
 | --- | --- | --- | --- |
-| reports/daily_run_manifest_latest.json | True | 17238 | 2026-06-10T23:01:47 |
-| reports/encoding_audit_latest.json | True | 127752 | 2026-06-10T23:01:50 |
-| reports/reports_cleanup_latest.json | True | 199 | 2026-06-10T23:01:46 |
-| reports/daily_operator_index.md | True | 7512 | 2026-06-10T23:01:47 |
-| reports/manual_review_top.csv | True | 18754 | 2026-06-10T23:00:57 |
-| reports/manual_review_top.md | True | 10495 | 2026-06-10T23:00:57 |
+| reports/daily_run_manifest_latest.json | True | 8360 | 2026-06-11T01:05:01 |
+| reports/encoding_audit_latest.json | True | 132064 | 2026-06-11T01:05:13 |
+| reports/reports_cleanup_latest.json | True | 199 | 2026-06-11T01:05:00 |
+| reports/daily_operator_index.md | True | 7638 | 2026-06-11T01:05:00 |
+| reports/manual_review_top.csv | True | 18754 | 2026-06-10T23:35:26 |
+| reports/manual_review_top.md | True | 10495 | 2026-06-10T23:35:26 |
