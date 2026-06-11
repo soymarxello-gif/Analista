@@ -27,6 +27,7 @@ KEY_SCRIPT_PATHS = [
     "tools/open_trade_snapshot.py",
     "tools/latest_scan_health.py",
     "tools/source_coverage_audit.py",
+    "tools/live_quote_recheck.py",
 ]
 
 
@@ -41,6 +42,9 @@ KEY_REPORT_PATHS = [
     "reports/manual_review_top.md",
     "reports/daily_validation_summary.txt",
     "reports/daily_operator_index.md",
+    "reports/live_quote_recheck_latest.csv",
+    "reports/live_quote_recheck_latest.md",
+    "reports/live_quote_recheck_latest.json",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -295,6 +299,7 @@ def collect_daily_run_manifest(
     cleanup_path = reports / "reports_cleanup_latest.json"
     latest_scan_path = reports / "latest_scan_audited.csv"
     manual_review_path = reports / "manual_review_latest.csv"
+    live_quote_recheck_path = reports / "live_quote_recheck_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -345,6 +350,7 @@ def collect_daily_run_manifest(
                 "recommendation",
             ),
             "quote_recheck_priority": _safe_value_counts(manual_review_path, "quote_recheck_priority"),
+            "live_quote_recheck": _load_json(live_quote_recheck_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -458,6 +464,16 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append("")
     lines.append("Quote recheck priority:")
     lines.extend(_format_counts(scan.get("quote_recheck_priority", {})))
+    lines.append("")
+
+    live_recheck = scan.get("live_quote_recheck", {}) or {}
+    lines.append("Live quote recheck:")
+    lines.append(f"- status: {live_recheck.get('status', 'MISSING')}")
+    lines.append(f"- rows: {live_recheck.get('rows', 0)}")
+    lines.append(f"- execution_ok_review_manually: {live_recheck.get('execution_ok_review_manually', 0)}")
+    lines.append(f"- keep_recheck: {live_recheck.get('keep_recheck', 0)}")
+    lines.append(f"- avoid_execution_risk: {live_recheck.get('avoid_execution_risk', 0)}")
+    lines.append(f"- data_unavailable: {live_recheck.get('data_unavailable', 0)}")
     lines.append("")
 
     lines.append("## Script files")

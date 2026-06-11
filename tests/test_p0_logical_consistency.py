@@ -18,6 +18,7 @@ def base_row() -> dict:
         "setup_type": "PULLBACK",
         "final_score": 90,
         "trigger_confirmed": True,
+        "quote_status": "VALID",
         "execution_quote_quality": "HIGH",
     }
 

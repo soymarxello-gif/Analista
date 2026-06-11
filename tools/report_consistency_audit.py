@@ -36,8 +36,8 @@ TOP_REQUIRED_COLUMNS = [
 
 LIVE_RECHECK_REQUIRED_COLUMNS = [
     "ticker",
-    "recommendation",
-    "live_recheck_decision",
+    "prior_recommendation",
+    "recheck_decision",
     "live_quote_status",
     "live_execution_quote_quality",
 ]
@@ -219,24 +219,23 @@ def audit_live_quote_recheck(path: Path) -> dict:
     if missing:
         result["issues"].append("missing_columns:" + ",".join(missing))
 
-    empty_recommendation = _empty_text_count(df, "recommendation")
-    if empty_recommendation > 0:
-        result["issues"].append(f"empty_recommendation_rows:{empty_recommendation}")
-
-    if "live_recheck_decision" in df.columns:
+    decision_col = "recheck_decision" if "recheck_decision" in df.columns else "live_recheck_decision"
+    if decision_col in df.columns:
         allowed = {
-            "QUOTE_OK_FOR_MANUAL_REVIEW",
-            "QUOTE_STILL_UNCONFIRMED",
-            "QUOTE_FETCH_FAILED",
+            "KEEP_RECHECK",
+            "WATCHLIST_MONITOR",
+            "EXECUTION_OK_REVIEW_MANUALLY",
+            "AVOID_EXECUTION_RISK",
+            "DATA_UNAVAILABLE",
         }
        
         invalid_values = [
             value
-            for value in df["live_recheck_decision"].fillna("").astype(str).unique().tolist()
+            for value in df[decision_col].fillna("").astype(str).unique().tolist()
             if value not in allowed
         ]
         if invalid_values:
-            result["issues"].append("invalid_live_recheck_decision:" + ",".join(invalid_values))
+            result["issues"].append("invalid_recheck_decision:" + ",".join(invalid_values))
 
     return result
 

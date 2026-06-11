@@ -186,9 +186,13 @@ def classify_signal(row: dict, config: dict):
         signal = "TRIGGER_CONFIRMED"
 
     # TRIGGER_CONFIRMED requires an executable quote.
-    # Missing execution_quote_quality is tolerated for backward compatibility in older tests.
-    execution_quote_quality = str(row.get("execution_quote_quality") or "").upper().strip()
-    if signal == "TRIGGER_CONFIRMED" and execution_quote_quality == "LOW":
+    # Missing quote or execution quality is treated as unsafe.
+    quote_status = str(row.get("quote_status") or "MISSING").upper().strip()
+    execution_quote_quality = str(row.get("execution_quote_quality") or "LOW").upper().strip()
+
+    if signal == "TRIGGER_CONFIRMED" and (
+        execution_quote_quality != "HIGH" or quote_status != "VALID"
+    ):
         signal = "WATCHLIST"
 
     return signal, []

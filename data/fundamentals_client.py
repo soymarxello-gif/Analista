@@ -10,6 +10,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from engine.data_sources.metadata_fallback import apply_metadata_fallback, build_metadata_providers
+
 try:
     import yfinance as yf
 except Exception:  # pragma: no cover
@@ -91,7 +93,7 @@ def _extract_earnings_date(ticker_obj) -> tuple[str | None, int | None, str]:
     return None, None, "; ".join(warnings)
 
 
-def fetch_ticker_metadata(ticker: str, config: dict) -> dict:
+def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) -> dict:
     """
     Enrich ticker with metadata and tactical fundamentals from yfinance.
     It is intentionally best-effort; missing fields are returned as None.
@@ -104,17 +106,17 @@ def fetch_ticker_metadata(ticker: str, config: dict) -> dict:
 
     cached = _load_cache(ticker, ttl)
     if cached is not None:
-        cached["metadata_source"] = "cache"
-        return cached
+        cached["metadata_cache_hit"] = True
+        return apply_metadata_fallback(cached, config, fallback_providers)
 
     if yf is None:
-        return {
+        return apply_metadata_fallback({
             "ticker": ticker,
             "metadata_source": "none",
             "fundamental_warning": "yfinance no disponible",
-        }
+        }, config, fallback_providers)
 
-    data = {"ticker": ticker, "metadata_source": "yfinance"}
+    data = {"ticker": ticker, "metadata_source": "yfinance", "quote_source": "yfinance"}
     warnings = []
 
     try:
@@ -210,6 +212,7 @@ def fetch_ticker_metadata(ticker: str, config: dict) -> dict:
         warnings.append(f"metadata general falló: {exc}")
 
     data["fundamental_warning"] = "; ".join([w for w in warnings if w])
+    data = apply_metadata_fallback(data, config, fallback_providers)
     _save_cache(ticker, data)
     return data
 
@@ -231,12 +234,19 @@ def enrich_metadata(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     tickers = out["ticker"].dropna().astype(str).str.upper().unique().tolist()[:max_tickers]
 
     rows = []
+    fallback_providers = build_metadata_providers(config)
     for i, ticker in enumerate(tickers, start=1):
         try:
-            rows.append(fetch_ticker_metadata(ticker, config))
+            rows.append(fetch_ticker_metadata(ticker, config, fallback_providers))
         except Exception as exc:
             logger.warning(f"Metadata falló para {ticker}: {exc}")
-            rows.append({"ticker": ticker, "fundamental_warning": str(exc), "metadata_source": "error"})
+            rows.append(
+                apply_metadata_fallback(
+                    {"ticker": ticker, "fundamental_warning": str(exc), "metadata_source": "error"},
+                    config,
+                    fallback_providers,
+                )
+            )
 
     meta = pd.DataFrame(rows)
     if meta.empty:
@@ -244,7 +254,28 @@ def enrich_metadata(df: pd.DataFrame, config: dict) -> pd.DataFrame:
 
     # Merge with suffix, then coalesce original columns with enriched columns.
     merged = out.merge(meta, on="ticker", how="left", suffixes=("", "_enriched"))
-    for col in ["company", "exchange", "quote_type", "sector", "industry", "market_cap", "price", "spread_pct"]:
+    for col in [
+        "company",
+        "exchange",
+        "quote_type",
+        "sector",
+        "industry",
+        "market_cap",
+        "price",
+        "spread_pct",
+        "earnings_date",
+        "next_earnings_date",
+        "quote_source",
+        "metadata_source",
+        "sector_source",
+        "industry_source",
+        "market_cap_source",
+        "earnings_source",
+        "metadata_fallback_used",
+        "metadata_fallback_sources",
+        "metadata_fallback_notes",
+        "metadata_confidence",
+    ]:
         enriched_col = f"{col}_enriched"
         if enriched_col in merged.columns:
             if col not in merged.columns:

@@ -196,6 +196,45 @@ def _normalize_quality_gate_status(data: dict) -> dict:
     }
 
 
+def _normalize_live_quote_recheck_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "rows": 0,
+            "execution_ok_review_manually": 0,
+            "keep_recheck": 0,
+            "watchlist_monitor": 0,
+            "avoid_execution_risk": 0,
+            "data_unavailable": 0,
+        }
+
+    decisions = data.get("decisions", {}) or {}
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "rows": _safe_int(data.get("rows"), 0),
+        "execution_ok_review_manually": _safe_int(
+            data.get("execution_ok_review_manually", decisions.get("EXECUTION_OK_REVIEW_MANUALLY")),
+            0,
+        ),
+        "keep_recheck": _safe_int(data.get("keep_recheck", decisions.get("KEEP_RECHECK")), 0),
+        "watchlist_monitor": _safe_int(
+            data.get("watchlist_monitor", decisions.get("WATCHLIST_MONITOR")),
+            0,
+        ),
+        "avoid_execution_risk": _safe_int(
+            data.get("avoid_execution_risk", decisions.get("AVOID_EXECUTION_RISK")),
+            0,
+        ),
+        "data_unavailable": _safe_int(
+            data.get("data_unavailable", decisions.get("DATA_UNAVAILABLE")),
+            0,
+        ),
+    }
+
+
 def _parse_status_from_summary(text: str) -> str:
     for line in text.splitlines():
         line = line.strip()
@@ -383,6 +422,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     preflight_json_path = reports / "project_preflight_latest.json"
     encoding_audit_json_path = reports / "encoding_audit_latest.json"
     quality_gate_json_path = reports / "daily_quality_gate_latest.json"
+    live_quote_recheck_json_path = reports / "live_quote_recheck_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -395,6 +435,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     preflight_data = _normalize_preflight_status(_load_json(preflight_json_path))
     encoding_audit_data = _normalize_encoding_audit_status(_load_json(encoding_audit_json_path))
     quality_gate_data = _normalize_quality_gate_status(_load_json(quality_gate_json_path))
+    live_quote_recheck_data = _normalize_live_quote_recheck_status(
+        _load_json(live_quote_recheck_json_path)
+    )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
     git_dirty = bool(manifest_data.get("git", {}).get("dirty", False))
@@ -417,6 +460,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "daily_operator_index.md",
         reports / "daily_quality_gate_latest.json",
         reports / "daily_quality_gate_latest.md",
+        reports / "live_quote_recheck_latest.csv",
+        reports / "live_quote_recheck_latest.md",
+        reports / "live_quote_recheck_latest.json",
         reports / "project_preflight_latest.json",
         reports / "project_preflight_latest.md",
         reports / "daily_run_manifest_latest.json",
@@ -457,7 +503,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "preflight": preflight_data,
         "encoding_audit": encoding_audit_data,
         "quality_gate": quality_gate_data,
-        "quality_gate": quality_gate_data,
+        "live_quote_recheck": live_quote_recheck_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -592,7 +638,33 @@ def build_daily_operator_index_markdown(data: dict) -> str:
             lines.append("- Estado desconocido: revisar `reports/daily_quality_gate_latest.md`.")
 
     lines.append("")
-    
+
+    live_recheck = data.get("live_quote_recheck", {}) or {}
+    live_recheck_available = bool(live_recheck.get("available", False))
+
+    lines.append("## Live quote recheck")
+    lines.append("")
+
+    if not live_recheck_available:
+        lines.append("- No hay reporte de live quote recheck disponible.")
+        lines.append("- Ejecutar `python .\\tools\\live_quote_recheck.py` si hay candidatos que validar.")
+    else:
+        lines.append(f"- status: {live_recheck.get('status', 'UNKNOWN')}")
+        lines.append(f"- rows: {live_recheck.get('rows', 0)}")
+        lines.append(
+            f"- execution_ok_review_manually: {live_recheck.get('execution_ok_review_manually', 0)}"
+        )
+        lines.append(f"- keep_recheck: {live_recheck.get('keep_recheck', 0)}")
+        lines.append(f"- watchlist_monitor: {live_recheck.get('watchlist_monitor', 0)}")
+        lines.append(f"- avoid_execution_risk: {live_recheck.get('avoid_execution_risk', 0)}")
+        lines.append(f"- data_unavailable: {live_recheck.get('data_unavailable', 0)}")
+        lines.append("- report: reports/live_quote_recheck_latest.md")
+        lines.append(
+            "- EXECUTION_OK_REVIEW_MANUALLY no equivale a TRIGGER_CONFIRMED ni a entrada automatica."
+        )
+
+    lines.append("")
+
     lines.append("## Decision gate")
     lines.append("")
 
@@ -629,6 +701,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("9. `reports/trade_outcome_analytics_latest.md`")
     lines.append("10. `reports/reports_cleanup_latest.md`")
     lines.append("11. `reports/latest_scan_audited.csv`")
+    lines.append("12. `reports/live_quote_recheck_latest.md`")
     lines.append("")
 
     lines.append("## Señales")
@@ -736,49 +809,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
     
-    encoding_audit = data.get("encoding_audit", {}) or {}
-    encoding_available = bool(encoding_audit.get("available", False))
-    encoding_status = str(encoding_audit.get("status", "UNKNOWN")).upper()
-    encoding_files_scanned = int(encoding_audit.get("files_scanned", 0) or 0)
-    encoding_warn_files = int(encoding_audit.get("warn_files", 0) or 0)
-    encoding_error_files = int(encoding_audit.get("error_files", 0) or 0)
-    encoding_total_marker_hits = int(encoding_audit.get("total_marker_hits", 0) or 0)
-
-    lines.append("## Auditoría de encoding")
-    encoding = data.get("encoding_audit", {}) or {}
-
-    lines.append("## Auditoría de encoding")
-    lines.append("")
-
-    if not encoding.get("available", False):
-        lines.append("- No hay reporte de encoding disponible.")
-        lines.append("- Ejecutar `python .\\tools\\encoding_audit.py` para generar diagnóstico.")
-    else:
-        encoding_status = str(encoding.get("status", "UNKNOWN")).upper()
-        files_scanned = encoding.get("files_scanned", 0)
-        warn_files = encoding.get("warn_files", 0)
-        error_files = encoding.get("error_files", 0)
-        total_marker_hits = encoding.get("total_marker_hits", 0)
-
-        lines.append(f"- status: {encoding_status}")
-        lines.append(f"- files_scanned: {files_scanned}")
-        lines.append(f"- warn_files: {warn_files}")
-        lines.append(f"- error_files: {error_files}")
-        lines.append(f"- total_marker_hits: {total_marker_hits}")
-        lines.append("- report: reports/encoding_audit_latest.md")
-
-        if encoding_status == "PASS":
-            lines.append("- Estado PASS: no se detectaron marcadores típicos de mojibake.")
-        elif encoding_status == "WARN":
-            lines.append("- Estado WARN: se detectaron textos mal codificados o posibles marcadores de mojibake.")
-            lines.append("- Revisar `reports/encoding_audit_latest.md`.")
-        elif encoding_status == "FAIL":
-            lines.append("- Estado FAIL: hay archivos que no pudieron leerse o auditarse correctamente.")
-            lines.append("- Revisar `reports/encoding_audit_latest.md`.")
-        else:
-            lines.append("- Estado desconocido: revisar `reports/encoding_audit_latest.md`.")
-
-    lines.append("")
+    _append_encoding_audit_section(lines, data)
 
     lines.append("## Daily run manifest")
     lines.append("")

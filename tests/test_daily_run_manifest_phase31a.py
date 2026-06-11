@@ -30,6 +30,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/open_trade_snapshot.py",
         "tools/latest_scan_health.py",
         "tools/source_coverage_audit.py",
+        "tools/live_quote_recheck.py",
     ]
 
     for script in scripts:
@@ -108,6 +109,22 @@ def _make_project(tmp_path: Path) -> Path:
     (reports / "manual_review_top.csv").write_text("ticker\nAAA\n", encoding="utf-8")
     (reports / "manual_review_top.md").write_text("# top\n", encoding="utf-8")
     (reports / "daily_operator_index.md").write_text("# index\n", encoding="utf-8")
+    (reports / "live_quote_recheck_latest.csv").write_text("ticker,recheck_decision\n", encoding="utf-8")
+    (reports / "live_quote_recheck_latest.md").write_text("# live\n", encoding="utf-8")
+    (reports / "live_quote_recheck_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 0,
+                "execution_ok_review_manually": 0,
+                "keep_recheck": 0,
+                "watchlist_monitor": 0,
+                "avoid_execution_risk": 0,
+                "data_unavailable": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
     (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
     (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")

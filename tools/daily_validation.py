@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from datetime import datetime
@@ -19,6 +20,7 @@ from tools.history_evolution import save_history_evolution_reports
 from tools.setup_persistence_score import save_setup_persistence_reports
 from tools.manual_review_persistence_enricher import save_enriched_manual_review_reports
 from tools.manual_review_top import save_manual_review_top_reports
+from tools.daily_operator_index import save_daily_operator_index
 
 DEFAULT_STEPS = [
     {
@@ -110,6 +112,23 @@ POST_SUMMARY_STEPS = [
         ],
         "required": False,
         "timeout_seconds": 60,
+    },
+    {
+        "name": "live_quote_recheck",
+        "cmd": [
+            sys.executable,
+            "tools/live_quote_recheck.py",
+            "--input-csv",
+            "reports/manual_review_latest.csv",
+            "--csv-out",
+            "reports/live_quote_recheck_latest.csv",
+            "--markdown-out",
+            "reports/live_quote_recheck_latest.md",
+            "--json-out",
+            "reports/live_quote_recheck_latest.json",
+        ],
+        "required": False,
+        "timeout_seconds": 120,
     },
     {
         "name": "daily_run_manifest",
@@ -270,6 +289,9 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "manual_review_top.md",
         ROOT / "reports" / "daily_validation_summary.txt",
         ROOT / "reports" / "daily_operator_index.md",
+        ROOT / "reports" / "live_quote_recheck_latest.csv",
+        ROOT / "reports" / "live_quote_recheck_latest.md",
+        ROOT / "reports" / "live_quote_recheck_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.md",
         ROOT / "reports" / "encoding_audit_latest.json",
@@ -294,6 +316,7 @@ def collect_output_status() -> dict:
 def collect_scan_snapshot() -> dict:
     scan_path = ROOT / "reports" / "latest_scan_audited.csv"
     manual_path = ROOT / "reports" / "manual_review_latest.csv"
+    live_recheck_path = ROOT / "reports" / "live_quote_recheck_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -301,6 +324,15 @@ def collect_scan_snapshot() -> dict:
         "signals": {},
         "recommendations": {},
         "quote_recheck_priority": {},
+        "live_quote_recheck": {
+            "status": "MISSING",
+            "rows": 0,
+            "execution_ok_review_manually": 0,
+            "keep_recheck": 0,
+            "watchlist_monitor": 0,
+            "avoid_execution_risk": 0,
+            "data_unavailable": 0,
+        },
     }
 
     if scan_path.exists():
@@ -338,6 +370,22 @@ def collect_scan_snapshot() -> dict:
                 .value_counts()
                 .to_dict()
             )
+
+    if live_recheck_path.exists():
+        try:
+            live_data = json.loads(live_recheck_path.read_text(encoding="utf-8"))
+        except Exception:
+            live_data = {}
+
+        snapshot["live_quote_recheck"] = {
+            "status": str(live_data.get("status", "UNKNOWN")),
+            "rows": int(live_data.get("rows", 0) or 0),
+            "execution_ok_review_manually": int(live_data.get("execution_ok_review_manually", 0) or 0),
+            "keep_recheck": int(live_data.get("keep_recheck", 0) or 0),
+            "watchlist_monitor": int(live_data.get("watchlist_monitor", 0) or 0),
+            "avoid_execution_risk": int(live_data.get("avoid_execution_risk", 0) or 0),
+            "data_unavailable": int(live_data.get("data_unavailable", 0) or 0),
+        }
 
     return snapshot
 
@@ -459,6 +507,7 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
 
     if recheck_count > 0:
         lines.append("- Hay candidatos con RECHECK_LIVE_QUOTE: ejecutar live_quote_recheck antes de considerar operación.")
+        lines.append("- Revisar reporte live: reports/live_quote_recheck_latest.md")
 
     if trigger_count > 0:
         lines.append(f"- Hay {trigger_count} TRIGGER_CONFIRMED: revisar manualmente quote, gráfico, entrada, stop y target.")
@@ -508,6 +557,9 @@ def build_summary_text(
         "reports/setup_persistence_latest.md",
         "reports/trade_outcome_analytics_latest.csv",
         "reports/trade_outcome_analytics_latest.md",
+        "reports/live_quote_recheck_latest.csv",
+        "reports/live_quote_recheck_latest.md",
+        "reports/live_quote_recheck_latest.json",
         "reports/reports_cleanup_latest.json",
         "reports/reports_cleanup_latest.md",
         "reports/daily_run_manifest_latest.json",
@@ -526,6 +578,8 @@ def build_summary_text(
     lines.append(f"- Optional steps failed: {len(optional_failed)}")
     lines.append(f"- Scan rows: {snapshot.get('scan_rows')}")
     lines.append(f"- Manual review rows: {snapshot.get('manual_review_rows')}")
+    live = snapshot.get("live_quote_recheck", {}) or {}
+    lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -589,6 +643,17 @@ def build_summary_text(
     for key, value in snapshot.get("quote_recheck_priority", {}).items():
         lines.append(f"- {key}: {value}")
 
+    live = snapshot.get("live_quote_recheck", {}) or {}
+    lines.append("")
+    lines.append("Live quote recheck:")
+    lines.append(f"- status: {live.get('status')}")
+    lines.append(f"- rows: {live.get('rows')}")
+    lines.append(f"- execution_ok_review_manually: {live.get('execution_ok_review_manually')}")
+    lines.append(f"- keep_recheck: {live.get('keep_recheck')}")
+    lines.append(f"- watchlist_monitor: {live.get('watchlist_monitor')}")
+    lines.append(f"- avoid_execution_risk: {live.get('avoid_execution_risk')}")
+    lines.append(f"- data_unavailable: {live.get('data_unavailable')}")
+
     lines.append("")
     lines.append("[Manual operating reminder]")
     lines.append("- VETO y AVOID no son operables.")
@@ -617,7 +682,17 @@ def run_daily_validation(summary_out: Path) -> int:
     summary_out.parent.mkdir(parents=True, exist_ok=True)
     summary_out.write_text(summary_text, encoding="utf-8")
 
-    post_summary_results = [run_step(step) for step in POST_SUMMARY_STEPS]
+    post_summary_results = []
+    for step in POST_SUMMARY_STEPS:
+        result = run_step(step)
+        post_summary_results.append(result)
+
+        if step.get("name") == "live_quote_recheck" and result.get("passed"):
+            save_daily_operator_index(
+                root=ROOT,
+                output_path=ROOT / "reports" / "daily_operator_index.md",
+            )
+
     results.extend(post_summary_results)
 
     output_status = collect_output_status()
