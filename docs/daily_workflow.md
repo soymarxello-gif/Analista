@@ -26,12 +26,13 @@ This runs the audited scanner, P0 validation, quality gates, optional report bui
 4. `reports/trade_decision_checklist_latest.md`
 5. `reports/trade_candidate_cards_latest.md`
 6. `reports/paper_trading_journal_latest.md`
-7. `reports/manual_review_top.md`
-8. `reports/daily_run_manifest_latest.md`
-9. `reports/release_readiness_latest.md`
-10. `reports/daily_validation_summary.txt`
-11. `reports/project_preflight_latest.md`
-12. `reports/encoding_audit_latest.md`
+7. `reports/paper_trade_followup_latest.md`
+8. `reports/manual_review_top.md`
+9. `reports/daily_run_manifest_latest.md`
+10. `reports/release_readiness_latest.md`
+11. `reports/daily_validation_summary.txt`
+12. `reports/project_preflight_latest.md`
+13. `reports/encoding_audit_latest.md`
 
 Stop immediately if a required step is `FAIL`.
 
@@ -130,7 +131,25 @@ reports/paper_trading_journal_latest.json
 
 Manual decisions allowed in the journal are `PENDING_REVIEW`, `PAPER_WATCH`, `PAPER_ENTER`, `SKIP`, `BLOCKED`, and `NEEDS_LIVE_QUOTE_RECHECK`. `PAPER_ENTER` is simulated only; it creates no broker order and does not modify scanner signals, scores, config, weights, or thresholds.
 
-## 9. Calibration
+## 9. Paper Trade Follow-Up
+
+Generate daily follow-up for open paper trades:
+
+```powershell
+python .\tools\paper_trade_followup.py
+```
+
+Review:
+
+```text
+reports/paper_trade_followup_latest.md
+reports/paper_trade_followup_latest.csv
+reports/paper_trade_followup_latest.json
+```
+
+The follow-up report checks latest price versus simulated entry, stop, and target. It may flag hold, near stop, near target, stop hit, target hit, invalidated review, or data unavailable. It does not close paper trades automatically and does not modify `data/paper_trading_journal.csv`.
+
+## 10. Calibration
 
 Refresh score calibration:
 
@@ -148,13 +167,13 @@ reports/calibration_recommendations_latest.md
 
 Calibration is observational. Do not change weights or thresholds from insufficient samples.
 
-## 10. Validate Tests
+## 11. Validate Tests
 
 ```powershell
 python -m pytest -q
 ```
 
-## 11. Review Git
+## 12. Review Git
 
 ```powershell
 git -c safe.directory="*" status --short
@@ -162,7 +181,7 @@ git -c safe.directory="*" status --short
 
 Generated reports and caches should remain ignored. Version code, tests, and durable documentation only.
 
-## 12. Release Readiness Audit
+## 13. Release Readiness Audit
 
 Before closing a version, run:
 
@@ -179,7 +198,7 @@ reports/release_readiness_latest.json
 
 `FAIL` blocks release closure. `WARN` requires review, usually for optional generated reports or Git hygiene around runtime artifacts.
 
-## 13. Close A Phase With Git
+## 14. Close A Phase With Git
 
 1. Confirm `python -m pytest -q` passes.
 2. Confirm `python .\tools\daily_validation.py` passes or returns controlled warnings only.

@@ -49,10 +49,11 @@ git -c safe.directory="*" status --short
 4. `reports/trade_decision_checklist_latest.md`
 5. `reports/trade_candidate_cards_latest.md`
 6. `reports/paper_trading_journal_latest.md`
-7. `reports/manual_review_top.md`
-8. `reports/daily_run_manifest_latest.md`
-9. `reports/release_readiness_latest.md`
-10. `reports/daily_validation_summary.txt`
+7. `reports/paper_trade_followup_latest.md`
+8. `reports/manual_review_top.md`
+9. `reports/daily_run_manifest_latest.md`
+10. `reports/release_readiness_latest.md`
+11. `reports/daily_validation_summary.txt`
 
 ## Signals
 
@@ -106,6 +107,22 @@ The tool writes:
 Allowed manual decisions are `PENDING_REVIEW`, `PAPER_WATCH`, `PAPER_ENTER`, `SKIP`, `BLOCKED`, and `NEEDS_LIVE_QUOTE_RECHECK`. `PAPER_ENTER` is paper-only and requires simulated entry, stop, and target levels. Candidates marked `BLOCKED` cannot be paper-entered, and candidates marked `NEEDS_LIVE_QUOTE_RECHECK` require explicit live quote confirmation before any simulated entry.
 
 The journal does not connect to a broker and does not modify scanner outputs, scores, config, weights, thresholds, or signals.
+
+## Paper Trade Follow-Up
+
+`paper_trade_followup` reviews open paper trades against latest price, simulated entry, stop, and target.
+
+```powershell
+python .\tools\paper_trade_followup.py
+```
+
+The tool writes:
+
+- `reports/paper_trade_followup_latest.csv`
+- `reports/paper_trade_followup_latest.md`
+- `reports/paper_trade_followup_latest.json`
+
+Follow-up decisions are review labels only: hold paper, review near stop, review near target, stop hit review close, target hit review close, data unavailable, or invalidated review. The tool does not close trades automatically, does not modify `data/paper_trading_journal.csv`, does not connect to a broker, and does not send orders.
 
 ## Live Quote Recheck
 

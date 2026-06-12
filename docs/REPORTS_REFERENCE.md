@@ -64,6 +64,12 @@ Paper trading journal snapshot and summary. It mirrors `data/paper_trading_journ
 
 This report is paper-only. It does not create real orders, broker instructions, scanner signals, score changes, config changes, weights, or threshold changes.
 
+### `reports/paper_trade_followup_latest.*`
+
+Daily follow-up for open paper trades. It compares the latest quote against simulated entry, stop, and target, then labels the paper trade for manual review.
+
+The report does not close paper trades automatically, does not modify `data/paper_trading_journal.csv`, does not connect to a broker, and does not send orders.
+
 ## Calibration And Outcomes
 
 ### `reports/trade_score_calibration_latest.*`

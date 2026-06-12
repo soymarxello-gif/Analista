@@ -317,6 +317,33 @@ def _normalize_paper_trading_journal_status(data: dict) -> dict:
     }
 
 
+def _normalize_paper_trade_followup_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "rows": 0,
+            "hold_paper": 0,
+            "review_near_stop": 0,
+            "review_near_target": 0,
+            "stop_hit_review_close": 0,
+            "target_hit_review_close": 0,
+            "data_unavailable": 0,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "rows": _safe_int(data.get("rows"), 0),
+        "hold_paper": _safe_int(data.get("hold_paper"), 0),
+        "review_near_stop": _safe_int(data.get("review_near_stop"), 0),
+        "review_near_target": _safe_int(data.get("review_near_target"), 0),
+        "stop_hit_review_close": _safe_int(data.get("stop_hit_review_close"), 0),
+        "target_hit_review_close": _safe_int(data.get("target_hit_review_close"), 0),
+        "data_unavailable": _safe_int(data.get("data_unavailable"), 0),
+    }
+
+
 def _normalize_trade_score_calibration_status(data: dict) -> dict:
     if not data:
         return {
@@ -565,6 +592,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     trade_decision_checklist_json_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_json_path = reports / "trade_candidate_cards_latest.json"
     paper_trading_journal_json_path = reports / "paper_trading_journal_latest.json"
+    paper_trade_followup_json_path = reports / "paper_trade_followup_latest.json"
     trade_score_calibration_json_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_json_path = reports / "calibration_recommendations_latest.json"
     release_readiness_json_path = reports / "release_readiness_latest.json"
@@ -591,6 +619,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     paper_trading_journal_data = _normalize_paper_trading_journal_status(
         _load_json(paper_trading_journal_json_path)
+    )
+    paper_trade_followup_data = _normalize_paper_trade_followup_status(
+        _load_json(paper_trade_followup_json_path)
     )
     trade_score_calibration_data = _normalize_trade_score_calibration_status(
         _load_json(trade_score_calibration_json_path)
@@ -643,6 +674,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "paper_trading_journal_latest.csv",
         reports / "paper_trading_journal_latest.md",
         reports / "paper_trading_journal_latest.json",
+        reports / "paper_trade_followup_latest.csv",
+        reports / "paper_trade_followup_latest.md",
+        reports / "paper_trade_followup_latest.json",
         reports / "trade_score_calibration_latest.csv",
         reports / "trade_score_calibration_latest.json",
         reports / "trade_score_calibration_latest.md",
@@ -697,6 +731,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "trade_decision_checklist": trade_decision_checklist_data,
         "trade_candidate_cards": trade_candidate_cards_data,
         "paper_trading_journal": paper_trading_journal_data,
+        "paper_trade_followup": paper_trade_followup_data,
         "trade_score_calibration": trade_score_calibration_data,
         "calibration_recommendations": calibration_recommendations_data,
         "release_readiness": release_readiness_data,
@@ -1001,6 +1036,35 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
 
+    paper_followup = data.get("paper_trade_followup", {}) or {}
+    paper_followup_available = bool(paper_followup.get("available", False))
+
+    lines.append("## Paper trade follow-up")
+    lines.append("")
+
+    if not paper_followup_available:
+        lines.append("- No hay reporte de paper trade follow-up disponible.")
+        lines.append("- Ejecutar `python .\\tools\\paper_trade_followup.py` para generarlo.")
+    else:
+        lines.append(f"- status: {paper_followup.get('status', 'UNKNOWN')}")
+        lines.append(f"- rows: {paper_followup.get('rows', 0)}")
+        lines.append(f"- hold_paper: {paper_followup.get('hold_paper', 0)}")
+        lines.append(f"- review_near_stop: {paper_followup.get('review_near_stop', 0)}")
+        lines.append(f"- review_near_target: {paper_followup.get('review_near_target', 0)}")
+        lines.append(
+            f"- stop_hit_review_close: {paper_followup.get('stop_hit_review_close', 0)}"
+        )
+        lines.append(
+            f"- target_hit_review_close: {paper_followup.get('target_hit_review_close', 0)}"
+        )
+        lines.append(f"- data_unavailable: {paper_followup.get('data_unavailable', 0)}")
+        lines.append("- csv: reports/paper_trade_followup_latest.csv")
+        lines.append("- markdown: reports/paper_trade_followup_latest.md")
+        lines.append("- json: reports/paper_trade_followup_latest.json")
+        lines.append("- Seguimiento paper-only; no cierra posiciones ni modifica el journal.")
+
+    lines.append("")
+
     lines.append("## Decision gate")
     lines.append("")
 
@@ -1041,9 +1105,10 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("13. `reports/trade_decision_checklist_latest.md`")
     lines.append("14. `reports/trade_candidate_cards_latest.md`")
     lines.append("15. `reports/paper_trading_journal_latest.md`")
-    lines.append("16. `reports/trade_score_calibration_latest.md`")
-    lines.append("17. `reports/calibration_recommendations_latest.md`")
-    lines.append("18. `reports/release_readiness_latest.md`")
+    lines.append("16. `reports/paper_trade_followup_latest.md`")
+    lines.append("17. `reports/trade_score_calibration_latest.md`")
+    lines.append("18. `reports/calibration_recommendations_latest.md`")
+    lines.append("19. `reports/release_readiness_latest.md`")
     lines.append("")
 
     lines.append("## Señales")

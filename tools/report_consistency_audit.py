@@ -80,6 +80,34 @@ PAPER_JOURNAL_ALLOWED_DECISIONS = {
     "NEEDS_LIVE_QUOTE_RECHECK",
 }
 
+PAPER_FOLLOWUP_REQUIRED_COLUMNS = [
+    "journal_id",
+    "ticker",
+    "run_date",
+    "manual_decision",
+    "followup_status",
+    "simulated_entry_price",
+    "simulated_stop",
+    "simulated_target",
+    "latest_price",
+    "latest_quote_source",
+    "latest_quote_status",
+    "followup_decision",
+    "followup_reason",
+    "manual_review_required",
+]
+
+PAPER_FOLLOWUP_ALLOWED_DECISIONS = {
+    "HOLD_PAPER",
+    "REVIEW_NEAR_STOP",
+    "REVIEW_NEAR_TARGET",
+    "STOP_HIT_REVIEW_CLOSE",
+    "TARGET_HIT_REVIEW_CLOSE",
+    "DATA_UNAVAILABLE",
+    "INVALIDATED_REVIEW",
+    "NO_OPEN_PAPER_TRADES",
+}
+
 CALIBRATION_REQUIRED_COLUMNS = [
     "group",
     "group_value",
@@ -441,6 +469,43 @@ def audit_paper_trading_journal(path: Path) -> dict:
     return result
 
 
+def audit_paper_trade_followup(path: Path) -> dict:
+    df, error = _load_csv(path)
+
+    result = {
+        "name": "paper_trade_followup_latest",
+        "path": str(path),
+        "rows": int(len(df)),
+        "issues": [],
+        "warnings": [],
+        "optional": True,
+    }
+
+    if error:
+        result["warnings"].append(f"optional_paper_trade_followup_unavailable:{error}")
+        return result
+
+    missing = _missing_columns(df, PAPER_FOLLOWUP_REQUIRED_COLUMNS)
+    if missing:
+        result["issues"].append("missing_columns:" + ",".join(missing))
+
+    if "followup_decision" in df.columns:
+        invalid_decisions = [
+            value
+            for value in df["followup_decision"].fillna("").astype(str).unique().tolist()
+            if value not in PAPER_FOLLOWUP_ALLOWED_DECISIONS
+        ]
+        if invalid_decisions:
+            result["issues"].append("invalid_followup_decision:" + ",".join(invalid_decisions))
+
+    disabled_buy_signal = "_".join(["BUY", "SETUP", "ACTIVE"])
+    rendered = df.astype(str).to_json(orient="records", force_ascii=False).upper()
+    if disabled_buy_signal in rendered:
+        result["issues"].append("disabled_buy_signal_present")
+
+    return result
+
+
 def audit_trade_score_calibration(csv_path: Path, json_path: Path) -> dict:
     df, csv_error = _load_csv(csv_path)
     data, json_error = _load_json(json_path)
@@ -542,6 +607,7 @@ def build_report_consistency_audit(
     checklist_path = reports_dir / "trade_decision_checklist_latest.csv"
     cards_path = reports_dir / "trade_candidate_cards_latest.json"
     paper_journal_path = reports_dir / "paper_trading_journal_latest.csv"
+    paper_followup_path = reports_dir / "paper_trade_followup_latest.csv"
     calibration_csv_path = reports_dir / "trade_score_calibration_latest.csv"
     calibration_json_path = reports_dir / "trade_score_calibration_latest.json"
     calibration_recommendations_path = reports_dir / "calibration_recommendations_latest.json"
@@ -553,6 +619,7 @@ def build_report_consistency_audit(
         audit_trade_decision_checklist(checklist_path),
         audit_trade_candidate_cards(cards_path),
         audit_paper_trading_journal(paper_journal_path),
+        audit_paper_trade_followup(paper_followup_path),
         audit_trade_score_calibration(calibration_csv_path, calibration_json_path),
         audit_calibration_recommendations(calibration_recommendations_path),
     ]

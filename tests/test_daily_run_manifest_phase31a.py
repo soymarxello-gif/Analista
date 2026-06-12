@@ -34,6 +34,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/trade_decision_checklist.py",
         "tools/trade_candidate_cards.py",
         "tools/paper_trading_journal.py",
+        "tools/paper_trade_followup.py",
         "tools/trade_score_calibration.py",
         "tools/calibration_recommendations.py",
         "tools/release_readiness_audit.py",
@@ -178,6 +179,26 @@ def _make_project(tmp_path: Path) -> Path:
                 "paper_enter": 0,
                 "blocked": 0,
                 "needs_live_quote_recheck": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "paper_trade_followup_latest.csv").write_text(
+        "ticker,followup_decision\n",
+        encoding="utf-8",
+    )
+    (reports / "paper_trade_followup_latest.md").write_text("# paper followup\n", encoding="utf-8")
+    (reports / "paper_trade_followup_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 0,
+                "hold_paper": 0,
+                "review_near_stop": 0,
+                "review_near_target": 0,
+                "stop_hit_review_close": 0,
+                "target_hit_review_close": 0,
+                "data_unavailable": 0,
             }
         ),
         encoding="utf-8",
