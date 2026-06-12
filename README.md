@@ -1,144 +1,99 @@
 # Analista
 
-Scanner MVP avanzado para detectar setups **long-only** de swing trading en acciones comunes estadounidenses.
+Analista is a conservative, auditable scanner for long-only swing trading candidates in US-listed stocks and ETFs. It generates reports for manual review; it does not place orders, does not automate purchases, and does not replace operator judgment.
 
-## Reglas operativas
+## Quick Start
 
-- Solo acciones comunes USA.
-- Solo posiciones largas.
-- Horizonte operativo: 4 a 21 días.
-- ETFs excluidos como activos operables.
-- ETFs/índices solo como benchmarks de mercado.
-- Yahoo/yfinance como fuente principal.
-- Opciones se usan solo como confirmación de flujo, no como activo operable.
+From PowerShell in the project root:
 
-## Arquitectura lógica
+```powershell
+.\.venv\Scripts\Activate.ps1
+python .\tools\daily_validation.py
+```
+
+Then review:
 
 ```text
-Yahoo/yfinance screener
-→ validación de universo
-→ metadata/fundamentales
-→ revalidación post-metadata
-→ precios OHLCV
-→ indicadores técnicos
-→ liquidez
-→ régimen de mercado
-→ rotación sectorial
-→ fuerza relativa
-→ setups
-→ riesgo/beneficio ATR
-→ opciones put/call
-→ scoring final
-→ clasificación de señal
-→ CSV/JSON/dashboard
+reports/daily_operator_index.md
+reports/daily_quality_gate_latest.md
+reports/live_quote_recheck_latest.md
+reports/trade_decision_checklist_latest.md
+reports/trade_candidate_cards_latest.md
+reports/manual_review_top.md
+reports/daily_run_manifest_latest.md
 ```
 
-## Instalación
+## Main Commands
+
+Run the full daily workflow:
 
 ```powershell
-cd "C:\Users\El otro Yo\Projects\ChatGPT\Analista"
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install --upgrade pip
-pip install -r requirements.txt
+python .\tools\daily_validation.py
 ```
 
-## Ejecución
+Validate tests:
 
 ```powershell
-python run_scanner.py --verbose
+python -m pytest -q
 ```
 
-Con límite de candidatos:
+Run live quote recheck:
 
 ```powershell
-python run_scanner.py --max-candidates 300 --verbose
+python .\tools\live_quote_recheck.py
 ```
 
-Reporte específico con opciones:
+Generate the manual decision checklist:
 
 ```powershell
-python run_scanner.py --max-candidates 30 --verbose --csv-out reports/latest_scan_options.csv --json-out reports/latest_scan_options.json
+python .\tools\trade_decision_checklist.py
 ```
 
-## Dashboard
+Generate candidate cards:
 
 ```powershell
-streamlit run ui/dashboard.py
+python .\tools\trade_candidate_cards.py
 ```
 
-El dashboard permite seleccionar CSVs desde:
-
-```text
-reports/*.csv
-reports/history/*.csv
-```
-
-## Señales
-
-| Señal | Lectura |
-|---|---|
-| `BUY_SETUP_ACTIVE` | Setup confirmado, score alto y R:R suficiente |
-| `READY_WAIT_TRIGGER` | Buen candidato, falta confirmación |
-| `WATCHLIST` | Interesante, pero incompleto |
-| `AVOID` | Score o estructura débil |
-| `VETO` | Falla crítica de liquidez, tendencia, R:R, setup o earnings cercano |
-
-## Opciones / Put-Call Flow
-
-Columnas principales:
-
-| Columna | Descripción |
-|---|---|
-| `options_score` | Score 0–1 de confirmación por opciones |
-| `options_bias` | `BULLISH`, `NEUTRAL`, `BEARISH`, `NEUTRAL_NO_DATA` |
-| `options_confidence` | Confianza según liquidez de opciones |
-| `put_call_volume_ratio` | Volumen puts / calls |
-| `put_call_oi_ratio` | Open interest puts / calls |
-| `call_volume_share` | Participación de calls en volumen total |
-| `near_call_oi_share` | Dominancia de calls cerca del precio |
-| `max_call_oi_strike` | Strike con mayor OI de calls |
-| `max_put_oi_strike` | Strike con mayor OI de puts |
-| `max_pain_approx` | Max pain aproximado |
-
-Regla operativa:
-
-```text
-Técnico fuerte + RS fuerte + volumen fuerte + opciones bullish = mayor confianza.
-Técnico fuerte + opciones bearish = baja prioridad o watchlist.
-Opciones bullish + técnico débil = no compra.
-Put/call extremadamente bajo + precio extendido = posible crowded trade.
-```
-
-## Validación local
+Run calibration reports:
 
 ```powershell
-python -m compileall .
-python tools/validate_project.py
+python .\tools\trade_score_calibration.py
+python .\tools\calibration_recommendations.py
 ```
 
-## Limpieza recomendada
+Review Git state:
 
-No subir al repositorio:
-
-```text
-.venv/
-cache/
-logs/
-reports/
-__pycache__/
+```powershell
+git -c safe.directory="*" status --short
 ```
 
-Estos paths están cubiertos por `.gitignore`.
+## Safety Summary
 
-## Limitaciones actuales
+- No compra automática.
+- `BUY_SETUP_ACTIVE` remains disabled.
+- `VETO` and `AVOID` are not operable.
+- `WATCHLIST` is monitoring.
+- `RECHECK_LIVE_QUOTE` is not an entry.
+- `TRIGGER_CONFIRMED` requires `quote_status = VALID` and `execution_quote_quality = HIGH`.
+- `HIGH_QUALITY_REVIEW` is for manual review only.
+- Options and institutional flow are contextual, conservative, and not automatic triggers.
+- Calibration does not change weights or thresholds automatically.
 
-- El screener usa canales predefinidos de yfinance; todavía no usa filtros Yahoo custom avanzados.
-- Las métricas de opciones son heurísticas, no cálculo real de gamma exposure.
-- El R:R usa ATR y máximos recientes; todavía no modela resistencias por pivotes/volumen.
-- El sentimiento contrarian sigue como placeholder neutral.
-- No ejecuta órdenes ni reemplaza validación manual.
+## Documentation
 
-## Advertencia
+- [Operating Manual](docs/OPERATING_MANUAL.md)
+- [Daily Workflow](docs/DAILY_WORKFLOW.md)
+- [Reports Reference](docs/REPORTS_REFERENCE.md)
+- [Safety Rules](docs/SAFETY_RULES.md)
+- [Calibration Guide](docs/CALIBRATION_GUIDE.md)
 
-Este software es una herramienta analítica. No ejecuta órdenes, no constituye asesoría financiera y requiere validación manual.
+Older runbook files may remain for compatibility, but the files above are the Phase 37A operating documentation.
+
+## Generated Artifacts
+
+Most files in `reports/`, `cache/`, `logs/`, `.pytest_cache/`, and `__pycache__/` are generated artifacts and should not be versioned unless explicitly selected as stable references.
+
+## Disclaimer
+
+Analista is analytical software for manual decision support. It is not financial advice and does not execute trades.

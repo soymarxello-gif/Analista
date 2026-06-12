@@ -1,0 +1,98 @@
+# Analista - Reports Reference
+
+Reports are generated artifacts for manual review and auditability. Most files under `reports/` are runtime outputs and should not be versioned unless explicitly chosen as stable references.
+
+## Core Daily Reports
+
+### `reports/daily_validation_summary.txt`
+
+End-to-end daily run summary. Shows required and optional step status, output file status, scan snapshot, quote recheck summary, checklist summary, candidate cards summary, calibration summary, and operational next steps.
+
+### `reports/daily_operator_index.md`
+
+Primary operator index. Open this first after the daily run. It links the key reports and summarizes quality gate, calibration, live quote recheck, checklist, candidate cards, signals, recommendations, options flow, and manifest status.
+
+### `reports/daily_quality_gate_latest.*`
+
+Manual-review gate. Use it to identify whether manual review is allowed, reinforced, or blocked. A `FAIL` here stops operational use of candidates.
+
+### `reports/daily_run_manifest_latest.*`
+
+Run manifest with environment, Git status, script file hashes, report file presence, and scan snapshot. Use it for reproducibility and audit trail.
+
+### `reports/project_preflight_latest.*`
+
+Project structure and writeability check. It verifies required folders, required scripts, optional reports, Python environment, and report directory write access.
+
+### `reports/encoding_audit_latest.*`
+
+Encoding and mojibake audit for generated reports. Use it before sharing reports externally.
+
+## Scanner Outputs
+
+### `reports/latest_scan_audited.*`
+
+Full audited scanner output. Contains all candidates after universe, metadata, technical indicators, data quality, quote quality, options context, scoring, signals, recommendations, and audit columns.
+
+### `reports/manual_review_latest.*`
+
+Filtered manual-review set. This is not an execution list; it is a curated report for human review.
+
+### `reports/manual_review_top.*`
+
+Prioritized subset of manual-review candidates. Open after daily operator index and quality gate.
+
+## Execution Review Reports
+
+### `reports/live_quote_recheck_latest.*`
+
+Live quote validation for candidates needing execution-quality review. It checks live price, bid, ask, spread, quote status, execution quote quality, price versus entry, and manual review requirement.
+
+The output decision does not create `TRIGGER_CONFIRMED`; it only informs human review.
+
+### `reports/trade_decision_checklist_latest.*`
+
+Checklist generated from current candidates. It classifies each candidate as blocked, needing live quote recheck, manual review, or high-quality manual review.
+
+### `reports/trade_candidate_cards_latest.*`
+
+Per-candidate manual card. Each card includes signal, recommendation, setup, sector, scores, options context, quote quality, entry, stop, target, R/R, warnings, blockers, required actions, and a pending manual decision note.
+
+## Calibration And Outcomes
+
+### `reports/trade_score_calibration_latest.*`
+
+Closed-trade calibration report. Groups results by checklist status, setup type, signal, recommendation, score buckets, options bias, options confidence, and sector when available.
+
+Key fields include closed trades, win rate, average PnL, average R multiple, total R multiple, holding days, and `sample_size_warning`.
+
+### `reports/calibration_recommendations_latest.*`
+
+Observational calibration recommendations based on trade score calibration. These recommendations are review prompts only. They do not modify scoring, weights, thresholds, scanner logic, or signals.
+
+### `reports/trade_outcome_analytics_latest.*`
+
+Outcome analytics for closed trades. This is the broader performance report used as input context for calibration.
+
+## Maintenance Reports
+
+### `reports/reports_cleanup_latest.*`
+
+Dry-run or apply report for temporary report cleanup. By default it is diagnostic. Use `--apply` only when intentionally moving temporary report files.
+
+## Generated Files And Version Control
+
+Generated files usually include:
+
+- `reports/*.csv`
+- `reports/*.json`
+- `reports/*.md`
+- `reports/*.txt`
+- `reports/history/*`
+- `reports/audits/*`
+- `cache/*`
+- `logs/*`
+- `.pytest_cache/*`
+- `__pycache__/*`
+
+These are runtime artifacts. Keep durable source code, tests, configuration, and documentation versioned; keep generated reports ignored unless a specific reference artifact is intentionally committed.
