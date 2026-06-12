@@ -28,6 +28,7 @@ KEY_SCRIPT_PATHS = [
     "tools/latest_scan_health.py",
     "tools/source_coverage_audit.py",
     "tools/live_quote_recheck.py",
+    "tools/trade_decision_checklist.py",
 ]
 
 
@@ -45,6 +46,9 @@ KEY_REPORT_PATHS = [
     "reports/live_quote_recheck_latest.csv",
     "reports/live_quote_recheck_latest.md",
     "reports/live_quote_recheck_latest.json",
+    "reports/trade_decision_checklist_latest.csv",
+    "reports/trade_decision_checklist_latest.md",
+    "reports/trade_decision_checklist_latest.json",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -300,6 +304,7 @@ def collect_daily_run_manifest(
     latest_scan_path = reports / "latest_scan_audited.csv"
     manual_review_path = reports / "manual_review_latest.csv"
     live_quote_recheck_path = reports / "live_quote_recheck_latest.json"
+    trade_decision_checklist_path = reports / "trade_decision_checklist_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -357,6 +362,7 @@ def collect_daily_run_manifest(
             or _safe_value_counts(latest_scan_path, "options_data_available"),
             "options_error": _safe_value_counts(latest_scan_path, "options_error"),
             "live_quote_recheck": _load_json(live_quote_recheck_path),
+            "trade_decision_checklist": _load_json(trade_decision_checklist_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -493,6 +499,16 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- keep_recheck: {live_recheck.get('keep_recheck', 0)}")
     lines.append(f"- avoid_execution_risk: {live_recheck.get('avoid_execution_risk', 0)}")
     lines.append(f"- data_unavailable: {live_recheck.get('data_unavailable', 0)}")
+    lines.append("")
+
+    checklist = scan.get("trade_decision_checklist", {}) or {}
+    lines.append("Trade decision checklist:")
+    lines.append(f"- status: {checklist.get('status', 'MISSING')}")
+    lines.append(f"- rows: {checklist.get('rows', 0)}")
+    lines.append(f"- blocked: {checklist.get('blocked', 0)}")
+    lines.append(f"- needs_live_quote_recheck: {checklist.get('needs_live_quote_recheck', 0)}")
+    lines.append(f"- review_manually: {checklist.get('review_manually', 0)}")
+    lines.append(f"- high_quality_review: {checklist.get('high_quality_review', 0)}")
     lines.append("")
 
     lines.append("## Script files")

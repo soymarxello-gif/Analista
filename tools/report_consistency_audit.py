@@ -42,6 +42,23 @@ LIVE_RECHECK_REQUIRED_COLUMNS = [
     "live_execution_quote_quality",
 ]
 
+CHECKLIST_REQUIRED_COLUMNS = [
+    "ticker",
+    "signal",
+    "recommendation",
+    "checklist_status",
+    "checklist_score",
+    "checklist_blockers",
+    "checklist_warnings",
+]
+
+CHECKLIST_ALLOWED_STATUSES = {
+    "BLOCKED",
+    "NEEDS_LIVE_QUOTE_RECHECK",
+    "REVIEW_MANUALLY",
+    "HIGH_QUALITY_REVIEW",
+}
+
 
 def _safe_text(value) -> str:
     if value is None:
@@ -240,17 +257,55 @@ def audit_live_quote_recheck(path: Path) -> dict:
     return result
 
 
+def audit_trade_decision_checklist(path: Path) -> dict:
+    df, error = _load_csv(path)
+
+    result = {
+        "name": "trade_decision_checklist_latest",
+        "path": str(path),
+        "rows": int(len(df)),
+        "issues": [],
+        "warnings": [],
+        "optional": True,
+    }
+
+    if error:
+        result["warnings"].append(f"optional_trade_decision_checklist_unavailable:{error}")
+        return result
+
+    if df.empty:
+        result["warnings"].append("optional_trade_decision_checklist_empty")
+        return result
+
+    missing = _missing_columns(df, CHECKLIST_REQUIRED_COLUMNS)
+    if missing:
+        result["issues"].append("missing_columns:" + ",".join(missing))
+
+    if "checklist_status" in df.columns:
+        invalid_values = [
+            value
+            for value in df["checklist_status"].fillna("").astype(str).unique().tolist()
+            if value not in CHECKLIST_ALLOWED_STATUSES
+        ]
+        if invalid_values:
+            result["issues"].append("invalid_checklist_status:" + ",".join(invalid_values))
+
+    return result
+
+
 def build_report_consistency_audit(
     reports_dir: Path,
 ) -> dict:
     manual_path = reports_dir / "manual_review_latest.csv"
     top_path = reports_dir / "manual_review_top.csv"
     live_path = reports_dir / "live_quote_recheck_latest.csv"
+    checklist_path = reports_dir / "trade_decision_checklist_latest.csv"
 
     checks = [
         audit_manual_review_latest(manual_path),
         audit_manual_review_top(top_path, manual_path),
         audit_live_quote_recheck(live_path),
+        audit_trade_decision_checklist(checklist_path),
     ]
 
     issues = []

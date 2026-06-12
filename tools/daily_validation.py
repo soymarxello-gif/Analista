@@ -20,7 +20,6 @@ from tools.history_evolution import save_history_evolution_reports
 from tools.setup_persistence_score import save_setup_persistence_reports
 from tools.manual_review_persistence_enricher import save_enriched_manual_review_reports
 from tools.manual_review_top import save_manual_review_top_reports
-from tools.daily_operator_index import save_daily_operator_index
 
 DEFAULT_STEPS = [
     {
@@ -103,17 +102,6 @@ DEFAULT_STEPS = [
 
 POST_SUMMARY_STEPS = [
     {
-        "name": "daily_operator_index",
-        "cmd": [
-            sys.executable,
-            "tools/daily_operator_index.py",
-            "--output-path",
-            "reports/daily_operator_index.md",
-        ],
-        "required": False,
-        "timeout_seconds": 60,
-    },
-    {
         "name": "live_quote_recheck",
         "cmd": [
             sys.executable,
@@ -129,6 +117,32 @@ POST_SUMMARY_STEPS = [
         ],
         "required": False,
         "timeout_seconds": 120,
+    },
+    {
+        "name": "trade_decision_checklist",
+        "cmd": [
+            sys.executable,
+            "tools/trade_decision_checklist.py",
+            "--csv-out",
+            "reports/trade_decision_checklist_latest.csv",
+            "--markdown-out",
+            "reports/trade_decision_checklist_latest.md",
+            "--json-out",
+            "reports/trade_decision_checklist_latest.json",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "daily_operator_index",
+        "cmd": [
+            sys.executable,
+            "tools/daily_operator_index.py",
+            "--output-path",
+            "reports/daily_operator_index.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
     },
     {
         "name": "daily_run_manifest",
@@ -292,6 +306,9 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "live_quote_recheck_latest.csv",
         ROOT / "reports" / "live_quote_recheck_latest.md",
         ROOT / "reports" / "live_quote_recheck_latest.json",
+        ROOT / "reports" / "trade_decision_checklist_latest.csv",
+        ROOT / "reports" / "trade_decision_checklist_latest.md",
+        ROOT / "reports" / "trade_decision_checklist_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.md",
         ROOT / "reports" / "encoding_audit_latest.json",
@@ -317,6 +334,7 @@ def collect_scan_snapshot() -> dict:
     scan_path = ROOT / "reports" / "latest_scan_audited.csv"
     manual_path = ROOT / "reports" / "manual_review_latest.csv"
     live_recheck_path = ROOT / "reports" / "live_quote_recheck_latest.json"
+    checklist_path = ROOT / "reports" / "trade_decision_checklist_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -332,6 +350,14 @@ def collect_scan_snapshot() -> dict:
             "watchlist_monitor": 0,
             "avoid_execution_risk": 0,
             "data_unavailable": 0,
+        },
+        "trade_decision_checklist": {
+            "status": "MISSING",
+            "rows": 0,
+            "blocked": 0,
+            "needs_live_quote_recheck": 0,
+            "review_manually": 0,
+            "high_quality_review": 0,
         },
     }
 
@@ -385,6 +411,21 @@ def collect_scan_snapshot() -> dict:
             "watchlist_monitor": int(live_data.get("watchlist_monitor", 0) or 0),
             "avoid_execution_risk": int(live_data.get("avoid_execution_risk", 0) or 0),
             "data_unavailable": int(live_data.get("data_unavailable", 0) or 0),
+        }
+
+    if checklist_path.exists():
+        try:
+            checklist_data = json.loads(checklist_path.read_text(encoding="utf-8"))
+        except Exception:
+            checklist_data = {}
+
+        snapshot["trade_decision_checklist"] = {
+            "status": str(checklist_data.get("status", "UNKNOWN")),
+            "rows": int(checklist_data.get("rows", 0) or 0),
+            "blocked": int(checklist_data.get("blocked", 0) or 0),
+            "needs_live_quote_recheck": int(checklist_data.get("needs_live_quote_recheck", 0) or 0),
+            "review_manually": int(checklist_data.get("review_manually", 0) or 0),
+            "high_quality_review": int(checklist_data.get("high_quality_review", 0) or 0),
         }
 
     return snapshot
@@ -503,6 +544,7 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
 
     lines.append("- Revisar primero: reports/manual_review_top.md")
     lines.append("- Revisar después: reports/manual_review_latest.md")
+    lines.append("- Revisar checklist operativo: reports/trade_decision_checklist_latest.md")
     lines.append("- Revisar analytics: reports/trade_outcome_analytics_latest.md")
 
     if recheck_count > 0:
@@ -560,6 +602,9 @@ def build_summary_text(
         "reports/live_quote_recheck_latest.csv",
         "reports/live_quote_recheck_latest.md",
         "reports/live_quote_recheck_latest.json",
+        "reports/trade_decision_checklist_latest.csv",
+        "reports/trade_decision_checklist_latest.md",
+        "reports/trade_decision_checklist_latest.json",
         "reports/reports_cleanup_latest.json",
         "reports/reports_cleanup_latest.md",
         "reports/daily_run_manifest_latest.json",
@@ -579,7 +624,9 @@ def build_summary_text(
     lines.append(f"- Scan rows: {snapshot.get('scan_rows')}")
     lines.append(f"- Manual review rows: {snapshot.get('manual_review_rows')}")
     live = snapshot.get("live_quote_recheck", {}) or {}
+    checklist = snapshot.get("trade_decision_checklist", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
+    lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -654,6 +701,16 @@ def build_summary_text(
     lines.append(f"- avoid_execution_risk: {live.get('avoid_execution_risk')}")
     lines.append(f"- data_unavailable: {live.get('data_unavailable')}")
 
+    checklist = snapshot.get("trade_decision_checklist", {}) or {}
+    lines.append("")
+    lines.append("Trade decision checklist:")
+    lines.append(f"- status: {checklist.get('status')}")
+    lines.append(f"- rows: {checklist.get('rows')}")
+    lines.append(f"- blocked: {checklist.get('blocked')}")
+    lines.append(f"- needs_live_quote_recheck: {checklist.get('needs_live_quote_recheck')}")
+    lines.append(f"- review_manually: {checklist.get('review_manually')}")
+    lines.append(f"- high_quality_review: {checklist.get('high_quality_review')}")
+
     lines.append("")
     lines.append("[Manual operating reminder]")
     lines.append("- VETO y AVOID no son operables.")
@@ -686,12 +743,6 @@ def run_daily_validation(summary_out: Path) -> int:
     for step in POST_SUMMARY_STEPS:
         result = run_step(step)
         post_summary_results.append(result)
-
-        if step.get("name") == "live_quote_recheck" and result.get("passed"):
-            save_daily_operator_index(
-                root=ROOT,
-                output_path=ROOT / "reports" / "daily_operator_index.md",
-            )
 
     results.extend(post_summary_results)
 

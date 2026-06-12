@@ -31,6 +31,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/latest_scan_health.py",
         "tools/source_coverage_audit.py",
         "tools/live_quote_recheck.py",
+        "tools/trade_decision_checklist.py",
     ]
 
     for script in scripts:
@@ -121,6 +122,24 @@ def _make_project(tmp_path: Path) -> Path:
                 "watchlist_monitor": 0,
                 "avoid_execution_risk": 0,
                 "data_unavailable": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "trade_decision_checklist_latest.csv").write_text(
+        "ticker,checklist_status\n",
+        encoding="utf-8",
+    )
+    (reports / "trade_decision_checklist_latest.md").write_text("# checklist\n", encoding="utf-8")
+    (reports / "trade_decision_checklist_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 0,
+                "blocked": 0,
+                "needs_live_quote_recheck": 0,
+                "review_manually": 0,
+                "high_quality_review": 0,
             }
         ),
         encoding="utf-8",
