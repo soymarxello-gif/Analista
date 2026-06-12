@@ -269,6 +269,29 @@ def _normalize_trade_decision_checklist_status(data: dict) -> dict:
     }
 
 
+def _normalize_trade_candidate_cards_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "rows": 0,
+            "blocked": 0,
+            "needs_live_quote_recheck": 0,
+            "review_manually": 0,
+            "high_quality_review": 0,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "rows": _safe_int(data.get("rows"), 0),
+        "blocked": _safe_int(data.get("blocked"), 0),
+        "needs_live_quote_recheck": _safe_int(data.get("needs_live_quote_recheck"), 0),
+        "review_manually": _safe_int(data.get("review_manually"), 0),
+        "high_quality_review": _safe_int(data.get("high_quality_review"), 0),
+    }
+
+
 def _parse_status_from_summary(text: str) -> str:
     for line in text.splitlines():
         line = line.strip()
@@ -458,6 +481,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     quality_gate_json_path = reports / "daily_quality_gate_latest.json"
     live_quote_recheck_json_path = reports / "live_quote_recheck_latest.json"
     trade_decision_checklist_json_path = reports / "trade_decision_checklist_latest.json"
+    trade_candidate_cards_json_path = reports / "trade_candidate_cards_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -475,6 +499,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     trade_decision_checklist_data = _normalize_trade_decision_checklist_status(
         _load_json(trade_decision_checklist_json_path)
+    )
+    trade_candidate_cards_data = _normalize_trade_candidate_cards_status(
+        _load_json(trade_candidate_cards_json_path)
     )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
@@ -511,6 +538,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "trade_decision_checklist_latest.csv",
         reports / "trade_decision_checklist_latest.md",
         reports / "trade_decision_checklist_latest.json",
+        reports / "trade_candidate_cards_latest.md",
+        reports / "trade_candidate_cards_latest.json",
         reports / "project_preflight_latest.json",
         reports / "project_preflight_latest.md",
         reports / "daily_run_manifest_latest.json",
@@ -558,6 +587,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "quality_gate": quality_gate_data,
         "live_quote_recheck": live_quote_recheck_data,
         "trade_decision_checklist": trade_decision_checklist_data,
+        "trade_candidate_cards": trade_candidate_cards_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -744,6 +774,30 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
 
+    cards = data.get("trade_candidate_cards", {}) or {}
+    cards_available = bool(cards.get("available", False))
+
+    lines.append("## Trade candidate cards")
+    lines.append("")
+
+    if not cards_available:
+        lines.append("- No hay reporte de trade candidate cards disponible.")
+        lines.append("- Ejecutar `python .\\tools\\trade_candidate_cards.py` para generarlo.")
+    else:
+        lines.append(f"- status: {cards.get('status', 'UNKNOWN')}")
+        lines.append(f"- rows: {cards.get('rows', 0)}")
+        lines.append(f"- high_quality_review: {cards.get('high_quality_review', 0)}")
+        lines.append(f"- review_manually: {cards.get('review_manually', 0)}")
+        lines.append(
+            f"- needs_live_quote_recheck: {cards.get('needs_live_quote_recheck', 0)}"
+        )
+        lines.append(f"- blocked: {cards.get('blocked', 0)}")
+        lines.append("- markdown: reports/trade_candidate_cards_latest.md")
+        lines.append("- json: reports/trade_candidate_cards_latest.json")
+        lines.append("- Fichas de revision manual; no son entrada automatica.")
+
+    lines.append("")
+
     lines.append("## Decision gate")
     lines.append("")
 
@@ -782,6 +836,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("11. `reports/latest_scan_audited.csv`")
     lines.append("12. `reports/live_quote_recheck_latest.md`")
     lines.append("13. `reports/trade_decision_checklist_latest.md`")
+    lines.append("14. `reports/trade_candidate_cards_latest.md`")
     lines.append("")
 
     lines.append("## Señales")

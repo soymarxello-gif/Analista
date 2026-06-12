@@ -41,6 +41,8 @@ OPTIONAL_FILES = [
     "reports/trade_decision_checklist_latest.csv",
     "reports/trade_decision_checklist_latest.md",
     "reports/trade_decision_checklist_latest.json",
+    "reports/trade_candidate_cards_latest.md",
+    "reports/trade_candidate_cards_latest.json",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",

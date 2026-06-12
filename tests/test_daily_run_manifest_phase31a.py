@@ -32,6 +32,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/source_coverage_audit.py",
         "tools/live_quote_recheck.py",
         "tools/trade_decision_checklist.py",
+        "tools/trade_candidate_cards.py",
     ]
 
     for script in scripts:
@@ -140,6 +141,20 @@ def _make_project(tmp_path: Path) -> Path:
                 "needs_live_quote_recheck": 0,
                 "review_manually": 0,
                 "high_quality_review": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "trade_candidate_cards_latest.md").write_text("# cards\n", encoding="utf-8")
+    (reports / "trade_candidate_cards_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 0,
+                "high_quality_review": 0,
+                "review_manually": 0,
+                "needs_live_quote_recheck": 0,
+                "blocked": 0,
             }
         ),
         encoding="utf-8",

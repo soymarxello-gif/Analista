@@ -89,6 +89,15 @@ def _load_csv(path: Path) -> tuple[pd.DataFrame, str]:
         return pd.DataFrame(), f"read_error:{path}:{exc}"
 
 
+def _load_json(path: Path) -> tuple[dict, str]:
+    if not path.exists():
+        return {}, f"missing_file:{path}"
+    try:
+        return json.loads(path.read_text(encoding="utf-8")), ""
+    except Exception as exc:
+        return {}, f"read_error:{path}:{exc}"
+
+
 def audit_manual_review_latest(path: Path) -> dict:
     df, error = _load_csv(path)
 
@@ -293,6 +302,46 @@ def audit_trade_decision_checklist(path: Path) -> dict:
     return result
 
 
+def audit_trade_candidate_cards(path: Path) -> dict:
+    data, error = _load_json(path)
+
+    cards = data.get("cards", []) if isinstance(data, dict) else []
+    result = {
+        "name": "trade_candidate_cards_latest",
+        "path": str(path),
+        "rows": int(data.get("rows", 0) or 0) if isinstance(data, dict) else 0,
+        "issues": [],
+        "warnings": [],
+        "optional": True,
+    }
+
+    if error:
+        result["warnings"].append(f"optional_trade_candidate_cards_unavailable:{error}")
+        return result
+
+    if not isinstance(cards, list):
+        result["issues"].append("cards_not_list")
+        return result
+
+    if int(data.get("rows", 0) or 0) != len(cards):
+        result["issues"].append("rows_mismatch_cards_length")
+
+    invalid_statuses = [
+        str(card.get("checklist_status", ""))
+        for card in cards
+        if str(card.get("checklist_status", "")) not in CHECKLIST_ALLOWED_STATUSES
+    ]
+    if invalid_statuses:
+        result["issues"].append("invalid_card_checklist_status:" + ",".join(sorted(set(invalid_statuses))))
+
+    disabled_buy_signal = "_".join(["BUY", "SETUP", "ACTIVE"])
+    rendered = json.dumps(cards, ensure_ascii=False).upper()
+    if disabled_buy_signal in rendered:
+        result["issues"].append("disabled_buy_signal_present")
+
+    return result
+
+
 def build_report_consistency_audit(
     reports_dir: Path,
 ) -> dict:
@@ -300,12 +349,14 @@ def build_report_consistency_audit(
     top_path = reports_dir / "manual_review_top.csv"
     live_path = reports_dir / "live_quote_recheck_latest.csv"
     checklist_path = reports_dir / "trade_decision_checklist_latest.csv"
+    cards_path = reports_dir / "trade_candidate_cards_latest.json"
 
     checks = [
         audit_manual_review_latest(manual_path),
         audit_manual_review_top(top_path, manual_path),
         audit_live_quote_recheck(live_path),
         audit_trade_decision_checklist(checklist_path),
+        audit_trade_candidate_cards(cards_path),
     ]
 
     issues = []

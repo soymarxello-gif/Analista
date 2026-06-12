@@ -29,6 +29,7 @@ KEY_SCRIPT_PATHS = [
     "tools/source_coverage_audit.py",
     "tools/live_quote_recheck.py",
     "tools/trade_decision_checklist.py",
+    "tools/trade_candidate_cards.py",
 ]
 
 
@@ -49,6 +50,8 @@ KEY_REPORT_PATHS = [
     "reports/trade_decision_checklist_latest.csv",
     "reports/trade_decision_checklist_latest.md",
     "reports/trade_decision_checklist_latest.json",
+    "reports/trade_candidate_cards_latest.md",
+    "reports/trade_candidate_cards_latest.json",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -305,6 +308,7 @@ def collect_daily_run_manifest(
     manual_review_path = reports / "manual_review_latest.csv"
     live_quote_recheck_path = reports / "live_quote_recheck_latest.json"
     trade_decision_checklist_path = reports / "trade_decision_checklist_latest.json"
+    trade_candidate_cards_path = reports / "trade_candidate_cards_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -363,6 +367,7 @@ def collect_daily_run_manifest(
             "options_error": _safe_value_counts(latest_scan_path, "options_error"),
             "live_quote_recheck": _load_json(live_quote_recheck_path),
             "trade_decision_checklist": _load_json(trade_decision_checklist_path),
+            "trade_candidate_cards": _load_json(trade_candidate_cards_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -509,6 +514,16 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- needs_live_quote_recheck: {checklist.get('needs_live_quote_recheck', 0)}")
     lines.append(f"- review_manually: {checklist.get('review_manually', 0)}")
     lines.append(f"- high_quality_review: {checklist.get('high_quality_review', 0)}")
+    lines.append("")
+
+    cards = scan.get("trade_candidate_cards", {}) or {}
+    lines.append("Trade candidate cards:")
+    lines.append(f"- status: {cards.get('status', 'MISSING')}")
+    lines.append(f"- rows: {cards.get('rows', 0)}")
+    lines.append(f"- high_quality_review: {cards.get('high_quality_review', 0)}")
+    lines.append(f"- review_manually: {cards.get('review_manually', 0)}")
+    lines.append(f"- needs_live_quote_recheck: {cards.get('needs_live_quote_recheck', 0)}")
+    lines.append(f"- blocked: {cards.get('blocked', 0)}")
     lines.append("")
 
     lines.append("## Script files")

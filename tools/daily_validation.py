@@ -134,6 +134,19 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "trade_candidate_cards",
+        "cmd": [
+            sys.executable,
+            "tools/trade_candidate_cards.py",
+            "--markdown-out",
+            "reports/trade_candidate_cards_latest.md",
+            "--json-out",
+            "reports/trade_candidate_cards_latest.json",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "daily_operator_index",
         "cmd": [
             sys.executable,
@@ -309,6 +322,8 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "trade_decision_checklist_latest.csv",
         ROOT / "reports" / "trade_decision_checklist_latest.md",
         ROOT / "reports" / "trade_decision_checklist_latest.json",
+        ROOT / "reports" / "trade_candidate_cards_latest.md",
+        ROOT / "reports" / "trade_candidate_cards_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.md",
         ROOT / "reports" / "encoding_audit_latest.json",
@@ -335,6 +350,7 @@ def collect_scan_snapshot() -> dict:
     manual_path = ROOT / "reports" / "manual_review_latest.csv"
     live_recheck_path = ROOT / "reports" / "live_quote_recheck_latest.json"
     checklist_path = ROOT / "reports" / "trade_decision_checklist_latest.json"
+    cards_path = ROOT / "reports" / "trade_candidate_cards_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -352,6 +368,14 @@ def collect_scan_snapshot() -> dict:
             "data_unavailable": 0,
         },
         "trade_decision_checklist": {
+            "status": "MISSING",
+            "rows": 0,
+            "blocked": 0,
+            "needs_live_quote_recheck": 0,
+            "review_manually": 0,
+            "high_quality_review": 0,
+        },
+        "trade_candidate_cards": {
             "status": "MISSING",
             "rows": 0,
             "blocked": 0,
@@ -426,6 +450,21 @@ def collect_scan_snapshot() -> dict:
             "needs_live_quote_recheck": int(checklist_data.get("needs_live_quote_recheck", 0) or 0),
             "review_manually": int(checklist_data.get("review_manually", 0) or 0),
             "high_quality_review": int(checklist_data.get("high_quality_review", 0) or 0),
+        }
+
+    if cards_path.exists():
+        try:
+            cards_data = json.loads(cards_path.read_text(encoding="utf-8"))
+        except Exception:
+            cards_data = {}
+
+        snapshot["trade_candidate_cards"] = {
+            "status": str(cards_data.get("status", "UNKNOWN")),
+            "rows": int(cards_data.get("rows", 0) or 0),
+            "blocked": int(cards_data.get("blocked", 0) or 0),
+            "needs_live_quote_recheck": int(cards_data.get("needs_live_quote_recheck", 0) or 0),
+            "review_manually": int(cards_data.get("review_manually", 0) or 0),
+            "high_quality_review": int(cards_data.get("high_quality_review", 0) or 0),
         }
 
     return snapshot
@@ -545,6 +584,7 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
     lines.append("- Revisar primero: reports/manual_review_top.md")
     lines.append("- Revisar después: reports/manual_review_latest.md")
     lines.append("- Revisar checklist operativo: reports/trade_decision_checklist_latest.md")
+    lines.append("- Revisar fichas por candidato: reports/trade_candidate_cards_latest.md")
     lines.append("- Revisar analytics: reports/trade_outcome_analytics_latest.md")
 
     if recheck_count > 0:
@@ -605,6 +645,8 @@ def build_summary_text(
         "reports/trade_decision_checklist_latest.csv",
         "reports/trade_decision_checklist_latest.md",
         "reports/trade_decision_checklist_latest.json",
+        "reports/trade_candidate_cards_latest.md",
+        "reports/trade_candidate_cards_latest.json",
         "reports/reports_cleanup_latest.json",
         "reports/reports_cleanup_latest.md",
         "reports/daily_run_manifest_latest.json",
@@ -625,8 +667,10 @@ def build_summary_text(
     lines.append(f"- Manual review rows: {snapshot.get('manual_review_rows')}")
     live = snapshot.get("live_quote_recheck", {}) or {}
     checklist = snapshot.get("trade_decision_checklist", {}) or {}
+    cards = snapshot.get("trade_candidate_cards", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
+    lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -710,6 +754,16 @@ def build_summary_text(
     lines.append(f"- needs_live_quote_recheck: {checklist.get('needs_live_quote_recheck')}")
     lines.append(f"- review_manually: {checklist.get('review_manually')}")
     lines.append(f"- high_quality_review: {checklist.get('high_quality_review')}")
+
+    cards = snapshot.get("trade_candidate_cards", {}) or {}
+    lines.append("")
+    lines.append("Trade candidate cards:")
+    lines.append(f"- status: {cards.get('status')}")
+    lines.append(f"- rows: {cards.get('rows')}")
+    lines.append(f"- blocked: {cards.get('blocked')}")
+    lines.append(f"- needs_live_quote_recheck: {cards.get('needs_live_quote_recheck')}")
+    lines.append(f"- review_manually: {cards.get('review_manually')}")
+    lines.append(f"- high_quality_review: {cards.get('high_quality_review')}")
 
     lines.append("")
     lines.append("[Manual operating reminder]")
