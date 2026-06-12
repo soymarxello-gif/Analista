@@ -72,6 +72,18 @@ CALIBRATION_REQUIRED_COLUMNS = [
     "sample_size_warning",
 ]
 
+CALIBRATION_RECOMMENDATION_TYPES = {
+    "INSUFFICIENT_SAMPLE",
+    "MONITOR_SCORE_BUCKET",
+    "MONITOR_SETUP_TYPE",
+    "MONITOR_CHECKLIST_STATUS",
+    "MONITOR_OPTIONS_BIAS",
+    "POSSIBLE_OVERWEIGHT",
+    "POSSIBLE_UNDERWEIGHT",
+    "NEED_MORE_TRADES",
+    "NO_ACTION",
+}
+
 
 def _safe_text(value) -> str:
     if value is None:
@@ -389,6 +401,64 @@ def audit_trade_score_calibration(csv_path: Path, json_path: Path) -> dict:
     return result
 
 
+def audit_calibration_recommendations(path: Path) -> dict:
+    data, error = _load_json(path)
+
+    recommendations = data.get("recommendations", []) if isinstance(data, dict) else []
+    result = {
+        "name": "calibration_recommendations_latest",
+        "path": str(path),
+        "rows": int(data.get("recommendation_count", 0) or 0) if isinstance(data, dict) else 0,
+        "issues": [],
+        "warnings": [],
+        "optional": True,
+    }
+
+    if error:
+        result["warnings"].append(f"optional_calibration_recommendations_unavailable:{error}")
+        return result
+
+    for required_key in [
+        "status",
+        "closed_trades",
+        "sample_size_warning",
+        "recommendation_count",
+        "observations",
+        "suggested_review_items",
+        "do_not_change_automatically",
+        "insufficient_sample_notice",
+    ]:
+        if required_key not in data:
+            result["issues"].append(f"json_missing_{required_key}")
+
+    if data.get("do_not_change_automatically") is not True:
+        result["issues"].append("automatic_change_guard_missing")
+
+    if not isinstance(recommendations, list):
+        result["issues"].append("recommendations_not_list")
+        return result
+
+    if int(data.get("recommendation_count", 0) or 0) != len(recommendations):
+        result["issues"].append("recommendation_count_mismatch")
+
+    invalid_types = [
+        str(item.get("type", ""))
+        for item in recommendations
+        if str(item.get("type", "")) not in CALIBRATION_RECOMMENDATION_TYPES
+    ]
+    if invalid_types:
+        result["issues"].append("invalid_recommendation_type:" + ",".join(sorted(set(invalid_types))))
+
+    disabled_buy_signal = "_".join(["BUY", "SETUP", "ACTIVE"])
+    rendered = json.dumps(data, ensure_ascii=False).upper()
+    if disabled_buy_signal in rendered:
+        result["issues"].append("disabled_buy_signal_present")
+    if "TRIGGER_CONFIRMED" in rendered:
+        result["issues"].append("entry_signal_present")
+
+    return result
+
+
 def build_report_consistency_audit(
     reports_dir: Path,
 ) -> dict:
@@ -399,6 +469,7 @@ def build_report_consistency_audit(
     cards_path = reports_dir / "trade_candidate_cards_latest.json"
     calibration_csv_path = reports_dir / "trade_score_calibration_latest.csv"
     calibration_json_path = reports_dir / "trade_score_calibration_latest.json"
+    calibration_recommendations_path = reports_dir / "calibration_recommendations_latest.json"
 
     checks = [
         audit_manual_review_latest(manual_path),
@@ -407,6 +478,7 @@ def build_report_consistency_audit(
         audit_trade_decision_checklist(checklist_path),
         audit_trade_candidate_cards(cards_path),
         audit_trade_score_calibration(calibration_csv_path, calibration_json_path),
+        audit_calibration_recommendations(calibration_recommendations_path),
     ]
 
     issues = []

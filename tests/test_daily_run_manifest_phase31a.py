@@ -34,6 +34,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/trade_decision_checklist.py",
         "tools/trade_candidate_cards.py",
         "tools/trade_score_calibration.py",
+        "tools/calibration_recommendations.py",
     ]
 
     for script in scripts:
@@ -173,6 +174,23 @@ def _make_project(tmp_path: Path) -> Path:
                 "win_rate": "",
                 "avg_r_multiple": "",
                 "sample_size_warning": "sample too small",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "calibration_recommendations_latest.md").write_text(
+        "# calibration recommendations\n",
+        encoding="utf-8",
+    )
+    (reports / "calibration_recommendations_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "closed_trades": 0,
+                "sample_size_warning": "sample too small",
+                "recommendation_count": 1,
+                "do_not_change_automatically": True,
+                "recommendations": [],
             }
         ),
         encoding="utf-8",

@@ -46,6 +46,8 @@ OPTIONAL_FILES = [
     "reports/trade_score_calibration_latest.csv",
     "reports/trade_score_calibration_latest.json",
     "reports/trade_score_calibration_latest.md",
+    "reports/calibration_recommendations_latest.md",
+    "reports/calibration_recommendations_latest.json",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",

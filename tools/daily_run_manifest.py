@@ -31,6 +31,7 @@ KEY_SCRIPT_PATHS = [
     "tools/trade_decision_checklist.py",
     "tools/trade_candidate_cards.py",
     "tools/trade_score_calibration.py",
+    "tools/calibration_recommendations.py",
 ]
 
 
@@ -56,6 +57,8 @@ KEY_REPORT_PATHS = [
     "reports/trade_score_calibration_latest.csv",
     "reports/trade_score_calibration_latest.json",
     "reports/trade_score_calibration_latest.md",
+    "reports/calibration_recommendations_latest.md",
+    "reports/calibration_recommendations_latest.json",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -314,6 +317,7 @@ def collect_daily_run_manifest(
     trade_decision_checklist_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_path = reports / "trade_candidate_cards_latest.json"
     trade_score_calibration_path = reports / "trade_score_calibration_latest.json"
+    calibration_recommendations_path = reports / "calibration_recommendations_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -374,6 +378,7 @@ def collect_daily_run_manifest(
             "trade_decision_checklist": _load_json(trade_decision_checklist_path),
             "trade_candidate_cards": _load_json(trade_candidate_cards_path),
             "trade_score_calibration": _load_json(trade_score_calibration_path),
+            "calibration_recommendations": _load_json(calibration_recommendations_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -519,6 +524,18 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- win_rate: {calibration.get('win_rate', '')}")
     lines.append(f"- avg_r_multiple: {calibration.get('avg_r_multiple', '')}")
     lines.append(f"- sample_size_warning: {calibration.get('sample_size_warning', '')}")
+    lines.append("")
+
+    calibration_recommendations = scan.get("calibration_recommendations", {}) or {}
+    lines.append("Calibration recommendations:")
+    lines.append(f"- status: {calibration_recommendations.get('status', 'MISSING')}")
+    lines.append(f"- closed_trades: {calibration_recommendations.get('closed_trades', 0)}")
+    lines.append(
+        f"- recommendation_count: {calibration_recommendations.get('recommendation_count', 0)}"
+    )
+    lines.append(
+        f"- sample_size_warning: {calibration_recommendations.get('sample_size_warning', '')}"
+    )
     lines.append("")
 
     checklist = scan.get("trade_decision_checklist", {}) or {}

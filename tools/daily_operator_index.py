@@ -313,6 +313,25 @@ def _normalize_trade_score_calibration_status(data: dict) -> dict:
     }
 
 
+def _normalize_calibration_recommendations_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "closed_trades": 0,
+            "recommendation_count": 0,
+            "sample_size_warning": "",
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "closed_trades": _safe_int(data.get("closed_trades"), 0),
+        "recommendation_count": _safe_int(data.get("recommendation_count"), 0),
+        "sample_size_warning": str(data.get("sample_size_warning", "")),
+    }
+
+
 def _parse_status_from_summary(text: str) -> str:
     for line in text.splitlines():
         line = line.strip()
@@ -504,6 +523,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     trade_decision_checklist_json_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_json_path = reports / "trade_candidate_cards_latest.json"
     trade_score_calibration_json_path = reports / "trade_score_calibration_latest.json"
+    calibration_recommendations_json_path = reports / "calibration_recommendations_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -527,6 +547,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     trade_score_calibration_data = _normalize_trade_score_calibration_status(
         _load_json(trade_score_calibration_json_path)
+    )
+    calibration_recommendations_data = _normalize_calibration_recommendations_status(
+        _load_json(calibration_recommendations_json_path)
     )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
@@ -568,6 +591,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "trade_score_calibration_latest.csv",
         reports / "trade_score_calibration_latest.json",
         reports / "trade_score_calibration_latest.md",
+        reports / "calibration_recommendations_latest.md",
+        reports / "calibration_recommendations_latest.json",
         reports / "project_preflight_latest.json",
         reports / "project_preflight_latest.md",
         reports / "daily_run_manifest_latest.json",
@@ -617,6 +642,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "trade_decision_checklist": trade_decision_checklist_data,
         "trade_candidate_cards": trade_candidate_cards_data,
         "trade_score_calibration": trade_score_calibration_data,
+        "calibration_recommendations": calibration_recommendations_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -774,6 +800,30 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
 
+    calibration_recommendations = data.get("calibration_recommendations", {}) or {}
+    calibration_recommendations_available = bool(calibration_recommendations.get("available", False))
+
+    lines.append("## Calibration recommendations")
+    lines.append("")
+
+    if not calibration_recommendations_available:
+        lines.append("- No hay reporte de calibration recommendations disponible.")
+        lines.append("- Ejecutar `python .\\tools\\calibration_recommendations.py` para generarlo.")
+    else:
+        lines.append(f"- status: {calibration_recommendations.get('status', 'UNKNOWN')}")
+        lines.append(f"- closed_trades: {calibration_recommendations.get('closed_trades', 0)}")
+        lines.append(
+            f"- recommendation_count: {calibration_recommendations.get('recommendation_count', 0)}"
+        )
+        lines.append(
+            f"- sample_size_warning: {calibration_recommendations.get('sample_size_warning', '')}"
+        )
+        lines.append("- markdown: reports/calibration_recommendations_latest.md")
+        lines.append("- json: reports/calibration_recommendations_latest.json")
+        lines.append("- Recomendaciones observacionales; no cambian pesos ni thresholds.")
+
+    lines.append("")
+
     live_recheck = data.get("live_quote_recheck", {}) or {}
     live_recheck_available = bool(live_recheck.get("available", False))
 
@@ -889,6 +939,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("13. `reports/trade_decision_checklist_latest.md`")
     lines.append("14. `reports/trade_candidate_cards_latest.md`")
     lines.append("15. `reports/trade_score_calibration_latest.md`")
+    lines.append("16. `reports/calibration_recommendations_latest.md`")
     lines.append("")
 
     lines.append("## Señales")
