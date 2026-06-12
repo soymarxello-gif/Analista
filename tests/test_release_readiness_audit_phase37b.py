@@ -27,6 +27,7 @@ TOOLS = [
     "tools/live_quote_recheck.py",
     "tools/trade_decision_checklist.py",
     "tools/trade_candidate_cards.py",
+    "tools/paper_trading_journal.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
     "tools/daily_operator_index.py",
@@ -44,6 +45,7 @@ TESTS = [
     "tests/test_trade_score_calibration_phase36a.py",
     "tests/test_calibration_recommendations_phase36b.py",
     "tests/test_docs_phase37a.py",
+    "tests/test_paper_trading_journal_phase38a.py",
 ]
 
 
@@ -104,6 +106,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "live_quote_recheck",
                 "trade_decision_checklist",
                 "trade_candidate_cards",
+                "paper_trading_journal",
                 "trade_score_calibration",
                 "calibration_recommendations",
             ]
@@ -116,6 +119,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/live_quote_recheck_latest.md",
                 "reports/trade_decision_checklist_latest.md",
                 "reports/trade_candidate_cards_latest.md",
+                "reports/paper_trading_journal_latest.md",
                 "reports/trade_score_calibration_latest.md",
                 "reports/calibration_recommendations_latest.md",
             ]
@@ -128,11 +132,13 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "tools/live_quote_recheck.py",
                 "tools/trade_decision_checklist.py",
                 "tools/trade_candidate_cards.py",
+                "tools/paper_trading_journal.py",
                 "tools/trade_score_calibration.py",
                 "tools/calibration_recommendations.py",
                 "reports/live_quote_recheck_latest.json",
                 "reports/trade_decision_checklist_latest.json",
                 "reports/trade_candidate_cards_latest.json",
+                "reports/paper_trading_journal_latest.json",
                 "reports/trade_score_calibration_latest.json",
                 "reports/calibration_recommendations_latest.json",
             ]
@@ -155,6 +161,8 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "trade_decision_checklist_latest.csv",
         "trade_decision_checklist_latest.md",
         "trade_candidate_cards_latest.md",
+        "paper_trading_journal_latest.csv",
+        "paper_trading_journal_latest.md",
         "trade_score_calibration_latest.csv",
         "trade_score_calibration_latest.md",
         "calibration_recommendations_latest.md",
@@ -173,6 +181,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "live_quote_recheck_latest.json",
         "trade_decision_checklist_latest.json",
         "trade_candidate_cards_latest.json",
+        "paper_trading_journal_latest.json",
         "trade_score_calibration_latest.json",
         "calibration_recommendations_latest.json",
         "reports_cleanup_latest.json",

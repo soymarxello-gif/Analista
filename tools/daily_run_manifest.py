@@ -30,6 +30,7 @@ KEY_SCRIPT_PATHS = [
     "tools/live_quote_recheck.py",
     "tools/trade_decision_checklist.py",
     "tools/trade_candidate_cards.py",
+    "tools/paper_trading_journal.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
     "tools/release_readiness_audit.py",
@@ -55,6 +56,9 @@ KEY_REPORT_PATHS = [
     "reports/trade_decision_checklist_latest.json",
     "reports/trade_candidate_cards_latest.md",
     "reports/trade_candidate_cards_latest.json",
+    "reports/paper_trading_journal_latest.csv",
+    "reports/paper_trading_journal_latest.json",
+    "reports/paper_trading_journal_latest.md",
     "reports/trade_score_calibration_latest.csv",
     "reports/trade_score_calibration_latest.json",
     "reports/trade_score_calibration_latest.md",
@@ -319,6 +323,7 @@ def collect_daily_run_manifest(
     live_quote_recheck_path = reports / "live_quote_recheck_latest.json"
     trade_decision_checklist_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_path = reports / "trade_candidate_cards_latest.json"
+    paper_trading_journal_path = reports / "paper_trading_journal_latest.json"
     trade_score_calibration_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_path = reports / "calibration_recommendations_latest.json"
     release_readiness_path = reports / "release_readiness_latest.json"
@@ -381,6 +386,7 @@ def collect_daily_run_manifest(
             "live_quote_recheck": _load_json(live_quote_recheck_path),
             "trade_decision_checklist": _load_json(trade_decision_checklist_path),
             "trade_candidate_cards": _load_json(trade_candidate_cards_path),
+            "paper_trading_journal": _load_json(paper_trading_journal_path),
             "trade_score_calibration": _load_json(trade_score_calibration_path),
             "calibration_recommendations": _load_json(calibration_recommendations_path),
             "release_readiness": _load_json(release_readiness_path),
@@ -568,6 +574,20 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- review_manually: {cards.get('review_manually', 0)}")
     lines.append(f"- needs_live_quote_recheck: {cards.get('needs_live_quote_recheck', 0)}")
     lines.append(f"- blocked: {cards.get('blocked', 0)}")
+    lines.append("")
+
+    paper_journal = scan.get("paper_trading_journal", {}) or {}
+    lines.append("Paper trading journal:")
+    lines.append(f"- status: {paper_journal.get('status', 'MISSING')}")
+    lines.append(f"- rows: {paper_journal.get('rows', 0)}")
+    lines.append(f"- pending_review: {paper_journal.get('pending_review', 0)}")
+    lines.append(f"- paper_watch: {paper_journal.get('paper_watch', 0)}")
+    lines.append(f"- paper_enter: {paper_journal.get('paper_enter', 0)}")
+    lines.append(f"- blocked: {paper_journal.get('blocked', 0)}")
+    lines.append(
+        f"- needs_live_quote_recheck: {paper_journal.get('needs_live_quote_recheck', 0)}"
+    )
+    lines.append("- notice: paper trading only; no real order")
     lines.append("")
 
     lines.append("## Script files")

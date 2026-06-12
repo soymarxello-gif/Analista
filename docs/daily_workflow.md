@@ -16,7 +16,7 @@ From PowerShell in the project root:
 python .\tools\daily_validation.py
 ```
 
-This runs the audited scanner, P0 validation, quality gates, optional report builders, candidate cards, calibration, and run manifest.
+This runs the audited scanner, P0 validation, quality gates, optional report builders, candidate cards, paper trading journal summary, calibration, and run manifest.
 
 ## 3. Review Reports In This Order
 
@@ -25,12 +25,13 @@ This runs the audited scanner, P0 validation, quality gates, optional report bui
 3. `reports/live_quote_recheck_latest.md`
 4. `reports/trade_decision_checklist_latest.md`
 5. `reports/trade_candidate_cards_latest.md`
-6. `reports/manual_review_top.md`
-7. `reports/daily_run_manifest_latest.md`
-8. `reports/release_readiness_latest.md`
-9. `reports/daily_validation_summary.txt`
-10. `reports/project_preflight_latest.md`
-11. `reports/encoding_audit_latest.md`
+6. `reports/paper_trading_journal_latest.md`
+7. `reports/manual_review_top.md`
+8. `reports/daily_run_manifest_latest.md`
+9. `reports/release_readiness_latest.md`
+10. `reports/daily_validation_summary.txt`
+11. `reports/project_preflight_latest.md`
+12. `reports/encoding_audit_latest.md`
 
 Stop immediately if a required step is `FAIL`.
 
@@ -110,7 +111,26 @@ reports/trade_candidate_cards_latest.json
 
 Each card summarizes signal, recommendation, setup, scores, quote quality, operational levels, options context, warnings, blockers, and required manual actions.
 
-## 8. Calibration
+## 8. Paper Trading Journal
+
+Import today's review candidates into the paper journal:
+
+```powershell
+python .\tools\paper_trading_journal.py --import-today
+```
+
+Review:
+
+```text
+data/paper_trading_journal.csv
+reports/paper_trading_journal_latest.md
+reports/paper_trading_journal_latest.csv
+reports/paper_trading_journal_latest.json
+```
+
+Manual decisions allowed in the journal are `PENDING_REVIEW`, `PAPER_WATCH`, `PAPER_ENTER`, `SKIP`, `BLOCKED`, and `NEEDS_LIVE_QUOTE_RECHECK`. `PAPER_ENTER` is simulated only; it creates no broker order and does not modify scanner signals, scores, config, weights, or thresholds.
+
+## 9. Calibration
 
 Refresh score calibration:
 
@@ -128,13 +148,13 @@ reports/calibration_recommendations_latest.md
 
 Calibration is observational. Do not change weights or thresholds from insufficient samples.
 
-## 9. Validate Tests
+## 10. Validate Tests
 
 ```powershell
 python -m pytest -q
 ```
 
-## 10. Review Git
+## 11. Review Git
 
 ```powershell
 git -c safe.directory="*" status --short
@@ -142,7 +162,7 @@ git -c safe.directory="*" status --short
 
 Generated reports and caches should remain ignored. Version code, tests, and durable documentation only.
 
-## 11. Release Readiness Audit
+## 12. Release Readiness Audit
 
 Before closing a version, run:
 
@@ -159,7 +179,7 @@ reports/release_readiness_latest.json
 
 `FAIL` blocks release closure. `WARN` requires review, usually for optional generated reports or Git hygiene around runtime artifacts.
 
-## 12. Close A Phase With Git
+## 13. Close A Phase With Git
 
 1. Confirm `python -m pytest -q` passes.
 2. Confirm `python .\tools\daily_validation.py` passes or returns controlled warnings only.

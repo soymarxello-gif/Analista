@@ -58,6 +58,12 @@ Checklist generated from current candidates. It classifies each candidate as blo
 
 Per-candidate manual card. Each card includes signal, recommendation, setup, sector, scores, options context, quote quality, entry, stop, target, R/R, warnings, blockers, required actions, and a pending manual decision note.
 
+### `reports/paper_trading_journal_latest.*`
+
+Paper trading journal snapshot and summary. It mirrors `data/paper_trading_journal.csv` for audit review and records manual paper decisions such as pending review, paper watch, simulated paper entry, skip, blocked, or needs live quote recheck.
+
+This report is paper-only. It does not create real orders, broker instructions, scanner signals, score changes, config changes, weights, or threshold changes.
+
 ## Calibration And Outcomes
 
 ### `reports/trade_score_calibration_latest.*`
@@ -88,6 +94,7 @@ Generated files usually include:
 - `reports/*.json`
 - `reports/*.md`
 - `reports/*.txt`
+- `data/paper_trading_journal.csv`
 - `reports/history/*`
 - `reports/audits/*`
 - `cache/*`

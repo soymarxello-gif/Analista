@@ -292,6 +292,31 @@ def _normalize_trade_candidate_cards_status(data: dict) -> dict:
     }
 
 
+def _normalize_paper_trading_journal_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "rows": 0,
+            "pending_review": 0,
+            "paper_watch": 0,
+            "paper_enter": 0,
+            "blocked": 0,
+            "needs_live_quote_recheck": 0,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "rows": _safe_int(data.get("rows"), 0),
+        "pending_review": _safe_int(data.get("pending_review"), 0),
+        "paper_watch": _safe_int(data.get("paper_watch"), 0),
+        "paper_enter": _safe_int(data.get("paper_enter"), 0),
+        "blocked": _safe_int(data.get("blocked"), 0),
+        "needs_live_quote_recheck": _safe_int(data.get("needs_live_quote_recheck"), 0),
+    }
+
+
 def _normalize_trade_score_calibration_status(data: dict) -> dict:
     if not data:
         return {
@@ -539,6 +564,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     live_quote_recheck_json_path = reports / "live_quote_recheck_latest.json"
     trade_decision_checklist_json_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_json_path = reports / "trade_candidate_cards_latest.json"
+    paper_trading_journal_json_path = reports / "paper_trading_journal_latest.json"
     trade_score_calibration_json_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_json_path = reports / "calibration_recommendations_latest.json"
     release_readiness_json_path = reports / "release_readiness_latest.json"
@@ -562,6 +588,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     trade_candidate_cards_data = _normalize_trade_candidate_cards_status(
         _load_json(trade_candidate_cards_json_path)
+    )
+    paper_trading_journal_data = _normalize_paper_trading_journal_status(
+        _load_json(paper_trading_journal_json_path)
     )
     trade_score_calibration_data = _normalize_trade_score_calibration_status(
         _load_json(trade_score_calibration_json_path)
@@ -611,6 +640,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "trade_decision_checklist_latest.json",
         reports / "trade_candidate_cards_latest.md",
         reports / "trade_candidate_cards_latest.json",
+        reports / "paper_trading_journal_latest.csv",
+        reports / "paper_trading_journal_latest.md",
+        reports / "paper_trading_journal_latest.json",
         reports / "trade_score_calibration_latest.csv",
         reports / "trade_score_calibration_latest.json",
         reports / "trade_score_calibration_latest.md",
@@ -664,6 +696,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "live_quote_recheck": live_quote_recheck_data,
         "trade_decision_checklist": trade_decision_checklist_data,
         "trade_candidate_cards": trade_candidate_cards_data,
+        "paper_trading_journal": paper_trading_journal_data,
         "trade_score_calibration": trade_score_calibration_data,
         "calibration_recommendations": calibration_recommendations_data,
         "release_readiness": release_readiness_data,
@@ -942,6 +975,32 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
 
+    paper_journal = data.get("paper_trading_journal", {}) or {}
+    paper_journal_available = bool(paper_journal.get("available", False))
+
+    lines.append("## Paper trading journal")
+    lines.append("")
+
+    if not paper_journal_available:
+        lines.append("- No hay reporte de paper trading journal disponible.")
+        lines.append("- Ejecutar `python .\\tools\\paper_trading_journal.py --import-today` para generarlo.")
+    else:
+        lines.append(f"- status: {paper_journal.get('status', 'UNKNOWN')}")
+        lines.append(f"- rows: {paper_journal.get('rows', 0)}")
+        lines.append(f"- pending_review: {paper_journal.get('pending_review', 0)}")
+        lines.append(f"- paper_watch: {paper_journal.get('paper_watch', 0)}")
+        lines.append(f"- paper_enter: {paper_journal.get('paper_enter', 0)}")
+        lines.append(f"- blocked: {paper_journal.get('blocked', 0)}")
+        lines.append(
+            f"- needs_live_quote_recheck: {paper_journal.get('needs_live_quote_recheck', 0)}"
+        )
+        lines.append("- csv: reports/paper_trading_journal_latest.csv")
+        lines.append("- markdown: reports/paper_trading_journal_latest.md")
+        lines.append("- json: reports/paper_trading_journal_latest.json")
+        lines.append("- Paper trading only; no real order.")
+
+    lines.append("")
+
     lines.append("## Decision gate")
     lines.append("")
 
@@ -981,9 +1040,10 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("12. `reports/live_quote_recheck_latest.md`")
     lines.append("13. `reports/trade_decision_checklist_latest.md`")
     lines.append("14. `reports/trade_candidate_cards_latest.md`")
-    lines.append("15. `reports/trade_score_calibration_latest.md`")
-    lines.append("16. `reports/calibration_recommendations_latest.md`")
-    lines.append("17. `reports/release_readiness_latest.md`")
+    lines.append("15. `reports/paper_trading_journal_latest.md`")
+    lines.append("16. `reports/trade_score_calibration_latest.md`")
+    lines.append("17. `reports/calibration_recommendations_latest.md`")
+    lines.append("18. `reports/release_readiness_latest.md`")
     lines.append("")
 
     lines.append("## Señales")

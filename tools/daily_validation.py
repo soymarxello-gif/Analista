@@ -179,6 +179,22 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "paper_trading_journal",
+        "cmd": [
+            sys.executable,
+            "tools/paper_trading_journal.py",
+            "--import-today",
+            "--csv-out",
+            "reports/paper_trading_journal_latest.csv",
+            "--json-out",
+            "reports/paper_trading_journal_latest.json",
+            "--markdown-out",
+            "reports/paper_trading_journal_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "daily_operator_index",
         "cmd": [
             sys.executable,
@@ -369,6 +385,9 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "trade_decision_checklist_latest.json",
         ROOT / "reports" / "trade_candidate_cards_latest.md",
         ROOT / "reports" / "trade_candidate_cards_latest.json",
+        ROOT / "reports" / "paper_trading_journal_latest.csv",
+        ROOT / "reports" / "paper_trading_journal_latest.json",
+        ROOT / "reports" / "paper_trading_journal_latest.md",
         ROOT / "reports" / "daily_run_manifest_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.md",
         ROOT / "reports" / "encoding_audit_latest.json",
@@ -403,6 +422,7 @@ def collect_scan_snapshot() -> dict:
     live_recheck_path = ROOT / "reports" / "live_quote_recheck_latest.json"
     checklist_path = ROOT / "reports" / "trade_decision_checklist_latest.json"
     cards_path = ROOT / "reports" / "trade_candidate_cards_latest.json"
+    paper_journal_path = ROOT / "reports" / "paper_trading_journal_latest.json"
     calibration_path = ROOT / "reports" / "trade_score_calibration_latest.json"
     calibration_recommendations_path = ROOT / "reports" / "calibration_recommendations_latest.json"
     release_readiness_path = ROOT / "reports" / "release_readiness_latest.json"
@@ -455,6 +475,15 @@ def collect_scan_snapshot() -> dict:
             "needs_live_quote_recheck": 0,
             "review_manually": 0,
             "high_quality_review": 0,
+        },
+        "paper_trading_journal": {
+            "status": "MISSING",
+            "rows": 0,
+            "pending_review": 0,
+            "paper_watch": 0,
+            "paper_enter": 0,
+            "blocked": 0,
+            "needs_live_quote_recheck": 0,
         },
     }
 
@@ -538,6 +567,22 @@ def collect_scan_snapshot() -> dict:
             "needs_live_quote_recheck": int(cards_data.get("needs_live_quote_recheck", 0) or 0),
             "review_manually": int(cards_data.get("review_manually", 0) or 0),
             "high_quality_review": int(cards_data.get("high_quality_review", 0) or 0),
+        }
+
+    if paper_journal_path.exists():
+        try:
+            paper_data = json.loads(paper_journal_path.read_text(encoding="utf-8"))
+        except Exception:
+            paper_data = {}
+
+        snapshot["paper_trading_journal"] = {
+            "status": str(paper_data.get("status", "UNKNOWN")),
+            "rows": int(paper_data.get("rows", 0) or 0),
+            "pending_review": int(paper_data.get("pending_review", 0) or 0),
+            "paper_watch": int(paper_data.get("paper_watch", 0) or 0),
+            "paper_enter": int(paper_data.get("paper_enter", 0) or 0),
+            "blocked": int(paper_data.get("blocked", 0) or 0),
+            "needs_live_quote_recheck": int(paper_data.get("needs_live_quote_recheck", 0) or 0),
         }
 
     if calibration_path.exists():
@@ -703,6 +748,7 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
     lines.append("- Revisar después: reports/manual_review_latest.md")
     lines.append("- Revisar checklist operativo: reports/trade_decision_checklist_latest.md")
     lines.append("- Revisar fichas por candidato: reports/trade_candidate_cards_latest.md")
+    lines.append("- Revisar journal paper trading: reports/paper_trading_journal_latest.md")
     lines.append("- Revisar calibración de scores: reports/trade_score_calibration_latest.md")
     lines.append("- Revisar recomendaciones de calibración: reports/calibration_recommendations_latest.md")
     lines.append("- Revisar release readiness: reports/release_readiness_latest.md")
@@ -773,6 +819,9 @@ def build_summary_text(
         "reports/trade_decision_checklist_latest.json",
         "reports/trade_candidate_cards_latest.md",
         "reports/trade_candidate_cards_latest.json",
+        "reports/paper_trading_journal_latest.csv",
+        "reports/paper_trading_journal_latest.json",
+        "reports/paper_trading_journal_latest.md",
         "reports/reports_cleanup_latest.json",
         "reports/reports_cleanup_latest.md",
         "reports/daily_run_manifest_latest.json",
@@ -796,12 +845,14 @@ def build_summary_text(
     live = snapshot.get("live_quote_recheck", {}) or {}
     checklist = snapshot.get("trade_decision_checklist", {}) or {}
     cards = snapshot.get("trade_candidate_cards", {}) or {}
+    paper = snapshot.get("paper_trading_journal", {}) or {}
     calibration = snapshot.get("trade_score_calibration", {}) or {}
     calibration_recommendations = snapshot.get("calibration_recommendations", {}) or {}
     release_readiness = snapshot.get("release_readiness", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
+    lines.append(f"- Paper trading journal rows: {paper.get('rows')}")
     lines.append(f"- Trade score calibration closed trades: {calibration.get('closed_trades')}")
     lines.append(
         "- Calibration recommendations count: "
@@ -929,6 +980,17 @@ def build_summary_text(
     lines.append(f"- needs_live_quote_recheck: {cards.get('needs_live_quote_recheck')}")
     lines.append(f"- review_manually: {cards.get('review_manually')}")
     lines.append(f"- high_quality_review: {cards.get('high_quality_review')}")
+
+    paper = snapshot.get("paper_trading_journal", {}) or {}
+    lines.append("")
+    lines.append("Paper trading journal:")
+    lines.append(f"- status: {paper.get('status')}")
+    lines.append(f"- rows: {paper.get('rows')}")
+    lines.append(f"- pending_review: {paper.get('pending_review')}")
+    lines.append(f"- paper_watch: {paper.get('paper_watch')}")
+    lines.append(f"- paper_enter: {paper.get('paper_enter')}")
+    lines.append(f"- blocked: {paper.get('blocked')}")
+    lines.append(f"- needs_live_quote_recheck: {paper.get('needs_live_quote_recheck')}")
 
     lines.append("")
     lines.append("[Manual operating reminder]")

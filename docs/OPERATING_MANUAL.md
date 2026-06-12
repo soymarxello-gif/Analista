@@ -48,10 +48,11 @@ git -c safe.directory="*" status --short
 3. `reports/live_quote_recheck_latest.md`
 4. `reports/trade_decision_checklist_latest.md`
 5. `reports/trade_candidate_cards_latest.md`
-6. `reports/manual_review_top.md`
-7. `reports/daily_run_manifest_latest.md`
-8. `reports/release_readiness_latest.md`
-9. `reports/daily_validation_summary.txt`
+6. `reports/paper_trading_journal_latest.md`
+7. `reports/manual_review_top.md`
+8. `reports/daily_run_manifest_latest.md`
+9. `reports/release_readiness_latest.md`
+10. `reports/daily_validation_summary.txt`
 
 ## Signals
 
@@ -86,6 +87,25 @@ Recommendations are not orders and do not authorize automatic execution.
 - `HIGH_QUALITY_REVIEW`
 
 `trade_candidate_cards` converts checklist rows into readable per-ticker manual cards. Cards include operational levels, quote state, scores, options context, warnings, blockers, required actions, and a pending manual decision.
+
+## Paper Trading Journal
+
+`paper_trading_journal` imports reviewed candidates into an auditable simulated journal.
+
+```powershell
+python .\tools\paper_trading_journal.py --import-today
+```
+
+The tool writes:
+
+- `data/paper_trading_journal.csv`
+- `reports/paper_trading_journal_latest.csv`
+- `reports/paper_trading_journal_latest.md`
+- `reports/paper_trading_journal_latest.json`
+
+Allowed manual decisions are `PENDING_REVIEW`, `PAPER_WATCH`, `PAPER_ENTER`, `SKIP`, `BLOCKED`, and `NEEDS_LIVE_QUOTE_RECHECK`. `PAPER_ENTER` is paper-only and requires simulated entry, stop, and target levels. Candidates marked `BLOCKED` cannot be paper-entered, and candidates marked `NEEDS_LIVE_QUOTE_RECHECK` require explicit live quote confirmation before any simulated entry.
+
+The journal does not connect to a broker and does not modify scanner outputs, scores, config, weights, thresholds, or signals.
 
 ## Live Quote Recheck
 

@@ -33,6 +33,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/live_quote_recheck.py",
         "tools/trade_decision_checklist.py",
         "tools/trade_candidate_cards.py",
+        "tools/paper_trading_journal.py",
         "tools/trade_score_calibration.py",
         "tools/calibration_recommendations.py",
         "tools/release_readiness_audit.py",
@@ -158,6 +159,25 @@ def _make_project(tmp_path: Path) -> Path:
                 "review_manually": 0,
                 "needs_live_quote_recheck": 0,
                 "blocked": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "paper_trading_journal_latest.csv").write_text(
+        "ticker,manual_decision\n",
+        encoding="utf-8",
+    )
+    (reports / "paper_trading_journal_latest.md").write_text("# paper journal\n", encoding="utf-8")
+    (reports / "paper_trading_journal_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 0,
+                "pending_review": 0,
+                "paper_watch": 0,
+                "paper_enter": 0,
+                "blocked": 0,
+                "needs_live_quote_recheck": 0,
             }
         ),
         encoding="utf-8",

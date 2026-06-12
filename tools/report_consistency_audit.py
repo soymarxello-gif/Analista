@@ -59,6 +59,27 @@ CHECKLIST_ALLOWED_STATUSES = {
     "HIGH_QUALITY_REVIEW",
 }
 
+PAPER_JOURNAL_REQUIRED_COLUMNS = [
+    "journal_id",
+    "run_date",
+    "ticker",
+    "checklist_status",
+    "signal",
+    "recommendation",
+    "manual_decision",
+    "followup_status",
+    "no_real_order_notice",
+]
+
+PAPER_JOURNAL_ALLOWED_DECISIONS = {
+    "PENDING_REVIEW",
+    "PAPER_WATCH",
+    "PAPER_ENTER",
+    "SKIP",
+    "BLOCKED",
+    "NEEDS_LIVE_QUOTE_RECHECK",
+}
+
 CALIBRATION_REQUIRED_COLUMNS = [
     "group",
     "group_value",
@@ -367,6 +388,59 @@ def audit_trade_candidate_cards(path: Path) -> dict:
     return result
 
 
+def audit_paper_trading_journal(path: Path) -> dict:
+    df, error = _load_csv(path)
+
+    result = {
+        "name": "paper_trading_journal_latest",
+        "path": str(path),
+        "rows": int(len(df)),
+        "issues": [],
+        "warnings": [],
+        "optional": True,
+    }
+
+    if error:
+        result["warnings"].append(f"optional_paper_trading_journal_unavailable:{error}")
+        return result
+
+    if df.empty:
+        result["warnings"].append("optional_paper_trading_journal_empty")
+        return result
+
+    missing = _missing_columns(df, PAPER_JOURNAL_REQUIRED_COLUMNS)
+    if missing:
+        result["issues"].append("missing_columns:" + ",".join(missing))
+
+    if "manual_decision" in df.columns:
+        invalid_decisions = [
+            value
+            for value in df["manual_decision"].fillna("").astype(str).unique().tolist()
+            if value not in PAPER_JOURNAL_ALLOWED_DECISIONS
+        ]
+        if invalid_decisions:
+            result["issues"].append("invalid_manual_decision:" + ",".join(invalid_decisions))
+
+    if "no_real_order_notice" in df.columns:
+        missing_notice = int(
+            df["no_real_order_notice"]
+            .fillna("")
+            .astype(str)
+            .str.contains("no real order", case=False, regex=False)
+            .eq(False)
+            .sum()
+        )
+        if missing_notice > 0:
+            result["issues"].append(f"missing_no_real_order_notice_rows:{missing_notice}")
+
+    disabled_buy_signal = "_".join(["BUY", "SETUP", "ACTIVE"])
+    rendered = df.astype(str).to_json(orient="records", force_ascii=False).upper()
+    if disabled_buy_signal in rendered:
+        result["issues"].append("disabled_buy_signal_present")
+
+    return result
+
+
 def audit_trade_score_calibration(csv_path: Path, json_path: Path) -> dict:
     df, csv_error = _load_csv(csv_path)
     data, json_error = _load_json(json_path)
@@ -467,6 +541,7 @@ def build_report_consistency_audit(
     live_path = reports_dir / "live_quote_recheck_latest.csv"
     checklist_path = reports_dir / "trade_decision_checklist_latest.csv"
     cards_path = reports_dir / "trade_candidate_cards_latest.json"
+    paper_journal_path = reports_dir / "paper_trading_journal_latest.csv"
     calibration_csv_path = reports_dir / "trade_score_calibration_latest.csv"
     calibration_json_path = reports_dir / "trade_score_calibration_latest.json"
     calibration_recommendations_path = reports_dir / "calibration_recommendations_latest.json"
@@ -477,6 +552,7 @@ def build_report_consistency_audit(
         audit_live_quote_recheck(live_path),
         audit_trade_decision_checklist(checklist_path),
         audit_trade_candidate_cards(cards_path),
+        audit_paper_trading_journal(paper_journal_path),
         audit_trade_score_calibration(calibration_csv_path, calibration_json_path),
         audit_calibration_recommendations(calibration_recommendations_path),
     ]
