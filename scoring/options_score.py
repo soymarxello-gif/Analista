@@ -34,6 +34,108 @@ def _clip01(x: float) -> float:
     return max(0.0, min(float(x), 1.0))
 
 
+def _confidence_multiplier(confidence: str) -> float:
+    confidence = _text(confidence).upper()
+    if confidence == "HIGH":
+        return 1.0
+    if confidence == "MEDIUM":
+        return 0.70
+    if confidence == "LOW":
+        return 0.35
+    return 0.0
+
+
+def _liquidity_multiplier(liquidity_score: float | None) -> float:
+    liquidity_score = _num(liquidity_score, None)
+    if liquidity_score is None:
+        return 0.80
+    if liquidity_score < 0.25:
+        return 0.35
+    if liquidity_score < 0.50:
+        return 0.60
+    if liquidity_score < 0.70:
+        return 0.80
+    return 1.0
+
+
+def calculate_options_score_adjustment(options_data: dict, config: dict | None = None) -> dict:
+    """
+    Convert options bias/confidence/liquidity into a conservative score adjustment.
+
+    The returned adjustment is intentionally small and must never be interpreted
+    as a trading signal or an execution gate.
+    """
+    config = config or {}
+    cfg = config.get("options_flow", {})
+    max_abs_adjustment = float(cfg.get("max_score_adjustment", 0.08))
+
+    bias = _text(options_data.get("options_bias")).upper() or "UNKNOWN_OPTIONS_FLOW"
+    confidence = _text(options_data.get("options_confidence")).upper() or "UNKNOWN"
+    liquidity_score = _num(options_data.get("options_liquidity_score"), None)
+    base_score = _num(options_data.get("options_score"), 0.5)
+
+    confidence_mult = _confidence_multiplier(confidence)
+    liquidity_mult = _liquidity_multiplier(liquidity_score)
+    impact_mult = confidence_mult * liquidity_mult
+
+    raw_adjustment = 0.0
+    contrarian_adjustment = 0.0
+    score_reason = "options_neutral"
+    contrarian_reason = ""
+    risk_flag = ""
+
+    if bias == "UNKNOWN_OPTIONS_FLOW":
+        score_reason = "options_unknown"
+    elif bias == "NO_OPTIONS_AVAILABLE":
+        score_reason = "options_not_listed_neutral"
+    elif bias == "NEUTRAL_WITH_DATA":
+        if confidence in {"MEDIUM", "HIGH"} and (liquidity_score or 0.0) >= 0.65:
+            raw_adjustment = 0.01
+            score_reason = "options_neutral_liquid_slight_positive"
+        else:
+            score_reason = "options_neutral_with_data"
+    elif bias == "BULLISH_WITH_DATA":
+        raw_adjustment = 0.06
+        score_reason = "options_bullish_moderate"
+    elif bias == "BEARISH_WITH_DATA":
+        raw_adjustment = -0.06
+        score_reason = "options_bearish_moderate"
+        risk_flag = "options_bearish_with_data"
+    elif bias == "CROWDED_BULLISH":
+        raw_adjustment = -0.07
+        contrarian_adjustment = raw_adjustment
+        score_reason = "crowded_bullish_contrarian"
+        contrarian_reason = "crowded_bullish_contrarian"
+        risk_flag = "crowded_bullish_contrarian"
+    elif bias == "CROWDED_BEARISH":
+        raw_adjustment = 0.03
+        contrarian_adjustment = raw_adjustment
+        score_reason = "crowded_bearish_contrarian"
+        contrarian_reason = "crowded_bearish_contrarian"
+
+    adjustment = raw_adjustment * impact_mult
+    adjustment = max(-max_abs_adjustment, min(max_abs_adjustment, adjustment))
+
+    if confidence == "UNKNOWN":
+        adjustment = 0.0
+        contrarian_adjustment = 0.0
+    elif contrarian_adjustment:
+        contrarian_adjustment = adjustment
+
+    adjusted_score = _clip01((base_score or 0.5) + adjustment)
+
+    return {
+        "options_score_raw": round(base_score or 0.5, 4),
+        "options_score_adjusted": round(adjusted_score, 4),
+        "options_score_adjustment": round(adjustment, 4),
+        "options_score_reason": score_reason,
+        "options_contrarian_adjustment": round(contrarian_adjustment, 4),
+        "options_contrarian_reason": contrarian_reason,
+        "options_risk_flag": risk_flag,
+        "options_adjustment_impact_multiplier": round(impact_mult, 4),
+    }
+
+
 def _score_put_call_volume_ratio(pc: float | None) -> float:
     """
     Long-only interpretation:

@@ -28,7 +28,7 @@ from scoring.structure_score import score_structure
 from scoring.risk_reward_score import score_risk_reward
 from scoring.momentum_score import score_momentum
 from scoring.fundamental_score import score_fundamentals
-from scoring.options_score import score_options_flow
+from scoring.options_score import calculate_options_score_adjustment, score_options_flow
 from scoring.final_score import calculate_final_score, calculate_trade_score_breakdown
 from scoring.signal_classifier import classify_signal, classify_base_signal
 from scoring.operational_priority import calculate_operational_priority
@@ -222,6 +222,16 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             }
             options_score_data = score_options_flow(options_metrics, spot, config)
 
+        options_adjustment_data = calculate_options_score_adjustment(options_score_data, config)
+        options_score_data = {
+            **options_score_data,
+            **options_adjustment_data,
+            "options_score": options_adjustment_data.get(
+                "options_score_adjusted",
+                options_score_data.get("options_score", 0.5),
+            ),
+        }
+
         scores = {
             "rs_score": float(rs_map.get(ticker, 0.5)),
             "trend_score": trend_score,
@@ -234,6 +244,11 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "momentum_score": momentum_score,
             "fundamental_score": fund.get("fundamental_score", 0.5),
             "options_score": options_score_data.get("options_score", 0.5),
+            "options_score_adjustment": options_score_data.get("options_score_adjustment", 0.0),
+            "options_score_reason": options_score_data.get("options_score_reason", ""),
+            "options_contrarian_adjustment": options_score_data.get("options_contrarian_adjustment", 0.0),
+            "options_contrarian_reason": options_score_data.get("options_contrarian_reason", ""),
+            "options_risk_flag": options_score_data.get("options_risk_flag", ""),
             "sentiment_score": 0.5,
         }
 
@@ -277,6 +292,12 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "momentum_score": round(momentum_score, 3),
             "fundamental_score": fund.get("fundamental_score", 0.5),
             "options_score": options_score_data.get("options_score", 0.5),
+            "options_score_raw": options_score_data.get("options_score_raw"),
+            "options_score_adjustment": options_score_data.get("options_score_adjustment", 0.0),
+            "options_score_reason": options_score_data.get("options_score_reason", ""),
+            "options_contrarian_adjustment": options_score_data.get("options_contrarian_adjustment", 0.0),
+            "options_contrarian_reason": options_score_data.get("options_contrarian_reason", ""),
+            "options_risk_flag": options_score_data.get("options_risk_flag", ""),
             "options_bias": options_score_data.get("options_bias"),
             "options_confidence": options_score_data.get("options_confidence"),
             "options_crowded_bullish": options_score_data.get("options_crowded_bullish", False),
@@ -491,6 +512,12 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
         elif stop_atr_status == "WIDE":
             penalty_reasons.append("wide_stop")
 
+        options_risk_flag = str(row.get("options_risk_flag") or "").strip()
+        if options_risk_flag == "crowded_bullish_contrarian":
+            penalty_reasons.append("crowded_bullish_contrarian")
+        elif options_risk_flag == "options_bearish_with_data":
+            penalty_reasons.append("options_bearish_with_data")
+
         row["signal"] = signal
         row["all_veto_reasons"] = ", ".join(veto)
         row["veto_reasons"] = row["all_veto_reasons"]  # backward compatibility
@@ -648,9 +675,11 @@ def _reason_summary(row: dict) -> str:
 
     options_bias = row.get("options_bias")
     options_text = f" | opt {options_bias}" if options_bias else ""
+    options_reason = row.get("options_score_reason")
+    options_reason_text = f" | {options_reason}" if options_reason else ""
 
     return (
         f"{row.get('setup_type')} | score {row.get('final_score')} | "
         f"RS {row.get('rs_score')} | trend {row.get('trend_score')} | "
-        f"R:R {rr_text}{options_text}"
+        f"R:R {rr_text}{options_text}{options_reason_text}"
     )

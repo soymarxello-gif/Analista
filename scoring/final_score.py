@@ -140,6 +140,16 @@ def calculate_trade_score_breakdown(scores: dict, row_context: dict | None = Non
                 k: round(_clip01(v) * 100, 2)
                 for k, v in institutional_components.items()
             },
+            "options_adjustment": {
+                "options_score_adjustment": round(float(scores.get("options_score_adjustment", 0.0) or 0.0), 4),
+                "options_score_reason": scores.get("options_score_reason", ""),
+                "options_contrarian_adjustment": round(
+                    float(scores.get("options_contrarian_adjustment", 0.0) or 0.0),
+                    4,
+                ),
+                "options_contrarian_reason": scores.get("options_contrarian_reason", ""),
+                "options_risk_flag": scores.get("options_risk_flag", ""),
+            },
             "weights": {
                 "final_trade_score": {
                     "setup_quality_score": 0.50,
