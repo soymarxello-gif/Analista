@@ -59,6 +59,19 @@ CHECKLIST_ALLOWED_STATUSES = {
     "HIGH_QUALITY_REVIEW",
 }
 
+CALIBRATION_REQUIRED_COLUMNS = [
+    "group",
+    "group_value",
+    "closed_trades",
+    "wins",
+    "losses",
+    "breakeven",
+    "win_rate",
+    "avg_r_multiple",
+    "total_r_multiple",
+    "sample_size_warning",
+]
+
 
 def _safe_text(value) -> str:
     if value is None:
@@ -342,6 +355,40 @@ def audit_trade_candidate_cards(path: Path) -> dict:
     return result
 
 
+def audit_trade_score_calibration(csv_path: Path, json_path: Path) -> dict:
+    df, csv_error = _load_csv(csv_path)
+    data, json_error = _load_json(json_path)
+
+    result = {
+        "name": "trade_score_calibration_latest",
+        "path": str(csv_path),
+        "rows": int(len(df)),
+        "issues": [],
+        "warnings": [],
+        "optional": True,
+    }
+
+    if csv_error:
+        result["warnings"].append(f"optional_trade_score_calibration_csv_unavailable:{csv_error}")
+        return result
+
+    missing = _missing_columns(df, CALIBRATION_REQUIRED_COLUMNS)
+    if missing:
+        result["issues"].append("missing_columns:" + ",".join(missing))
+
+    if json_error:
+        result["warnings"].append(f"optional_trade_score_calibration_json_unavailable:{json_error}")
+        return result
+
+    if "status" not in data:
+        result["issues"].append("json_missing_status")
+
+    if "closed_trades" not in data:
+        result["issues"].append("json_missing_closed_trades")
+
+    return result
+
+
 def build_report_consistency_audit(
     reports_dir: Path,
 ) -> dict:
@@ -350,6 +397,8 @@ def build_report_consistency_audit(
     live_path = reports_dir / "live_quote_recheck_latest.csv"
     checklist_path = reports_dir / "trade_decision_checklist_latest.csv"
     cards_path = reports_dir / "trade_candidate_cards_latest.json"
+    calibration_csv_path = reports_dir / "trade_score_calibration_latest.csv"
+    calibration_json_path = reports_dir / "trade_score_calibration_latest.json"
 
     checks = [
         audit_manual_review_latest(manual_path),
@@ -357,6 +406,7 @@ def build_report_consistency_audit(
         audit_live_quote_recheck(live_path),
         audit_trade_decision_checklist(checklist_path),
         audit_trade_candidate_cards(cards_path),
+        audit_trade_score_calibration(calibration_csv_path, calibration_json_path),
     ]
 
     issues = []

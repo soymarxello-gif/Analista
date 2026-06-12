@@ -86,6 +86,21 @@ DEFAULT_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "trade_score_calibration",
+        "cmd": [
+            sys.executable,
+            "tools/trade_score_calibration.py",
+            "--csv-out",
+            "reports/trade_score_calibration_latest.csv",
+            "--json-out",
+            "reports/trade_score_calibration_latest.json",
+            "--markdown-out",
+            "reports/trade_score_calibration_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "reports_cleanup",
         "cmd": [
             sys.executable,
@@ -339,6 +354,9 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "setup_persistence_latest.md",
         ROOT / "reports" / "trade_outcome_analytics_latest.csv",
         ROOT / "reports" / "trade_outcome_analytics_latest.md",
+        ROOT / "reports" / "trade_score_calibration_latest.csv",
+        ROOT / "reports" / "trade_score_calibration_latest.json",
+        ROOT / "reports" / "trade_score_calibration_latest.md",
     ]
 
     return {
@@ -351,6 +369,7 @@ def collect_scan_snapshot() -> dict:
     live_recheck_path = ROOT / "reports" / "live_quote_recheck_latest.json"
     checklist_path = ROOT / "reports" / "trade_decision_checklist_latest.json"
     cards_path = ROOT / "reports" / "trade_candidate_cards_latest.json"
+    calibration_path = ROOT / "reports" / "trade_score_calibration_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -358,6 +377,13 @@ def collect_scan_snapshot() -> dict:
         "signals": {},
         "recommendations": {},
         "quote_recheck_priority": {},
+        "trade_score_calibration": {
+            "status": "MISSING",
+            "closed_trades": 0,
+            "win_rate": "",
+            "avg_r_multiple": "",
+            "sample_size_warning": "",
+        },
         "live_quote_recheck": {
             "status": "MISSING",
             "rows": 0,
@@ -465,6 +491,20 @@ def collect_scan_snapshot() -> dict:
             "needs_live_quote_recheck": int(cards_data.get("needs_live_quote_recheck", 0) or 0),
             "review_manually": int(cards_data.get("review_manually", 0) or 0),
             "high_quality_review": int(cards_data.get("high_quality_review", 0) or 0),
+        }
+
+    if calibration_path.exists():
+        try:
+            calibration_data = json.loads(calibration_path.read_text(encoding="utf-8"))
+        except Exception:
+            calibration_data = {}
+
+        snapshot["trade_score_calibration"] = {
+            "status": str(calibration_data.get("status", "UNKNOWN")),
+            "closed_trades": int(calibration_data.get("closed_trades", 0) or 0),
+            "win_rate": calibration_data.get("win_rate", ""),
+            "avg_r_multiple": calibration_data.get("avg_r_multiple", ""),
+            "sample_size_warning": str(calibration_data.get("sample_size_warning", "")),
         }
 
     return snapshot
@@ -585,6 +625,7 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
     lines.append("- Revisar después: reports/manual_review_latest.md")
     lines.append("- Revisar checklist operativo: reports/trade_decision_checklist_latest.md")
     lines.append("- Revisar fichas por candidato: reports/trade_candidate_cards_latest.md")
+    lines.append("- Revisar calibración de scores: reports/trade_score_calibration_latest.md")
     lines.append("- Revisar analytics: reports/trade_outcome_analytics_latest.md")
 
     if recheck_count > 0:
@@ -639,6 +680,9 @@ def build_summary_text(
         "reports/setup_persistence_latest.md",
         "reports/trade_outcome_analytics_latest.csv",
         "reports/trade_outcome_analytics_latest.md",
+        "reports/trade_score_calibration_latest.csv",
+        "reports/trade_score_calibration_latest.json",
+        "reports/trade_score_calibration_latest.md",
         "reports/live_quote_recheck_latest.csv",
         "reports/live_quote_recheck_latest.md",
         "reports/live_quote_recheck_latest.json",
@@ -668,9 +712,11 @@ def build_summary_text(
     live = snapshot.get("live_quote_recheck", {}) or {}
     checklist = snapshot.get("trade_decision_checklist", {}) or {}
     cards = snapshot.get("trade_candidate_cards", {}) or {}
+    calibration = snapshot.get("trade_score_calibration", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
+    lines.append(f"- Trade score calibration closed trades: {calibration.get('closed_trades')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -733,6 +779,15 @@ def build_summary_text(
     lines.append("Quote recheck priority:")
     for key, value in snapshot.get("quote_recheck_priority", {}).items():
         lines.append(f"- {key}: {value}")
+
+    calibration = snapshot.get("trade_score_calibration", {}) or {}
+    lines.append("")
+    lines.append("Trade score calibration:")
+    lines.append(f"- status: {calibration.get('status')}")
+    lines.append(f"- closed_trades: {calibration.get('closed_trades')}")
+    lines.append(f"- win_rate: {calibration.get('win_rate')}")
+    lines.append(f"- avg_r_multiple: {calibration.get('avg_r_multiple')}")
+    lines.append(f"- sample_size_warning: {calibration.get('sample_size_warning')}")
 
     live = snapshot.get("live_quote_recheck", {}) or {}
     lines.append("")
