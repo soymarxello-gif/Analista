@@ -50,7 +50,8 @@ git -c safe.directory="*" status --short
 5. `reports/trade_candidate_cards_latest.md`
 6. `reports/manual_review_top.md`
 7. `reports/daily_run_manifest_latest.md`
-8. `reports/daily_validation_summary.txt`
+8. `reports/release_readiness_latest.md`
+9. `reports/daily_validation_summary.txt`
 
 ## Signals
 
@@ -117,6 +118,23 @@ python .\tools\calibration_recommendations.py
 
 No calibration tool changes weights, thresholds, config, scanner logic, or signals.
 
+## Release Readiness
+
+Before closing a version, run:
+
+```powershell
+python .\tools\release_readiness_audit.py
+```
+
+The audit checks required documentation, recent tools, recent tests, Git ignore hygiene, P0 guardrails, daily validation integration, operator index references, manifest outputs, and generated-report tracking risk.
+
+Outputs:
+
+- `reports/release_readiness_latest.md`
+- `reports/release_readiness_latest.json`
+
+`FAIL` blocks release closure. `WARN` requires manual review but can be acceptable for optional generated reports or tracked historical artifacts.
+
 ## P0 Rules
 
 The P0 rules protect the system from unsafe interpretation:
@@ -140,9 +158,10 @@ Before closing a development phase:
 2. Confirm no scanner logic, scoring, thresholds, or P0 rules were changed unless explicitly requested.
 3. Run `python -m pytest -q`.
 4. Run `python .\tools\daily_validation.py`.
-5. Run `git -c safe.directory="*" status --short`.
-6. Review generated report changes and avoid committing ignored runtime artifacts.
-7. Commit only intended source, tests, config, and documentation.
+5. Run `python .\tools\release_readiness_audit.py`.
+6. Run `git -c safe.directory="*" status --short`.
+7. Review generated report changes and avoid committing ignored runtime artifacts.
+8. Commit only intended source, tests, config, and documentation.
 
 ## Final Operator Rule
 

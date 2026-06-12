@@ -332,6 +332,23 @@ def _normalize_calibration_recommendations_status(data: dict) -> dict:
     }
 
 
+def _normalize_release_readiness_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "critical_failures": 0,
+            "warnings": 0,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "critical_failures": _safe_int(data.get("critical_failures"), 0),
+        "warnings": _safe_int(data.get("warnings"), 0),
+    }
+
+
 def _parse_status_from_summary(text: str) -> str:
     for line in text.splitlines():
         line = line.strip()
@@ -524,6 +541,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     trade_candidate_cards_json_path = reports / "trade_candidate_cards_latest.json"
     trade_score_calibration_json_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_json_path = reports / "calibration_recommendations_latest.json"
+    release_readiness_json_path = reports / "release_readiness_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -550,6 +568,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     calibration_recommendations_data = _normalize_calibration_recommendations_status(
         _load_json(calibration_recommendations_json_path)
+    )
+    release_readiness_data = _normalize_release_readiness_status(
+        _load_json(release_readiness_json_path)
     )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
@@ -580,6 +601,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "daily_operator_index.md",
         reports / "daily_quality_gate_latest.json",
         reports / "daily_quality_gate_latest.md",
+        reports / "release_readiness_latest.json",
+        reports / "release_readiness_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -643,6 +666,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "trade_candidate_cards": trade_candidate_cards_data,
         "trade_score_calibration": trade_score_calibration_data,
         "calibration_recommendations": calibration_recommendations_data,
+        "release_readiness": release_readiness_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -824,6 +848,25 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
 
+    release_readiness = data.get("release_readiness", {}) or {}
+    release_available = bool(release_readiness.get("available", False))
+
+    lines.append("## Release readiness")
+    lines.append("")
+
+    if not release_available:
+        lines.append("- No hay reporte de release readiness disponible.")
+        lines.append("- Ejecutar `python .\\tools\\release_readiness_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {release_readiness.get('status', 'UNKNOWN')}")
+        lines.append(f"- critical_failures: {release_readiness.get('critical_failures', 0)}")
+        lines.append(f"- warnings: {release_readiness.get('warnings', 0)}")
+        lines.append("- markdown: reports/release_readiness_latest.md")
+        lines.append("- json: reports/release_readiness_latest.json")
+        lines.append("- Auditoria final de release; no modifica logica operativa.")
+
+    lines.append("")
+
     live_recheck = data.get("live_quote_recheck", {}) or {}
     live_recheck_available = bool(live_recheck.get("available", False))
 
@@ -940,6 +983,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("14. `reports/trade_candidate_cards_latest.md`")
     lines.append("15. `reports/trade_score_calibration_latest.md`")
     lines.append("16. `reports/calibration_recommendations_latest.md`")
+    lines.append("17. `reports/release_readiness_latest.md`")
     lines.append("")
 
     lines.append("## Señales")

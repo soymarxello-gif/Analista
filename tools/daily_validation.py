@@ -230,6 +230,19 @@ POST_SUMMARY_STEPS = [
         "required": False,
         "timeout_seconds": 60,
     },
+    {
+        "name": "release_readiness_audit",
+        "cmd": [
+            sys.executable,
+            "tools/release_readiness_audit.py",
+            "--json-out",
+            "reports/release_readiness_latest.json",
+            "--markdown-out",
+            "reports/release_readiness_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
 ]
 
 
@@ -362,6 +375,8 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "encoding_audit_latest.md",
         ROOT / "reports" / "daily_quality_gate_latest.json",
         ROOT / "reports" / "daily_quality_gate_latest.md",
+        ROOT / "reports" / "release_readiness_latest.json",
+        ROOT / "reports" / "release_readiness_latest.md",
         ROOT / "reports" / "reports_cleanup_latest.json",
         ROOT / "reports" / "reports_cleanup_latest.md",
         ROOT / "reports" / "source_coverage_latest.json",
@@ -390,6 +405,7 @@ def collect_scan_snapshot() -> dict:
     cards_path = ROOT / "reports" / "trade_candidate_cards_latest.json"
     calibration_path = ROOT / "reports" / "trade_score_calibration_latest.json"
     calibration_recommendations_path = ROOT / "reports" / "calibration_recommendations_latest.json"
+    release_readiness_path = ROOT / "reports" / "release_readiness_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -409,6 +425,11 @@ def collect_scan_snapshot() -> dict:
             "closed_trades": 0,
             "recommendation_count": 0,
             "sample_size_warning": "",
+        },
+        "release_readiness": {
+            "status": "MISSING",
+            "critical_failures": 0,
+            "warnings": 0,
         },
         "live_quote_recheck": {
             "status": "MISSING",
@@ -552,6 +573,18 @@ def collect_scan_snapshot() -> dict:
             ),
         }
 
+    if release_readiness_path.exists():
+        try:
+            release_readiness_data = json.loads(release_readiness_path.read_text(encoding="utf-8"))
+        except Exception:
+            release_readiness_data = {}
+
+        snapshot["release_readiness"] = {
+            "status": str(release_readiness_data.get("status", "UNKNOWN")),
+            "critical_failures": int(release_readiness_data.get("critical_failures", 0) or 0),
+            "warnings": int(release_readiness_data.get("warnings", 0) or 0),
+        }
+
     return snapshot
 
 
@@ -672,6 +705,7 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
     lines.append("- Revisar fichas por candidato: reports/trade_candidate_cards_latest.md")
     lines.append("- Revisar calibración de scores: reports/trade_score_calibration_latest.md")
     lines.append("- Revisar recomendaciones de calibración: reports/calibration_recommendations_latest.md")
+    lines.append("- Revisar release readiness: reports/release_readiness_latest.md")
     lines.append("- Revisar analytics: reports/trade_outcome_analytics_latest.md")
 
     if recheck_count > 0:
@@ -745,6 +779,8 @@ def build_summary_text(
         "reports/daily_run_manifest_latest.md",
         "reports/encoding_audit_latest.json",
         "reports/encoding_audit_latest.md",
+        "reports/release_readiness_latest.json",
+        "reports/release_readiness_latest.md",
     ]
 
     lines.append("=== ANALISTA DAILY VALIDATION SUMMARY ===")
@@ -762,6 +798,7 @@ def build_summary_text(
     cards = snapshot.get("trade_candidate_cards", {}) or {}
     calibration = snapshot.get("trade_score_calibration", {}) or {}
     calibration_recommendations = snapshot.get("calibration_recommendations", {}) or {}
+    release_readiness = snapshot.get("release_readiness", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
@@ -770,6 +807,7 @@ def build_summary_text(
         "- Calibration recommendations count: "
         f"{calibration_recommendations.get('recommendation_count')}"
     )
+    lines.append(f"- Release readiness status: {release_readiness.get('status')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -853,6 +891,13 @@ def build_summary_text(
     lines.append(
         f"- sample_size_warning: {calibration_recommendations.get('sample_size_warning')}"
     )
+
+    release_readiness = snapshot.get("release_readiness", {}) or {}
+    lines.append("")
+    lines.append("Release readiness:")
+    lines.append(f"- status: {release_readiness.get('status')}")
+    lines.append(f"- critical_failures: {release_readiness.get('critical_failures')}")
+    lines.append(f"- warnings: {release_readiness.get('warnings')}")
 
     live = snapshot.get("live_quote_recheck", {}) or {}
     lines.append("")

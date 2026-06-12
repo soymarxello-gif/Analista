@@ -35,6 +35,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/trade_candidate_cards.py",
         "tools/trade_score_calibration.py",
         "tools/calibration_recommendations.py",
+        "tools/release_readiness_audit.py",
     ]
 
     for script in scripts:
@@ -191,6 +192,17 @@ def _make_project(tmp_path: Path) -> Path:
                 "recommendation_count": 1,
                 "do_not_change_automatically": True,
                 "recommendations": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "release_readiness_latest.md").write_text("# release\n", encoding="utf-8")
+    (reports / "release_readiness_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "critical_failures": 0,
+                "warnings": 0,
             }
         ),
         encoding="utf-8",

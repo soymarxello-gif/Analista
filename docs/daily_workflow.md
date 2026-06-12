@@ -27,9 +27,10 @@ This runs the audited scanner, P0 validation, quality gates, optional report bui
 5. `reports/trade_candidate_cards_latest.md`
 6. `reports/manual_review_top.md`
 7. `reports/daily_run_manifest_latest.md`
-8. `reports/daily_validation_summary.txt`
-9. `reports/project_preflight_latest.md`
-10. `reports/encoding_audit_latest.md`
+8. `reports/release_readiness_latest.md`
+9. `reports/daily_validation_summary.txt`
+10. `reports/project_preflight_latest.md`
+11. `reports/encoding_audit_latest.md`
 
 Stop immediately if a required step is `FAIL`.
 
@@ -141,14 +142,32 @@ git -c safe.directory="*" status --short
 
 Generated reports and caches should remain ignored. Version code, tests, and durable documentation only.
 
-## 11. Close A Phase With Git
+## 11. Release Readiness Audit
+
+Before closing a version, run:
+
+```powershell
+python .\tools\release_readiness_audit.py
+```
+
+Review:
+
+```text
+reports/release_readiness_latest.md
+reports/release_readiness_latest.json
+```
+
+`FAIL` blocks release closure. `WARN` requires review, usually for optional generated reports or Git hygiene around runtime artifacts.
+
+## 12. Close A Phase With Git
 
 1. Confirm `python -m pytest -q` passes.
 2. Confirm `python .\tools\daily_validation.py` passes or returns controlled warnings only.
 3. Confirm no P0 rule was relaxed.
-4. Review `git -c safe.directory="*" status --short`.
-5. Stage only intended code, tests, and docs.
-6. Commit with a phase-specific message, for example:
+4. Confirm `python .\tools\release_readiness_audit.py` is not `FAIL`.
+5. Review `git -c safe.directory="*" status --short`.
+6. Stage only intended code, tests, and docs.
+7. Commit with a phase-specific message, for example:
 
 ```powershell
 git add docs README.md tests

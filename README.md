@@ -62,6 +62,12 @@ python .\tools\trade_score_calibration.py
 python .\tools\calibration_recommendations.py
 ```
 
+Run release readiness audit:
+
+```powershell
+python .\tools\release_readiness_audit.py
+```
+
 Review Git state:
 
 ```powershell

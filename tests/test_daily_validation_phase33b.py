@@ -8,7 +8,7 @@ from tools.daily_validation import (
 )
 
 
-def test_daily_quality_gate_is_last_post_summary_step():
+def test_daily_quality_gate_runs_before_release_readiness_audit():
     default_names = [step["name"] for step in DEFAULT_STEPS]
     post_names = [step["name"] for step in POST_SUMMARY_STEPS]
 
@@ -18,12 +18,14 @@ def test_daily_quality_gate_is_last_post_summary_step():
     assert "daily_operator_index" in post_names
     assert "daily_run_manifest" in post_names
     assert "encoding_audit" in post_names
+    assert "release_readiness_audit" in post_names
 
     assert post_names.index("daily_operator_index") < post_names.index("daily_run_manifest")
     assert post_names.index("daily_run_manifest") < post_names.index("encoding_audit")
     assert post_names.index("encoding_audit") < post_names.index("daily_quality_gate")
+    assert post_names.index("daily_quality_gate") < post_names.index("release_readiness_audit")
 
-    assert post_names[-1] == "daily_quality_gate"
+    assert post_names[-1] == "release_readiness_audit"
 
 
 def test_daily_quality_gate_post_step_is_optional_and_safe():
