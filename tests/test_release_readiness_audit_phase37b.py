@@ -23,6 +23,7 @@ DOCS = [
 ]
 
 TOOLS = [
+    "app.py",
     "tools/daily_validation.py",
     "tools/live_quote_recheck.py",
     "tools/trade_decision_checklist.py",
@@ -30,12 +31,17 @@ TOOLS = [
     "tools/paper_trading_journal.py",
     "tools/paper_trade_followup.py",
     "tools/paper_trade_close.py",
+    "tools/paper_trading_cycle_audit.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
     "tools/daily_operator_index.py",
     "tools/daily_run_manifest.py",
     "tools/project_preflight.py",
     "tools/report_consistency_audit.py",
+    "tools/ui_data_contract_audit.py",
+    "tools/streamlit_smoke_test.py",
+    "tools/gui_actions_audit.py",
+    "tools/gui_visuals_audit.py",
 ]
 
 TESTS = [
@@ -50,6 +56,12 @@ TESTS = [
     "tests/test_paper_trading_journal_phase38a.py",
     "tests/test_paper_trade_followup_phase38b.py",
     "tests/test_paper_trade_close_phase38c.py",
+    "tests/test_paper_trading_cycle_audit_phase38d.py",
+    "tests/test_ui_report_loader_phase39a.py",
+    "tests/test_ui_view_models_phase39a.py",
+    "tests/test_streamlit_dashboard_phase39b.py",
+    "tests/test_gui_actions_phase39c.py",
+    "tests/test_gui_visuals_phase39d.py",
 ]
 
 
@@ -113,8 +125,13 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "paper_trading_journal",
                 "paper_trade_followup",
                 "paper_trade_close",
+                "paper_trading_cycle_audit",
                 "trade_score_calibration",
                 "calibration_recommendations",
+                "ui_data_contract_audit",
+                "streamlit_smoke_test",
+                "gui_actions_audit",
+                "gui_visuals_audit",
             ]
         ),
     )
@@ -128,8 +145,13 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/paper_trading_journal_latest.md",
                 "reports/paper_trade_followup_latest.md",
                 "reports/paper_trade_close_latest.md",
+                "reports/paper_trading_cycle_audit_latest.md",
                 "reports/trade_score_calibration_latest.md",
                 "reports/calibration_recommendations_latest.md",
+                "reports/ui_data_contract_audit_latest.md",
+                "reports/streamlit_smoke_test_latest.md",
+                "reports/gui_actions_audit_latest.md",
+                "reports/gui_visuals_audit_latest.md",
             ]
         ),
     )
@@ -143,16 +165,26 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "tools/paper_trading_journal.py",
                 "tools/paper_trade_followup.py",
                 "tools/paper_trade_close.py",
+                "tools/paper_trading_cycle_audit.py",
                 "tools/trade_score_calibration.py",
                 "tools/calibration_recommendations.py",
+                "tools/ui_data_contract_audit.py",
+                "tools/streamlit_smoke_test.py",
+                "tools/gui_actions_audit.py",
+                "tools/gui_visuals_audit.py",
                 "reports/live_quote_recheck_latest.json",
                 "reports/trade_decision_checklist_latest.json",
                 "reports/trade_candidate_cards_latest.json",
                 "reports/paper_trading_journal_latest.json",
                 "reports/paper_trade_followup_latest.json",
                 "reports/paper_trade_close_latest.json",
+                "reports/paper_trading_cycle_audit_latest.json",
                 "reports/trade_score_calibration_latest.json",
                 "reports/calibration_recommendations_latest.json",
+                "reports/ui_data_contract_audit_latest.json",
+                "reports/streamlit_smoke_test_latest.json",
+                "reports/gui_actions_audit_latest.json",
+                "reports/gui_visuals_audit_latest.json",
             ]
         ),
     )
@@ -179,9 +211,14 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "paper_trade_followup_latest.md",
         "paper_trade_close_latest.csv",
         "paper_trade_close_latest.md",
+        "paper_trading_cycle_audit_latest.md",
         "trade_score_calibration_latest.csv",
         "trade_score_calibration_latest.md",
         "calibration_recommendations_latest.md",
+        "ui_data_contract_audit_latest.md",
+        "streamlit_smoke_test_latest.md",
+        "gui_actions_audit_latest.md",
+        "gui_visuals_audit_latest.md",
         "trade_outcome_analytics_latest.csv",
         "trade_outcome_analytics_latest.md",
         "reports_cleanup_latest.md",
@@ -200,8 +237,13 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "paper_trading_journal_latest.json",
         "paper_trade_followup_latest.json",
         "paper_trade_close_latest.json",
+        "paper_trading_cycle_audit_latest.json",
         "trade_score_calibration_latest.json",
         "calibration_recommendations_latest.json",
+        "ui_data_contract_audit_latest.json",
+        "streamlit_smoke_test_latest.json",
+        "gui_actions_audit_latest.json",
+        "gui_visuals_audit_latest.json",
         "reports_cleanup_latest.json",
         "report_consistency_latest.json",
     ]:
@@ -308,7 +350,15 @@ def test_daily_validation_has_optional_release_readiness_audit_at_end():
     post_names = [item["name"] for item in daily_validation.POST_SUMMARY_STEPS]
 
     assert "release_readiness_audit" in post_names
-    assert post_names[-1] == "release_readiness_audit"
+    assert "ui_data_contract_audit" in post_names
+    assert "streamlit_smoke_test" in post_names
+    assert "gui_actions_audit" in post_names
+    assert "gui_visuals_audit" in post_names
+    assert post_names.index("release_readiness_audit") < post_names.index("streamlit_smoke_test")
+    assert post_names.index("streamlit_smoke_test") < post_names.index("gui_actions_audit")
+    assert post_names.index("gui_actions_audit") < post_names.index("gui_visuals_audit")
+    assert post_names.index("gui_visuals_audit") < post_names.index("ui_data_contract_audit")
+    assert post_names[-1] == "ui_data_contract_audit"
 
     step = next(item for item in daily_validation.POST_SUMMARY_STEPS if item["name"] == "release_readiness_audit")
     assert step["required"] is False
@@ -345,6 +395,10 @@ def test_daily_operator_index_renders_release_readiness_section():
                 "critical_failures": 0,
                 "warnings": 0,
             },
+            "ui_data_contract": {"available": False},
+            "streamlit_smoke_test": {"available": False},
+            "gui_actions_audit": {"available": False},
+            "gui_visuals_audit": {"available": False},
             "top_candidates": pd.DataFrame(),
             "recheck_candidates": pd.DataFrame(),
             "open_trades": pd.DataFrame(),
@@ -363,5 +417,14 @@ def test_daily_operator_index_renders_release_readiness_section():
 
 def test_daily_run_manifest_tracks_release_readiness_outputs():
     assert "tools/release_readiness_audit.py" in KEY_SCRIPT_PATHS
+    assert "tools/streamlit_smoke_test.py" in KEY_SCRIPT_PATHS
+    assert "tools/gui_actions_audit.py" in KEY_SCRIPT_PATHS
+    assert "tools/gui_visuals_audit.py" in KEY_SCRIPT_PATHS
     assert "reports/release_readiness_latest.json" in KEY_REPORT_PATHS
     assert "reports/release_readiness_latest.md" in KEY_REPORT_PATHS
+    assert "reports/streamlit_smoke_test_latest.json" in KEY_REPORT_PATHS
+    assert "reports/streamlit_smoke_test_latest.md" in KEY_REPORT_PATHS
+    assert "reports/gui_actions_audit_latest.json" in KEY_REPORT_PATHS
+    assert "reports/gui_actions_audit_latest.md" in KEY_REPORT_PATHS
+    assert "reports/gui_visuals_audit_latest.json" in KEY_REPORT_PATHS
+    assert "reports/gui_visuals_audit_latest.md" in KEY_REPORT_PATHS

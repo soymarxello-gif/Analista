@@ -367,6 +367,31 @@ def _normalize_paper_trade_close_status(data: dict) -> dict:
     }
 
 
+def _normalize_paper_trading_cycle_audit_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "journal_rows": 0,
+            "open_paper_count": 0,
+            "closed_paper_count": 0,
+            "pending_export_count": 0,
+            "exported_count": 0,
+            "duplicate_outcome_ids": 0,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "journal_rows": _safe_int(data.get("journal_rows"), 0),
+        "open_paper_count": _safe_int(data.get("open_paper_count"), 0),
+        "closed_paper_count": _safe_int(data.get("closed_paper_count"), 0),
+        "pending_export_count": _safe_int(data.get("pending_export_count"), 0),
+        "exported_count": _safe_int(data.get("exported_count"), 0),
+        "duplicate_outcome_ids": len(data.get("duplicate_outcome_ids", []) or []),
+    }
+
+
 def _normalize_trade_score_calibration_status(data: dict) -> dict:
     if not data:
         return {
@@ -421,6 +446,73 @@ def _normalize_release_readiness_status(data: dict) -> dict:
         "status": str(data.get("status", "UNKNOWN")).upper(),
         "critical_failures": _safe_int(data.get("critical_failures"), 0),
         "warnings": _safe_int(data.get("warnings"), 0),
+    }
+
+
+def _normalize_ui_data_contract_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "available_sources": 0,
+            "missing_sources": 0,
+            "invalid_sources": 0,
+            "candidate_rows": 0,
+            "paper_journal_rows": 0,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "available_sources": _safe_int(data.get("available_sources"), 0),
+        "missing_sources": _safe_int(data.get("missing_sources"), 0),
+        "invalid_sources": _safe_int(data.get("invalid_sources"), 0),
+        "candidate_rows": _safe_int(data.get("candidate_rows"), 0),
+        "paper_journal_rows": _safe_int(data.get("paper_journal_rows"), 0),
+    }
+
+
+def _normalize_streamlit_smoke_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "app_exists": False,
+            "import_ok": False,
+            "view_models_ok": False,
+            "read_only": False,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "app_exists": bool(data.get("app_exists", False)),
+        "import_ok": bool(data.get("import_ok", False)),
+        "view_models_ok": bool(data.get("view_models_ok", False)),
+        "read_only": bool(data.get("read_only", False)),
+    }
+
+
+def _normalize_gui_actions_audit_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "actions_module_exists": False,
+            "action_log_exists": False,
+            "logged_actions": 0,
+            "broker_guardrail_ok": False,
+            "shell_guardrail_ok": False,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "actions_module_exists": bool(data.get("actions_module_exists", False)),
+        "action_log_exists": bool(data.get("action_log_exists", False)),
+        "logged_actions": _safe_int(data.get("logged_actions"), 0),
+        "broker_guardrail_ok": bool(data.get("broker_guardrail_ok", False)),
+        "shell_guardrail_ok": bool(data.get("shell_guardrail_ok", False)),
     }
 
 
@@ -617,9 +709,14 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     paper_trading_journal_json_path = reports / "paper_trading_journal_latest.json"
     paper_trade_followup_json_path = reports / "paper_trade_followup_latest.json"
     paper_trade_close_json_path = reports / "paper_trade_close_latest.json"
+    paper_trading_cycle_audit_json_path = reports / "paper_trading_cycle_audit_latest.json"
     trade_score_calibration_json_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_json_path = reports / "calibration_recommendations_latest.json"
     release_readiness_json_path = reports / "release_readiness_latest.json"
+    ui_data_contract_json_path = reports / "ui_data_contract_audit_latest.json"
+    streamlit_smoke_json_path = reports / "streamlit_smoke_test_latest.json"
+    gui_actions_json_path = reports / "gui_actions_audit_latest.json"
+    gui_visuals_json_path = reports / "gui_visuals_audit_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -650,6 +747,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     paper_trade_close_data = _normalize_paper_trade_close_status(
         _load_json(paper_trade_close_json_path)
     )
+    paper_trading_cycle_audit_data = _normalize_paper_trading_cycle_audit_status(
+        _load_json(paper_trading_cycle_audit_json_path)
+    )
     trade_score_calibration_data = _normalize_trade_score_calibration_status(
         _load_json(trade_score_calibration_json_path)
     )
@@ -658,6 +758,18 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     release_readiness_data = _normalize_release_readiness_status(
         _load_json(release_readiness_json_path)
+    )
+    ui_data_contract_data = _normalize_ui_data_contract_status(
+        _load_json(ui_data_contract_json_path)
+    )
+    streamlit_smoke_data = _normalize_streamlit_smoke_status(
+        _load_json(streamlit_smoke_json_path)
+    )
+    gui_actions_data = _normalize_gui_actions_audit_status(
+        _load_json(gui_actions_json_path)
+    )
+    gui_visuals_data = _normalize_gui_visuals_audit_status(
+        _load_json(gui_visuals_json_path)
     )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
@@ -690,6 +802,14 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "daily_quality_gate_latest.md",
         reports / "release_readiness_latest.json",
         reports / "release_readiness_latest.md",
+        reports / "ui_data_contract_audit_latest.json",
+        reports / "ui_data_contract_audit_latest.md",
+        reports / "streamlit_smoke_test_latest.json",
+        reports / "streamlit_smoke_test_latest.md",
+        reports / "gui_actions_audit_latest.json",
+        reports / "gui_actions_audit_latest.md",
+        reports / "gui_visuals_audit_latest.json",
+        reports / "gui_visuals_audit_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -707,6 +827,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "paper_trade_close_latest.csv",
         reports / "paper_trade_close_latest.md",
         reports / "paper_trade_close_latest.json",
+        reports / "paper_trading_cycle_audit_latest.md",
+        reports / "paper_trading_cycle_audit_latest.json",
         reports / "trade_score_calibration_latest.csv",
         reports / "trade_score_calibration_latest.json",
         reports / "trade_score_calibration_latest.md",
@@ -763,9 +885,14 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "paper_trading_journal": paper_trading_journal_data,
         "paper_trade_followup": paper_trade_followup_data,
         "paper_trade_close": paper_trade_close_data,
+        "paper_trading_cycle_audit": paper_trading_cycle_audit_data,
         "trade_score_calibration": trade_score_calibration_data,
         "calibration_recommendations": calibration_recommendations_data,
         "release_readiness": release_readiness_data,
+        "ui_data_contract": ui_data_contract_data,
+        "streamlit_smoke_test": streamlit_smoke_data,
+        "gui_actions_audit": gui_actions_data,
+        "gui_visuals_audit": gui_visuals_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -966,6 +1093,71 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
 
+    ui_contract = data.get("ui_data_contract", {}) or {}
+    ui_contract_available = bool(ui_contract.get("available", False))
+
+    lines.append("## UI data contract")
+    lines.append("")
+
+    if not ui_contract_available:
+        lines.append("- No hay reporte de UI data contract disponible.")
+        lines.append("- Ejecutar `python .\\tools\\ui_data_contract_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {ui_contract.get('status', 'UNKNOWN')}")
+        lines.append(f"- available_sources: {ui_contract.get('available_sources', 0)}")
+        lines.append(f"- missing_sources: {ui_contract.get('missing_sources', 0)}")
+        lines.append(f"- invalid_sources: {ui_contract.get('invalid_sources', 0)}")
+        lines.append(f"- candidate_rows: {ui_contract.get('candidate_rows', 0)}")
+        lines.append(f"- paper_journal_rows: {ui_contract.get('paper_journal_rows', 0)}")
+        lines.append("- markdown: reports/ui_data_contract_audit_latest.md")
+        lines.append("- json: reports/ui_data_contract_audit_latest.json")
+        lines.append("- Contrato read-only para futura GUI; no crea acciones operativas.")
+
+    lines.append("")
+
+    streamlit_smoke = data.get("streamlit_smoke_test", {}) or {}
+    streamlit_available = bool(streamlit_smoke.get("available", False))
+
+    lines.append("## Streamlit dashboard")
+    lines.append("")
+
+    if not streamlit_available:
+        lines.append("- No hay reporte de Streamlit smoke test disponible.")
+        lines.append("- Ejecutar `python .\\tools\\streamlit_smoke_test.py` para generarlo.")
+    else:
+        lines.append(f"- status: {streamlit_smoke.get('status', 'UNKNOWN')}")
+        lines.append(f"- app_exists: {streamlit_smoke.get('app_exists', False)}")
+        lines.append(f"- import_ok: {streamlit_smoke.get('import_ok', False)}")
+        lines.append(f"- view_models_ok: {streamlit_smoke.get('view_models_ok', False)}")
+        lines.append(f"- read_only: {streamlit_smoke.get('read_only', False)}")
+        lines.append("- markdown: reports/streamlit_smoke_test_latest.md")
+        lines.append("- json: reports/streamlit_smoke_test_latest.json")
+        lines.append("- Dashboard Streamlit con acciones paper controladas; sin ordenes reales.")
+
+    lines.append("")
+
+    gui_actions = data.get("gui_actions_audit", {}) or {}
+    gui_actions_available = bool(gui_actions.get("available", False))
+
+    lines.append("## GUI actions")
+    lines.append("")
+
+    if not gui_actions_available:
+        lines.append("- No hay reporte de GUI actions audit disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_actions_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {gui_actions.get('status', 'UNKNOWN')}")
+        lines.append(f"- actions_module_exists: {gui_actions.get('actions_module_exists', False)}")
+        lines.append(f"- action_log_exists: {gui_actions.get('action_log_exists', False)}")
+        lines.append(f"- logged_actions: {gui_actions.get('logged_actions', 0)}")
+        lines.append(f"- broker_guardrail_ok: {gui_actions.get('broker_guardrail_ok', False)}")
+        lines.append(f"- shell_guardrail_ok: {gui_actions.get('shell_guardrail_ok', False)}")
+        lines.append("- markdown: reports/gui_actions_audit_latest.md")
+        lines.append("- json: reports/gui_actions_audit_latest.json")
+        lines.append("- Acciones paper trading solamente, con confirmacion explicita.")
+
+    lines.append("")
+
     live_recheck = data.get("live_quote_recheck", {}) or {}
     live_recheck_available = bool(live_recheck.get("available", False))
 
@@ -1015,6 +1207,24 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- json: reports/trade_decision_checklist_latest.json")
         lines.append("- HIGH_QUALITY_REVIEW no equivale a compra automatica.")
 
+    lines.append("")
+
+    gui_visuals = data.get("gui_visuals_audit", {}) or {}
+    gui_visuals_available = bool(gui_visuals.get("available", False))
+    lines.append("## GUI visuals")
+    lines.append("")
+    if not gui_visuals_available:
+        lines.append("- No hay reporte de GUI visuals audit disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_visuals_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {gui_visuals.get('status', 'UNKNOWN')}")
+        lines.append(f"- charts_module_exists: {gui_visuals.get('charts_module_exists', False)}")
+        lines.append(f"- app_uses_charts: {gui_visuals.get('app_uses_charts', False)}")
+        lines.append(f"- empty_data_safe: {gui_visuals.get('empty_data_safe', False)}")
+        lines.append(f"- broker_guardrail_ok: {gui_visuals.get('broker_guardrail_ok', False)}")
+        lines.append(f"- shell_guardrail_ok: {gui_visuals.get('shell_guardrail_ok', False)}")
+        lines.append("- markdown: reports/gui_visuals_audit_latest.md")
+        lines.append("- json: reports/gui_visuals_audit_latest.json")
     lines.append("")
 
     cards = data.get("trade_candidate_cards", {}) or {}
@@ -1119,6 +1329,29 @@ def build_daily_operator_index_markdown(data: dict) -> str:
 
     lines.append("")
 
+    paper_cycle = data.get("paper_trading_cycle_audit", {}) or {}
+    paper_cycle_available = bool(paper_cycle.get("available", False))
+
+    lines.append("## Paper trading cycle audit")
+    lines.append("")
+
+    if not paper_cycle_available:
+        lines.append("- No hay reporte de paper trading cycle audit disponible.")
+        lines.append("- Ejecutar `python .\\tools\\paper_trading_cycle_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {paper_cycle.get('status', 'UNKNOWN')}")
+        lines.append(f"- journal_rows: {paper_cycle.get('journal_rows', 0)}")
+        lines.append(f"- open_paper_count: {paper_cycle.get('open_paper_count', 0)}")
+        lines.append(f"- closed_paper_count: {paper_cycle.get('closed_paper_count', 0)}")
+        lines.append(f"- pending_export_count: {paper_cycle.get('pending_export_count', 0)}")
+        lines.append(f"- exported_count: {paper_cycle.get('exported_count', 0)}")
+        lines.append(f"- duplicate_outcome_ids: {paper_cycle.get('duplicate_outcome_ids', 0)}")
+        lines.append("- markdown: reports/paper_trading_cycle_audit_latest.md")
+        lines.append("- json: reports/paper_trading_cycle_audit_latest.json")
+        lines.append("- Auditoría read-only; no modifica journal ni outcomes.")
+
+    lines.append("")
+
     lines.append("## Decision gate")
     lines.append("")
 
@@ -1161,9 +1394,14 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("15. `reports/paper_trading_journal_latest.md`")
     lines.append("16. `reports/paper_trade_followup_latest.md`")
     lines.append("17. `reports/paper_trade_close_latest.md`")
-    lines.append("18. `reports/trade_score_calibration_latest.md`")
-    lines.append("19. `reports/calibration_recommendations_latest.md`")
-    lines.append("20. `reports/release_readiness_latest.md`")
+    lines.append("18. `reports/paper_trading_cycle_audit_latest.md`")
+    lines.append("19. `reports/trade_score_calibration_latest.md`")
+    lines.append("20. `reports/calibration_recommendations_latest.md`")
+    lines.append("21. `reports/release_readiness_latest.md`")
+    lines.append("22. `reports/ui_data_contract_audit_latest.md`")
+    lines.append("23. `reports/streamlit_smoke_test_latest.md`")
+    lines.append("24. `reports/gui_actions_audit_latest.md`")
+    lines.append("25. `reports/gui_visuals_audit_latest.md`")
     lines.append("")
 
     lines.append("## Señales")
@@ -1350,6 +1588,28 @@ def save_daily_operator_index(
         "manual_review_rows": data.get("manual_review_rows"),
         "recheck_count": data.get("recheck_count"),
         "trigger_count": data.get("trigger_count"),
+    }
+
+
+def _normalize_gui_visuals_audit_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "charts_module_exists": False,
+            "app_uses_charts": False,
+            "empty_data_safe": False,
+            "broker_guardrail_ok": False,
+            "shell_guardrail_ok": False,
+        }
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")),
+        "charts_module_exists": bool(data.get("charts_module_exists", False)),
+        "app_uses_charts": bool(data.get("app_uses_charts", False)),
+        "empty_data_safe": bool(data.get("empty_data_safe", False)),
+        "broker_guardrail_ok": bool(data.get("broker_guardrail_ok", False)),
+        "shell_guardrail_ok": bool(data.get("shell_guardrail_ok", False)),
     }
 
 

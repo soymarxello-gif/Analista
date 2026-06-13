@@ -19,6 +19,7 @@ CRITICAL_DOCS = [
 ]
 
 CRITICAL_TOOLS = [
+    "app.py",
     "tools/daily_validation.py",
     "tools/live_quote_recheck.py",
     "tools/trade_decision_checklist.py",
@@ -26,12 +27,17 @@ CRITICAL_TOOLS = [
     "tools/paper_trading_journal.py",
     "tools/paper_trade_followup.py",
     "tools/paper_trade_close.py",
+    "tools/paper_trading_cycle_audit.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
     "tools/daily_operator_index.py",
     "tools/daily_run_manifest.py",
     "tools/project_preflight.py",
     "tools/report_consistency_audit.py",
+    "tools/ui_data_contract_audit.py",
+    "tools/streamlit_smoke_test.py",
+    "tools/gui_actions_audit.py",
+    "tools/gui_visuals_audit.py",
 ]
 
 CRITICAL_TESTS = [
@@ -46,6 +52,12 @@ CRITICAL_TESTS = [
     "tests/test_paper_trading_journal_phase38a.py",
     "tests/test_paper_trade_followup_phase38b.py",
     "tests/test_paper_trade_close_phase38c.py",
+    "tests/test_paper_trading_cycle_audit_phase38d.py",
+    "tests/test_ui_report_loader_phase39a.py",
+    "tests/test_ui_view_models_phase39a.py",
+    "tests/test_streamlit_dashboard_phase39b.py",
+    "tests/test_gui_actions_phase39c.py",
+    "tests/test_gui_visuals_phase39d.py",
 ]
 
 OPTIONAL_REPORTS = [
@@ -82,6 +94,8 @@ OPTIONAL_REPORTS = [
     "reports/paper_trade_close_latest.csv",
     "reports/paper_trade_close_latest.md",
     "reports/paper_trade_close_latest.json",
+    "reports/paper_trading_cycle_audit_latest.md",
+    "reports/paper_trading_cycle_audit_latest.json",
     "reports/trade_score_calibration_latest.csv",
     "reports/trade_score_calibration_latest.json",
     "reports/trade_score_calibration_latest.md",
@@ -91,6 +105,14 @@ OPTIONAL_REPORTS = [
     "reports/trade_outcome_analytics_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
+    "reports/ui_data_contract_audit_latest.json",
+    "reports/ui_data_contract_audit_latest.md",
+    "reports/streamlit_smoke_test_latest.json",
+    "reports/streamlit_smoke_test_latest.md",
+    "reports/gui_actions_audit_latest.json",
+    "reports/gui_actions_audit_latest.md",
+    "reports/gui_visuals_audit_latest.json",
+    "reports/gui_visuals_audit_latest.md",
 ]
 
 RECENT_DAILY_VALIDATION_STEPS = [
@@ -100,8 +122,13 @@ RECENT_DAILY_VALIDATION_STEPS = [
     "paper_trading_journal",
     "paper_trade_followup",
     "paper_trade_close",
+    "paper_trading_cycle_audit",
     "trade_score_calibration",
     "calibration_recommendations",
+    "ui_data_contract_audit",
+    "streamlit_smoke_test",
+    "gui_actions_audit",
+    "gui_visuals_audit",
 ]
 
 OPERATOR_INDEX_REPORT_REFERENCES = [
@@ -111,8 +138,13 @@ OPERATOR_INDEX_REPORT_REFERENCES = [
     "reports/paper_trading_journal_latest.md",
     "reports/paper_trade_followup_latest.md",
     "reports/paper_trade_close_latest.md",
+    "reports/paper_trading_cycle_audit_latest.md",
     "reports/trade_score_calibration_latest.md",
     "reports/calibration_recommendations_latest.md",
+    "reports/ui_data_contract_audit_latest.md",
+    "reports/streamlit_smoke_test_latest.md",
+    "reports/gui_actions_audit_latest.md",
+    "reports/gui_visuals_audit_latest.md",
 ]
 
 MANIFEST_REFERENCES = [
@@ -122,16 +154,26 @@ MANIFEST_REFERENCES = [
     "tools/paper_trading_journal.py",
     "tools/paper_trade_followup.py",
     "tools/paper_trade_close.py",
+    "tools/paper_trading_cycle_audit.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
+    "tools/ui_data_contract_audit.py",
+    "tools/streamlit_smoke_test.py",
+    "tools/gui_actions_audit.py",
+    "tools/gui_visuals_audit.py",
     "reports/live_quote_recheck_latest.json",
     "reports/trade_decision_checklist_latest.json",
     "reports/trade_candidate_cards_latest.json",
     "reports/paper_trading_journal_latest.json",
     "reports/paper_trade_followup_latest.json",
     "reports/paper_trade_close_latest.json",
+    "reports/paper_trading_cycle_audit_latest.json",
     "reports/trade_score_calibration_latest.json",
     "reports/calibration_recommendations_latest.json",
+    "reports/ui_data_contract_audit_latest.json",
+    "reports/streamlit_smoke_test_latest.json",
+    "reports/gui_actions_audit_latest.json",
+    "reports/gui_visuals_audit_latest.json",
 ]
 
 ALLOWED_DISABLED_SIGNAL_PATHS = {

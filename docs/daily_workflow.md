@@ -28,12 +28,16 @@ This runs the audited scanner, P0 validation, quality gates, optional report bui
 6. `reports/paper_trading_journal_latest.md`
 7. `reports/paper_trade_followup_latest.md`
 8. `reports/paper_trade_close_latest.md`
-9. `reports/manual_review_top.md`
-10. `reports/daily_run_manifest_latest.md`
-11. `reports/release_readiness_latest.md`
-12. `reports/daily_validation_summary.txt`
-13. `reports/project_preflight_latest.md`
-14. `reports/encoding_audit_latest.md`
+9. `reports/paper_trading_cycle_audit_latest.md`
+10. `reports/manual_review_top.md`
+11. `reports/daily_run_manifest_latest.md`
+12. `reports/release_readiness_latest.md`
+13. `reports/ui_data_contract_audit_latest.md`
+14. `reports/streamlit_smoke_test_latest.md`
+15. `reports/gui_actions_audit_latest.md`
+16. `reports/daily_validation_summary.txt`
+17. `reports/project_preflight_latest.md`
+18. `reports/encoding_audit_latest.md`
 
 Stop immediately if a required step is `FAIL`.
 
@@ -186,7 +190,77 @@ reports/paper_trade_close_latest.json
 
 Closing and export are manual paper-trading actions only. The tool does not connect to a broker, does not send real orders, does not modify scanner signals, scores, config, weights, or thresholds, and does not close anything unless `--close` is explicitly supplied.
 
-## 11. Calibration
+## 11. Paper Trading Cycle Audit
+
+Audit the full paper trading cycle:
+
+```powershell
+python .\tools\paper_trading_cycle_audit.py
+```
+
+Review:
+
+```text
+reports/paper_trading_cycle_audit_latest.md
+reports/paper_trading_cycle_audit_latest.json
+```
+
+The audit verifies journal columns, open and closed paper trades, pending exports, exported outcomes, duplicate `source_journal_id` values, calibration/recommendation status, and paper-only guardrails. It is read-only and does not modify `data/paper_trading_journal.csv`, `data/trade_outcomes.csv`, scanner logic, scores, config, weights, or thresholds.
+
+## 12. UI Data Contract
+
+Audit the read-only data contract for a future graphical interface:
+
+```powershell
+python .\tools\ui_data_contract_audit.py
+```
+
+Review:
+
+```text
+reports/ui_data_contract_audit_latest.md
+reports/ui_data_contract_audit_latest.json
+```
+
+This validates `ui/report_loader.py` and `ui/view_models.py`, checks that missing or invalid reports are handled with controlled statuses, and confirms the view models can be built without creating trading actions. This is not a Streamlit app and does not add buttons, broker connections, journal writes, outcome exports, scanner changes, score changes, weights, or thresholds.
+
+## 13. Streamlit Dashboard MVP
+
+Run the dashboard locally:
+
+```powershell
+streamlit run .\app.py
+```
+
+Run the smoke test without starting a Streamlit server:
+
+```powershell
+python .\tools\streamlit_smoke_test.py
+python .\tools\gui_actions_audit.py
+```
+
+Review:
+
+```text
+reports/streamlit_smoke_test_latest.md
+reports/streamlit_smoke_test_latest.json
+reports/gui_actions_audit_latest.md
+reports/gui_actions_audit_latest.json
+```
+
+The dashboard reads report data through `ui.report_loader.load_all_ui_sources` and `ui.view_models`. Paper-trading actions are routed through `ui.actions`, require explicit confirmation before journal/outcome writes, and are logged in `data/ui_action_log.csv`.
+
+Allowed GUI actions are paper-only:
+
+- Import today candidates.
+- Set a manual paper decision.
+- Refresh paper follow-up reports.
+- Manually close a paper trade.
+- Export already closed paper trades to outcomes.
+
+The GUI does not run the scanner, does not connect to a broker, does not send real orders, and does not change scoring, weights, thresholds, config, or signals.
+
+## 14. Calibration
 
 Refresh score calibration:
 
@@ -204,13 +278,13 @@ reports/calibration_recommendations_latest.md
 
 Calibration is observational. Do not change weights or thresholds from insufficient samples.
 
-## 12. Validate Tests
+## 15. Validate Tests
 
 ```powershell
 python -m pytest -q
 ```
 
-## 13. Review Git
+## 16. Review Git
 
 ```powershell
 git -c safe.directory="*" status --short
@@ -218,7 +292,7 @@ git -c safe.directory="*" status --short
 
 Generated reports and caches should remain ignored. Version code, tests, and durable documentation only.
 
-## 14. Release Readiness Audit
+## 17. Release Readiness Audit
 
 Before closing a version, run:
 
@@ -251,3 +325,8 @@ git commit -m "Add Phase 37A operating documentation"
 ```
 
 Do not commit generated reports unless the project explicitly decides to version a specific reference artifact.
+## GUI visuals
+
+- Ejecutar `python .\tools\gui_visuals_audit.py` cuando se agreguen graficos, metricas o cambios visuales al dashboard.
+- Revisar `reports/gui_visuals_audit_latest.md`.
+- Las visualizaciones usan datos ya cargados por la capa UI; no deben modificar scanner, scoring, journal ni outcomes.

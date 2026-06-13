@@ -36,9 +36,14 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/paper_trading_journal.py",
         "tools/paper_trade_followup.py",
         "tools/paper_trade_close.py",
+        "tools/paper_trading_cycle_audit.py",
         "tools/trade_score_calibration.py",
         "tools/calibration_recommendations.py",
         "tools/release_readiness_audit.py",
+        "tools/ui_data_contract_audit.py",
+        "tools/streamlit_smoke_test.py",
+        "tools/gui_actions_audit.py",
+        "tools/gui_visuals_audit.py",
     ]
 
     for script in scripts:
@@ -222,6 +227,24 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "paper_trading_cycle_audit_latest.md").write_text(
+        "# paper cycle\n",
+        encoding="utf-8",
+    )
+    (reports / "paper_trading_cycle_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "journal_rows": 0,
+                "open_paper_count": 0,
+                "closed_paper_count": 0,
+                "pending_export_count": 0,
+                "exported_count": 0,
+                "duplicate_outcome_ids": [],
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "trade_score_calibration_latest.csv").write_text(
         "group,group_value,closed_trades\nOVERALL,ALL_CLOSED,0\n",
         encoding="utf-8",
@@ -267,6 +290,61 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "ui_data_contract_audit_latest.md").write_text("# ui contract\n", encoding="utf-8")
+    (reports / "ui_data_contract_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "available_sources": 10,
+                "missing_sources": 0,
+                "invalid_sources": 0,
+                "candidate_rows": 2,
+                "paper_journal_rows": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "streamlit_smoke_test_latest.md").write_text("# streamlit smoke\n", encoding="utf-8")
+    (reports / "streamlit_smoke_test_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "app_exists": True,
+                "import_ok": True,
+                "view_models_ok": True,
+                "read_only": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_actions_audit_latest.md").write_text("# gui actions\n", encoding="utf-8")
+    (reports / "gui_actions_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "actions_module_exists": True,
+                "action_log_exists": True,
+                "logged_actions": 1,
+                "broker_guardrail_ok": True,
+                "shell_guardrail_ok": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_visuals_audit_latest.md").write_text("# gui visuals\n", encoding="utf-8")
+    (reports / "gui_visuals_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "charts_module_exists": True,
+                "app_uses_charts": True,
+                "empty_data_safe": True,
+                "broker_guardrail_ok": True,
+                "shell_guardrail_ok": True,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
     (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
     (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")
@@ -289,6 +367,11 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["manual_review_rows"] == 2
     assert data["scan_snapshot"]["recommendations"]["RECHECK_LIVE_QUOTE"] == 1
     assert data["scan_snapshot"]["paper_trade_close"]["status"] == "PASS"
+    assert data["scan_snapshot"]["paper_trading_cycle_audit"]["status"] == "WARN"
+    assert data["scan_snapshot"]["ui_data_contract"]["status"] == "PASS"
+    assert data["scan_snapshot"]["streamlit_smoke_test"]["status"] == "PASS"
+    assert data["scan_snapshot"]["gui_actions_audit"]["status"] == "PASS"
+    assert data["scan_snapshot"]["gui_visuals_audit"]["status"] == "PASS"
     assert data["summary"]["missing_script_files"] == []
 
     script_files = data["script_files"]
@@ -313,6 +396,10 @@ def test_daily_run_manifest_markdown_contains_sections(tmp_path: Path):
     assert "## Summary" in text
     assert "RECHECK_LIVE_QUOTE" in text
     assert "Paper trade close:" in text
+    assert "Paper trading cycle audit:" in text
+    assert "UI data contract:" in text
+    assert "Streamlit dashboard:" in text
+    assert "GUI actions:" in text
 
 
 def test_save_daily_run_manifest_writes_outputs(tmp_path: Path):

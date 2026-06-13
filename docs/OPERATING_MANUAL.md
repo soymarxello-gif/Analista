@@ -51,10 +51,14 @@ git -c safe.directory="*" status --short
 6. `reports/paper_trading_journal_latest.md`
 7. `reports/paper_trade_followup_latest.md`
 8. `reports/paper_trade_close_latest.md`
-9. `reports/manual_review_top.md`
-10. `reports/daily_run_manifest_latest.md`
-11. `reports/release_readiness_latest.md`
-12. `reports/daily_validation_summary.txt`
+9. `reports/paper_trading_cycle_audit_latest.md`
+10. `reports/manual_review_top.md`
+11. `reports/daily_run_manifest_latest.md`
+12. `reports/release_readiness_latest.md`
+13. `reports/ui_data_contract_audit_latest.md`
+14. `reports/streamlit_smoke_test_latest.md`
+15. `reports/gui_actions_audit_latest.md`
+16. `reports/daily_validation_summary.txt`
 
 ## Signals
 
@@ -146,6 +150,57 @@ With `--close`, it updates only the selected row in `data/paper_trading_journal.
 
 The daily workflow runs `paper_trade_close --summary` only. No paper trade is closed or exported by daily validation. The tool is paper trading only, uses no broker connection, sends no real orders, and does not modify scanner outputs, scores, config, weights, thresholds, or signals.
 
+## Paper Trading Cycle Audit
+
+`paper_trading_cycle_audit` verifies that the paper workflow can flow from candidate review to journal, follow-up, manual close, outcome export, calibration, and observational recommendations.
+
+```powershell
+python .\tools\paper_trading_cycle_audit.py
+```
+
+The tool writes:
+
+- `reports/paper_trading_cycle_audit_latest.md`
+- `reports/paper_trading_cycle_audit_latest.json`
+
+It checks required journal columns, pending review rows, open paper trades, closed paper trades, pending exports, exported outcomes, duplicate `source_journal_id` values, exported journal rows without matching outcomes, orphan paper outcomes, calibration status, recommendation status, no-real-order notices, and broker/order guardrails.
+
+The audit is read-only. It does not modify `data/paper_trading_journal.csv`, `data/trade_outcomes.csv`, scanner outputs, scores, config, weights, thresholds, or signals.
+
+## UI Data Contract
+
+`ui/report_loader.py` and `ui/view_models.py` define the read-only data contract for a future graphical interface. The loader reads generated reports and normalizes missing, invalid, empty, and available states. The view models convert those sources into GUI-ready dictionaries without adding visual framework code or trading actions.
+
+```powershell
+python .\tools\ui_data_contract_audit.py
+```
+
+The tool writes:
+
+- `reports/ui_data_contract_audit_latest.md`
+- `reports/ui_data_contract_audit_latest.json`
+
+This phase does not build Streamlit, does not create buttons, does not modify journal/outcomes, does not connect to a broker, does not send orders, and does not change scanner outputs, scoring, config, weights, thresholds, or signals.
+
+## Streamlit Dashboard MVP
+
+`app.py` is a Streamlit dashboard that renders the UI data contract and exposes controlled paper-trading actions. Report data is loaded through `ui.report_loader.load_all_ui_sources` and `ui.view_models`; paper actions are routed through `ui.actions`.
+
+```powershell
+streamlit run .\app.py
+python .\tools\streamlit_smoke_test.py
+python .\tools\gui_actions_audit.py
+```
+
+The smoke and GUI action audits write:
+
+- `reports/streamlit_smoke_test_latest.md`
+- `reports/streamlit_smoke_test_latest.json`
+- `reports/gui_actions_audit_latest.md`
+- `reports/gui_actions_audit_latest.json`
+
+The dashboard can write only through explicit paper-trading actions after confirmation: import candidates to the paper journal, set a paper decision, refresh follow-up reports, manually close a paper trade, and export already closed paper trades to outcomes. Every action is paper trading only; no real order. The dashboard does not run the scanner, does not connect to a broker, does not send orders, and does not change scoring, weights, thresholds, config, or signals. GUI actions are logged in `data/ui_action_log.csv`.
+
 ## Live Quote Recheck
 
 Use `live_quote_recheck` when a candidate has stale, missing, invalid, or low-quality execution quote data.
@@ -229,3 +284,9 @@ If there is any conflict between ranking and safety, safety wins.
 If there is any conflict between setup quality and quote quality, quote quality wins.
 
 If a candidate cannot be verified manually, do not use it operationally.
+## GUI visuals
+
+- `app.py` puede mostrar metricas y graficos de revision manual sobre candidatos, calidad, paper trading, follow-up, ciclo y calibracion.
+- Los graficos deben construirse desde `ui.view_models` y `ui.charts`; no deben leer reportes directamente ni escribir datos operativos.
+- Validar cambios visuales con `python .\tools\gui_visuals_audit.py`.
+- La calibracion mostrada en GUI sigue siendo observacional; no cambia pesos automaticamente.

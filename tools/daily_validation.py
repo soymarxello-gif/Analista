@@ -226,6 +226,19 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "paper_trading_cycle_audit",
+        "cmd": [
+            sys.executable,
+            "tools/paper_trading_cycle_audit.py",
+            "--json-out",
+            "reports/paper_trading_cycle_audit_latest.json",
+            "--markdown-out",
+            "reports/paper_trading_cycle_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "daily_operator_index",
         "cmd": [
             sys.executable,
@@ -286,6 +299,58 @@ POST_SUMMARY_STEPS = [
             "reports/release_readiness_latest.json",
             "--markdown-out",
             "reports/release_readiness_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "streamlit_smoke_test",
+        "cmd": [
+            sys.executable,
+            "tools/streamlit_smoke_test.py",
+            "--json-out",
+            "reports/streamlit_smoke_test_latest.json",
+            "--markdown-out",
+            "reports/streamlit_smoke_test_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "gui_actions_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_actions_audit.py",
+            "--json-out",
+            "reports/gui_actions_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_actions_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "gui_visuals_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_visuals_audit.py",
+            "--json-out",
+            "reports/gui_visuals_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_visuals_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "ui_data_contract_audit",
+        "cmd": [
+            sys.executable,
+            "tools/ui_data_contract_audit.py",
+            "--json-out",
+            "reports/ui_data_contract_audit_latest.json",
+            "--markdown-out",
+            "reports/ui_data_contract_audit_latest.md",
         ],
         "required": False,
         "timeout_seconds": 60,
@@ -425,6 +490,8 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "paper_trade_close_latest.csv",
         ROOT / "reports" / "paper_trade_close_latest.json",
         ROOT / "reports" / "paper_trade_close_latest.md",
+        ROOT / "reports" / "paper_trading_cycle_audit_latest.json",
+        ROOT / "reports" / "paper_trading_cycle_audit_latest.md",
         ROOT / "reports" / "daily_run_manifest_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.md",
         ROOT / "reports" / "encoding_audit_latest.json",
@@ -433,6 +500,14 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "daily_quality_gate_latest.md",
         ROOT / "reports" / "release_readiness_latest.json",
         ROOT / "reports" / "release_readiness_latest.md",
+        ROOT / "reports" / "ui_data_contract_audit_latest.json",
+        ROOT / "reports" / "ui_data_contract_audit_latest.md",
+        ROOT / "reports" / "streamlit_smoke_test_latest.json",
+        ROOT / "reports" / "streamlit_smoke_test_latest.md",
+        ROOT / "reports" / "gui_actions_audit_latest.json",
+        ROOT / "reports" / "gui_actions_audit_latest.md",
+        ROOT / "reports" / "gui_visuals_audit_latest.json",
+        ROOT / "reports" / "gui_visuals_audit_latest.md",
         ROOT / "reports" / "reports_cleanup_latest.json",
         ROOT / "reports" / "reports_cleanup_latest.md",
         ROOT / "reports" / "source_coverage_latest.json",
@@ -462,9 +537,14 @@ def collect_scan_snapshot() -> dict:
     paper_journal_path = ROOT / "reports" / "paper_trading_journal_latest.json"
     paper_followup_path = ROOT / "reports" / "paper_trade_followup_latest.json"
     paper_close_path = ROOT / "reports" / "paper_trade_close_latest.json"
+    paper_cycle_path = ROOT / "reports" / "paper_trading_cycle_audit_latest.json"
     calibration_path = ROOT / "reports" / "trade_score_calibration_latest.json"
     calibration_recommendations_path = ROOT / "reports" / "calibration_recommendations_latest.json"
     release_readiness_path = ROOT / "reports" / "release_readiness_latest.json"
+    ui_contract_path = ROOT / "reports" / "ui_data_contract_audit_latest.json"
+    streamlit_smoke_path = ROOT / "reports" / "streamlit_smoke_test_latest.json"
+    gui_actions_path = ROOT / "reports" / "gui_actions_audit_latest.json"
+    gui_visuals_path = ROOT / "reports" / "gui_visuals_audit_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -489,6 +569,37 @@ def collect_scan_snapshot() -> dict:
             "status": "MISSING",
             "critical_failures": 0,
             "warnings": 0,
+        },
+        "ui_data_contract": {
+            "status": "MISSING",
+            "available_sources": 0,
+            "missing_sources": 0,
+            "invalid_sources": 0,
+            "candidate_rows": 0,
+            "paper_journal_rows": 0,
+        },
+        "streamlit_smoke_test": {
+            "status": "MISSING",
+            "app_exists": False,
+            "import_ok": False,
+            "view_models_ok": False,
+            "read_only": False,
+        },
+        "gui_actions_audit": {
+            "status": "MISSING",
+            "actions_module_exists": False,
+            "action_log_exists": False,
+            "logged_actions": 0,
+            "broker_guardrail_ok": False,
+            "shell_guardrail_ok": False,
+        },
+        "gui_visuals_audit": {
+            "status": "MISSING",
+            "charts_module_exists": False,
+            "app_uses_charts": False,
+            "empty_data_safe": False,
+            "broker_guardrail_ok": False,
+            "shell_guardrail_ok": False,
         },
         "live_quote_recheck": {
             "status": "MISSING",
@@ -541,6 +652,15 @@ def collect_scan_snapshot() -> dict:
             "closed_paper_trades": 0,
             "pending_export": 0,
             "exported_outcomes": 0,
+        },
+        "paper_trading_cycle_audit": {
+            "status": "MISSING",
+            "journal_rows": 0,
+            "open_paper_count": 0,
+            "closed_paper_count": 0,
+            "pending_export_count": 0,
+            "exported_count": 0,
+            "duplicate_outcome_ids": 0,
         },
     }
 
@@ -678,6 +798,22 @@ def collect_scan_snapshot() -> dict:
             "exported_outcomes": int(paper_close_data.get("exported_outcomes", 0) or 0),
         }
 
+    if paper_cycle_path.exists():
+        try:
+            paper_cycle_data = json.loads(paper_cycle_path.read_text(encoding="utf-8"))
+        except Exception:
+            paper_cycle_data = {}
+
+        snapshot["paper_trading_cycle_audit"] = {
+            "status": str(paper_cycle_data.get("status", "UNKNOWN")),
+            "journal_rows": int(paper_cycle_data.get("journal_rows", 0) or 0),
+            "open_paper_count": int(paper_cycle_data.get("open_paper_count", 0) or 0),
+            "closed_paper_count": int(paper_cycle_data.get("closed_paper_count", 0) or 0),
+            "pending_export_count": int(paper_cycle_data.get("pending_export_count", 0) or 0),
+            "exported_count": int(paper_cycle_data.get("exported_count", 0) or 0),
+            "duplicate_outcome_ids": len(paper_cycle_data.get("duplicate_outcome_ids", []) or []),
+        }
+
     if calibration_path.exists():
         try:
             calibration_data = json.loads(calibration_path.read_text(encoding="utf-8"))
@@ -721,6 +857,65 @@ def collect_scan_snapshot() -> dict:
             "status": str(release_readiness_data.get("status", "UNKNOWN")),
             "critical_failures": int(release_readiness_data.get("critical_failures", 0) or 0),
             "warnings": int(release_readiness_data.get("warnings", 0) or 0),
+        }
+
+    if ui_contract_path.exists():
+        try:
+            ui_contract_data = json.loads(ui_contract_path.read_text(encoding="utf-8"))
+        except Exception:
+            ui_contract_data = {}
+
+        snapshot["ui_data_contract"] = {
+            "status": str(ui_contract_data.get("status", "UNKNOWN")),
+            "available_sources": int(ui_contract_data.get("available_sources", 0) or 0),
+            "missing_sources": int(ui_contract_data.get("missing_sources", 0) or 0),
+            "invalid_sources": int(ui_contract_data.get("invalid_sources", 0) or 0),
+            "candidate_rows": int(ui_contract_data.get("candidate_rows", 0) or 0),
+            "paper_journal_rows": int(ui_contract_data.get("paper_journal_rows", 0) or 0),
+        }
+
+    if streamlit_smoke_path.exists():
+        try:
+            streamlit_smoke_data = json.loads(streamlit_smoke_path.read_text(encoding="utf-8"))
+        except Exception:
+            streamlit_smoke_data = {}
+
+        snapshot["streamlit_smoke_test"] = {
+            "status": str(streamlit_smoke_data.get("status", "UNKNOWN")),
+            "app_exists": bool(streamlit_smoke_data.get("app_exists", False)),
+            "import_ok": bool(streamlit_smoke_data.get("import_ok", False)),
+            "view_models_ok": bool(streamlit_smoke_data.get("view_models_ok", False)),
+            "read_only": bool(streamlit_smoke_data.get("read_only", False)),
+        }
+
+    if gui_actions_path.exists():
+        try:
+            gui_actions_data = json.loads(gui_actions_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_actions_data = {}
+
+        snapshot["gui_actions_audit"] = {
+            "status": str(gui_actions_data.get("status", "UNKNOWN")),
+            "actions_module_exists": bool(gui_actions_data.get("actions_module_exists", False)),
+            "action_log_exists": bool(gui_actions_data.get("action_log_exists", False)),
+            "logged_actions": int(gui_actions_data.get("logged_actions", 0) or 0),
+            "broker_guardrail_ok": bool(gui_actions_data.get("broker_guardrail_ok", False)),
+            "shell_guardrail_ok": bool(gui_actions_data.get("shell_guardrail_ok", False)),
+        }
+
+    if gui_visuals_path.exists():
+        try:
+            gui_visuals_data = json.loads(gui_visuals_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_visuals_data = {}
+
+        snapshot["gui_visuals_audit"] = {
+            "status": str(gui_visuals_data.get("status", "UNKNOWN")),
+            "charts_module_exists": bool(gui_visuals_data.get("charts_module_exists", False)),
+            "app_uses_charts": bool(gui_visuals_data.get("app_uses_charts", False)),
+            "empty_data_safe": bool(gui_visuals_data.get("empty_data_safe", False)),
+            "broker_guardrail_ok": bool(gui_visuals_data.get("broker_guardrail_ok", False)),
+            "shell_guardrail_ok": bool(gui_visuals_data.get("shell_guardrail_ok", False)),
         }
 
     return snapshot
@@ -844,9 +1039,13 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
     lines.append("- Revisar journal paper trading: reports/paper_trading_journal_latest.md")
     lines.append("- Revisar seguimiento paper trading: reports/paper_trade_followup_latest.md")
     lines.append("- Revisar cierres paper manuales: reports/paper_trade_close_latest.md")
+    lines.append("- Revisar auditoría ciclo paper: reports/paper_trading_cycle_audit_latest.md")
     lines.append("- Revisar calibración de scores: reports/trade_score_calibration_latest.md")
     lines.append("- Revisar recomendaciones de calibración: reports/calibration_recommendations_latest.md")
     lines.append("- Revisar release readiness: reports/release_readiness_latest.md")
+    lines.append("- Revisar contrato de datos UI: reports/ui_data_contract_audit_latest.md")
+    lines.append("- Revisar smoke test Streamlit: reports/streamlit_smoke_test_latest.md")
+    lines.append("- Revisar auditoría de acciones GUI: reports/gui_actions_audit_latest.md")
     lines.append("- Revisar analytics: reports/trade_outcome_analytics_latest.md")
 
     if recheck_count > 0:
@@ -923,6 +1122,8 @@ def build_summary_text(
         "reports/paper_trade_close_latest.csv",
         "reports/paper_trade_close_latest.json",
         "reports/paper_trade_close_latest.md",
+        "reports/paper_trading_cycle_audit_latest.json",
+        "reports/paper_trading_cycle_audit_latest.md",
         "reports/reports_cleanup_latest.json",
         "reports/reports_cleanup_latest.md",
         "reports/daily_run_manifest_latest.json",
@@ -931,6 +1132,14 @@ def build_summary_text(
         "reports/encoding_audit_latest.md",
         "reports/release_readiness_latest.json",
         "reports/release_readiness_latest.md",
+        "reports/ui_data_contract_audit_latest.json",
+        "reports/ui_data_contract_audit_latest.md",
+        "reports/streamlit_smoke_test_latest.json",
+        "reports/streamlit_smoke_test_latest.md",
+        "reports/gui_actions_audit_latest.json",
+        "reports/gui_actions_audit_latest.md",
+        "reports/gui_visuals_audit_latest.json",
+        "reports/gui_visuals_audit_latest.md",
     ]
 
     lines.append("=== ANALISTA DAILY VALIDATION SUMMARY ===")
@@ -949,9 +1158,14 @@ def build_summary_text(
     paper = snapshot.get("paper_trading_journal", {}) or {}
     paper_followup = snapshot.get("paper_trade_followup", {}) or {}
     paper_close = snapshot.get("paper_trade_close", {}) or {}
+    paper_cycle = snapshot.get("paper_trading_cycle_audit", {}) or {}
     calibration = snapshot.get("trade_score_calibration", {}) or {}
     calibration_recommendations = snapshot.get("calibration_recommendations", {}) or {}
     release_readiness = snapshot.get("release_readiness", {}) or {}
+    ui_contract = snapshot.get("ui_data_contract", {}) or {}
+    streamlit_smoke = snapshot.get("streamlit_smoke_test", {}) or {}
+    gui_actions = snapshot.get("gui_actions_audit", {}) or {}
+    gui_visuals = snapshot.get("gui_visuals_audit", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
@@ -959,12 +1173,17 @@ def build_summary_text(
     lines.append(f"- Paper trade follow-up rows: {paper_followup.get('rows')}")
     lines.append(f"- Paper trade close open trades: {paper_close.get('open_paper_trades')}")
     lines.append(f"- Paper trade close pending export: {paper_close.get('pending_export')}")
+    lines.append(f"- Paper trading cycle audit status: {paper_cycle.get('status')}")
     lines.append(f"- Trade score calibration closed trades: {calibration.get('closed_trades')}")
     lines.append(
         "- Calibration recommendations count: "
         f"{calibration_recommendations.get('recommendation_count')}"
     )
     lines.append(f"- Release readiness status: {release_readiness.get('status')}")
+    lines.append(f"- UI data contract status: {ui_contract.get('status')}")
+    lines.append(f"- Streamlit smoke test status: {streamlit_smoke.get('status')}")
+    lines.append(f"- GUI actions audit status: {gui_actions.get('status')}")
+    lines.append(f"- GUI visuals audit status: {gui_visuals.get('status')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -1056,6 +1275,45 @@ def build_summary_text(
     lines.append(f"- critical_failures: {release_readiness.get('critical_failures')}")
     lines.append(f"- warnings: {release_readiness.get('warnings')}")
 
+    ui_contract = snapshot.get("ui_data_contract", {}) or {}
+    lines.append("")
+    lines.append("UI data contract:")
+    lines.append(f"- status: {ui_contract.get('status')}")
+    lines.append(f"- available_sources: {ui_contract.get('available_sources')}")
+    lines.append(f"- missing_sources: {ui_contract.get('missing_sources')}")
+    lines.append(f"- invalid_sources: {ui_contract.get('invalid_sources')}")
+    lines.append(f"- candidate_rows: {ui_contract.get('candidate_rows')}")
+    lines.append(f"- paper_journal_rows: {ui_contract.get('paper_journal_rows')}")
+
+    streamlit_smoke = snapshot.get("streamlit_smoke_test", {}) or {}
+    lines.append("")
+    lines.append("Streamlit smoke test:")
+    lines.append(f"- status: {streamlit_smoke.get('status')}")
+    lines.append(f"- app_exists: {streamlit_smoke.get('app_exists')}")
+    lines.append(f"- import_ok: {streamlit_smoke.get('import_ok')}")
+    lines.append(f"- view_models_ok: {streamlit_smoke.get('view_models_ok')}")
+    lines.append(f"- read_only: {streamlit_smoke.get('read_only')}")
+
+    gui_actions = snapshot.get("gui_actions_audit", {}) or {}
+    lines.append("")
+    lines.append("GUI actions audit:")
+    lines.append(f"- status: {gui_actions.get('status')}")
+    lines.append(f"- actions_module_exists: {gui_actions.get('actions_module_exists')}")
+    lines.append(f"- action_log_exists: {gui_actions.get('action_log_exists')}")
+    lines.append(f"- logged_actions: {gui_actions.get('logged_actions')}")
+    lines.append(f"- broker_guardrail_ok: {gui_actions.get('broker_guardrail_ok')}")
+    lines.append(f"- shell_guardrail_ok: {gui_actions.get('shell_guardrail_ok')}")
+
+    gui_visuals = snapshot.get("gui_visuals_audit", {}) or {}
+    lines.append("")
+    lines.append("GUI visuals audit:")
+    lines.append(f"- status: {gui_visuals.get('status')}")
+    lines.append(f"- charts_module_exists: {gui_visuals.get('charts_module_exists')}")
+    lines.append(f"- app_uses_charts: {gui_visuals.get('app_uses_charts')}")
+    lines.append(f"- empty_data_safe: {gui_visuals.get('empty_data_safe')}")
+    lines.append(f"- broker_guardrail_ok: {gui_visuals.get('broker_guardrail_ok')}")
+    lines.append(f"- shell_guardrail_ok: {gui_visuals.get('shell_guardrail_ok')}")
+
     live = snapshot.get("live_quote_recheck", {}) or {}
     lines.append("")
     lines.append("Live quote recheck:")
@@ -1120,6 +1378,17 @@ def build_summary_text(
     lines.append(f"- pending_export: {paper_close.get('pending_export')}")
     lines.append(f"- exported_outcomes: {paper_close.get('exported_outcomes')}")
     lines.append("- notice: paper trading only; no real order")
+
+    paper_cycle = snapshot.get("paper_trading_cycle_audit", {}) or {}
+    lines.append("")
+    lines.append("Paper trading cycle audit:")
+    lines.append(f"- status: {paper_cycle.get('status')}")
+    lines.append(f"- journal_rows: {paper_cycle.get('journal_rows')}")
+    lines.append(f"- open_paper_count: {paper_cycle.get('open_paper_count')}")
+    lines.append(f"- closed_paper_count: {paper_cycle.get('closed_paper_count')}")
+    lines.append(f"- pending_export_count: {paper_cycle.get('pending_export_count')}")
+    lines.append(f"- exported_count: {paper_cycle.get('exported_count')}")
+    lines.append(f"- duplicate_outcome_ids: {paper_cycle.get('duplicate_outcome_ids')}")
 
     lines.append("")
     lines.append("[Manual operating reminder]")

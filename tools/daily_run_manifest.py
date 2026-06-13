@@ -33,9 +33,14 @@ KEY_SCRIPT_PATHS = [
     "tools/paper_trading_journal.py",
     "tools/paper_trade_followup.py",
     "tools/paper_trade_close.py",
+    "tools/paper_trading_cycle_audit.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
     "tools/release_readiness_audit.py",
+    "tools/ui_data_contract_audit.py",
+    "tools/streamlit_smoke_test.py",
+    "tools/gui_actions_audit.py",
+    "tools/gui_visuals_audit.py",
 ]
 
 
@@ -67,6 +72,8 @@ KEY_REPORT_PATHS = [
     "reports/paper_trade_close_latest.csv",
     "reports/paper_trade_close_latest.json",
     "reports/paper_trade_close_latest.md",
+    "reports/paper_trading_cycle_audit_latest.json",
+    "reports/paper_trading_cycle_audit_latest.md",
     "reports/trade_score_calibration_latest.csv",
     "reports/trade_score_calibration_latest.json",
     "reports/trade_score_calibration_latest.md",
@@ -74,6 +81,14 @@ KEY_REPORT_PATHS = [
     "reports/calibration_recommendations_latest.json",
     "reports/release_readiness_latest.json",
     "reports/release_readiness_latest.md",
+    "reports/ui_data_contract_audit_latest.json",
+    "reports/ui_data_contract_audit_latest.md",
+    "reports/streamlit_smoke_test_latest.json",
+    "reports/streamlit_smoke_test_latest.md",
+    "reports/gui_actions_audit_latest.json",
+    "reports/gui_actions_audit_latest.md",
+    "reports/gui_visuals_audit_latest.json",
+    "reports/gui_visuals_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -334,9 +349,14 @@ def collect_daily_run_manifest(
     paper_trading_journal_path = reports / "paper_trading_journal_latest.json"
     paper_trade_followup_path = reports / "paper_trade_followup_latest.json"
     paper_trade_close_path = reports / "paper_trade_close_latest.json"
+    paper_trading_cycle_audit_path = reports / "paper_trading_cycle_audit_latest.json"
     trade_score_calibration_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_path = reports / "calibration_recommendations_latest.json"
     release_readiness_path = reports / "release_readiness_latest.json"
+    ui_data_contract_path = reports / "ui_data_contract_audit_latest.json"
+    streamlit_smoke_path = reports / "streamlit_smoke_test_latest.json"
+    gui_actions_path = reports / "gui_actions_audit_latest.json"
+    gui_visuals_path = reports / "gui_visuals_audit_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -399,9 +419,14 @@ def collect_daily_run_manifest(
             "paper_trading_journal": _load_json(paper_trading_journal_path),
             "paper_trade_followup": _load_json(paper_trade_followup_path),
             "paper_trade_close": _load_json(paper_trade_close_path),
+            "paper_trading_cycle_audit": _load_json(paper_trading_cycle_audit_path),
             "trade_score_calibration": _load_json(trade_score_calibration_path),
             "calibration_recommendations": _load_json(calibration_recommendations_path),
             "release_readiness": _load_json(release_readiness_path),
+            "ui_data_contract": _load_json(ui_data_contract_path),
+            "streamlit_smoke_test": _load_json(streamlit_smoke_path),
+            "gui_actions_audit": _load_json(gui_actions_path),
+            "gui_visuals_audit": _load_json(gui_visuals_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -568,6 +593,45 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- warnings: {release_readiness.get('warnings', 0)}")
     lines.append("")
 
+    ui_contract = scan.get("ui_data_contract", {}) or {}
+    lines.append("UI data contract:")
+    lines.append(f"- status: {ui_contract.get('status', 'MISSING')}")
+    lines.append(f"- available_sources: {ui_contract.get('available_sources', 0)}")
+    lines.append(f"- missing_sources: {ui_contract.get('missing_sources', 0)}")
+    lines.append(f"- invalid_sources: {ui_contract.get('invalid_sources', 0)}")
+    lines.append(f"- candidate_rows: {ui_contract.get('candidate_rows', 0)}")
+    lines.append(f"- paper_journal_rows: {ui_contract.get('paper_journal_rows', 0)}")
+    lines.append("")
+
+    streamlit_smoke = scan.get("streamlit_smoke_test", {}) or {}
+    lines.append("Streamlit dashboard:")
+    lines.append(f"- status: {streamlit_smoke.get('status', 'MISSING')}")
+    lines.append(f"- app_exists: {streamlit_smoke.get('app_exists', False)}")
+    lines.append(f"- import_ok: {streamlit_smoke.get('import_ok', False)}")
+    lines.append(f"- view_models_ok: {streamlit_smoke.get('view_models_ok', False)}")
+    lines.append(f"- read_only: {streamlit_smoke.get('read_only', False)}")
+    lines.append("")
+
+    gui_actions = scan.get("gui_actions_audit", {}) or {}
+    lines.append("GUI actions:")
+    lines.append(f"- status: {gui_actions.get('status', 'MISSING')}")
+    lines.append(f"- actions_module_exists: {gui_actions.get('actions_module_exists', False)}")
+    lines.append(f"- action_log_exists: {gui_actions.get('action_log_exists', False)}")
+    lines.append(f"- logged_actions: {gui_actions.get('logged_actions', 0)}")
+    lines.append(f"- broker_guardrail_ok: {gui_actions.get('broker_guardrail_ok', False)}")
+    lines.append(f"- shell_guardrail_ok: {gui_actions.get('shell_guardrail_ok', False)}")
+    lines.append("")
+
+    gui_visuals = scan.get("gui_visuals_audit", {}) or {}
+    lines.append("GUI visuals:")
+    lines.append(f"- status: {gui_visuals.get('status', 'MISSING')}")
+    lines.append(f"- charts_module_exists: {gui_visuals.get('charts_module_exists', False)}")
+    lines.append(f"- app_uses_charts: {gui_visuals.get('app_uses_charts', False)}")
+    lines.append(f"- empty_data_safe: {gui_visuals.get('empty_data_safe', False)}")
+    lines.append(f"- broker_guardrail_ok: {gui_visuals.get('broker_guardrail_ok', False)}")
+    lines.append(f"- shell_guardrail_ok: {gui_visuals.get('shell_guardrail_ok', False)}")
+    lines.append("")
+
     checklist = scan.get("trade_decision_checklist", {}) or {}
     lines.append("Trade decision checklist:")
     lines.append(f"- status: {checklist.get('status', 'MISSING')}")
@@ -623,6 +687,20 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- closed_paper_trades: {paper_close.get('closed_paper_trades', 0)}")
     lines.append(f"- pending_export: {paper_close.get('pending_export', 0)}")
     lines.append(f"- exported_outcomes: {paper_close.get('exported_outcomes', 0)}")
+    lines.append("- notice: paper trading only; no real order")
+    lines.append("")
+
+    paper_cycle = scan.get("paper_trading_cycle_audit", {}) or {}
+    lines.append("Paper trading cycle audit:")
+    lines.append(f"- status: {paper_cycle.get('status', 'MISSING')}")
+    lines.append(f"- journal_rows: {paper_cycle.get('journal_rows', 0)}")
+    lines.append(f"- open_paper_count: {paper_cycle.get('open_paper_count', 0)}")
+    lines.append(f"- closed_paper_count: {paper_cycle.get('closed_paper_count', 0)}")
+    lines.append(f"- pending_export_count: {paper_cycle.get('pending_export_count', 0)}")
+    lines.append(f"- exported_count: {paper_cycle.get('exported_count', 0)}")
+    lines.append(
+        f"- duplicate_outcome_ids: {len(paper_cycle.get('duplicate_outcome_ids', []) or [])}"
+    )
     lines.append("- notice: paper trading only; no real order")
     lines.append("")
 
