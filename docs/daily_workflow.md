@@ -16,7 +16,7 @@ From PowerShell in the project root:
 python .\tools\daily_validation.py
 ```
 
-This runs the audited scanner, P0 validation, quality gates, optional report builders, candidate cards, paper trading journal summary, calibration, and run manifest.
+This runs the audited scanner, P0 validation, quality gates, optional report builders, candidate cards, paper trading journal summary, paper close summary, calibration, and run manifest.
 
 ## 3. Review Reports In This Order
 
@@ -27,12 +27,13 @@ This runs the audited scanner, P0 validation, quality gates, optional report bui
 5. `reports/trade_candidate_cards_latest.md`
 6. `reports/paper_trading_journal_latest.md`
 7. `reports/paper_trade_followup_latest.md`
-8. `reports/manual_review_top.md`
-9. `reports/daily_run_manifest_latest.md`
-10. `reports/release_readiness_latest.md`
-11. `reports/daily_validation_summary.txt`
-12. `reports/project_preflight_latest.md`
-13. `reports/encoding_audit_latest.md`
+8. `reports/paper_trade_close_latest.md`
+9. `reports/manual_review_top.md`
+10. `reports/daily_run_manifest_latest.md`
+11. `reports/release_readiness_latest.md`
+12. `reports/daily_validation_summary.txt`
+13. `reports/project_preflight_latest.md`
+14. `reports/encoding_audit_latest.md`
 
 Stop immediately if a required step is `FAIL`.
 
@@ -149,7 +150,43 @@ reports/paper_trade_followup_latest.json
 
 The follow-up report checks latest price versus simulated entry, stop, and target. It may flag hold, near stop, near target, stop hit, target hit, invalidated review, or data unavailable. It does not close paper trades automatically and does not modify `data/paper_trading_journal.csv`.
 
-## 10. Calibration
+## 10. Paper Trade Close
+
+List open paper trades:
+
+```powershell
+python .\tools\paper_trade_close.py --list-open
+```
+
+Close a paper trade manually:
+
+```powershell
+python .\tools\paper_trade_close.py --close JOURNAL_ID --exit-price 123.45 --reason TARGET_REACHED_MANUAL
+```
+
+Export closed paper trades to calibration outcomes only when intended:
+
+```powershell
+python .\tools\paper_trade_close.py --export-outcomes
+```
+
+Daily validation runs only:
+
+```powershell
+python .\tools\paper_trade_close.py --summary
+```
+
+Review:
+
+```text
+reports/paper_trade_close_latest.md
+reports/paper_trade_close_latest.csv
+reports/paper_trade_close_latest.json
+```
+
+Closing and export are manual paper-trading actions only. The tool does not connect to a broker, does not send real orders, does not modify scanner signals, scores, config, weights, or thresholds, and does not close anything unless `--close` is explicitly supplied.
+
+## 11. Calibration
 
 Refresh score calibration:
 
@@ -167,13 +204,13 @@ reports/calibration_recommendations_latest.md
 
 Calibration is observational. Do not change weights or thresholds from insufficient samples.
 
-## 11. Validate Tests
+## 12. Validate Tests
 
 ```powershell
 python -m pytest -q
 ```
 
-## 12. Review Git
+## 13. Review Git
 
 ```powershell
 git -c safe.directory="*" status --short
@@ -181,7 +218,7 @@ git -c safe.directory="*" status --short
 
 Generated reports and caches should remain ignored. Version code, tests, and durable documentation only.
 
-## 13. Release Readiness Audit
+## 14. Release Readiness Audit
 
 Before closing a version, run:
 

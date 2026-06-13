@@ -50,10 +50,11 @@ git -c safe.directory="*" status --short
 5. `reports/trade_candidate_cards_latest.md`
 6. `reports/paper_trading_journal_latest.md`
 7. `reports/paper_trade_followup_latest.md`
-8. `reports/manual_review_top.md`
-9. `reports/daily_run_manifest_latest.md`
-10. `reports/release_readiness_latest.md`
-11. `reports/daily_validation_summary.txt`
+8. `reports/paper_trade_close_latest.md`
+9. `reports/manual_review_top.md`
+10. `reports/daily_run_manifest_latest.md`
+11. `reports/release_readiness_latest.md`
+12. `reports/daily_validation_summary.txt`
 
 ## Signals
 
@@ -123,6 +124,27 @@ The tool writes:
 - `reports/paper_trade_followup_latest.json`
 
 Follow-up decisions are review labels only: hold paper, review near stop, review near target, stop hit review close, target hit review close, data unavailable, or invalidated review. The tool does not close trades automatically, does not modify `data/paper_trading_journal.csv`, does not connect to a broker, and does not send orders.
+
+## Paper Trade Close
+
+`paper_trade_close` lists open paper trades, closes a selected paper trade only when `--close` is explicitly supplied, and optionally exports closed paper trades to calibration outcomes only when `--export-outcomes` is supplied.
+
+```powershell
+python .\tools\paper_trade_close.py --list-open
+python .\tools\paper_trade_close.py --close JOURNAL_ID --exit-price 123.45 --reason TARGET_REACHED_MANUAL
+python .\tools\paper_trade_close.py --export-outcomes
+python .\tools\paper_trade_close.py --summary
+```
+
+The tool writes:
+
+- `reports/paper_trade_close_latest.csv`
+- `reports/paper_trade_close_latest.md`
+- `reports/paper_trade_close_latest.json`
+
+With `--close`, it updates only the selected row in `data/paper_trading_journal.csv` with exit date, exit price, close reason, close timestamp, PnL percent, R multiple, and export markers. With `--export-outcomes`, it appends non-duplicated closed paper trades to `data/trade_outcomes.csv`.
+
+The daily workflow runs `paper_trade_close --summary` only. No paper trade is closed or exported by daily validation. The tool is paper trading only, uses no broker connection, sends no real orders, and does not modify scanner outputs, scores, config, weights, thresholds, or signals.
 
 ## Live Quote Recheck
 

@@ -210,6 +210,22 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "paper_trade_close",
+        "cmd": [
+            sys.executable,
+            "tools/paper_trade_close.py",
+            "--summary",
+            "--csv-out",
+            "reports/paper_trade_close_latest.csv",
+            "--json-out",
+            "reports/paper_trade_close_latest.json",
+            "--markdown-out",
+            "reports/paper_trade_close_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "daily_operator_index",
         "cmd": [
             sys.executable,
@@ -406,6 +422,9 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "paper_trade_followup_latest.csv",
         ROOT / "reports" / "paper_trade_followup_latest.json",
         ROOT / "reports" / "paper_trade_followup_latest.md",
+        ROOT / "reports" / "paper_trade_close_latest.csv",
+        ROOT / "reports" / "paper_trade_close_latest.json",
+        ROOT / "reports" / "paper_trade_close_latest.md",
         ROOT / "reports" / "daily_run_manifest_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.md",
         ROOT / "reports" / "encoding_audit_latest.json",
@@ -442,6 +461,7 @@ def collect_scan_snapshot() -> dict:
     cards_path = ROOT / "reports" / "trade_candidate_cards_latest.json"
     paper_journal_path = ROOT / "reports" / "paper_trading_journal_latest.json"
     paper_followup_path = ROOT / "reports" / "paper_trade_followup_latest.json"
+    paper_close_path = ROOT / "reports" / "paper_trade_close_latest.json"
     calibration_path = ROOT / "reports" / "trade_score_calibration_latest.json"
     calibration_recommendations_path = ROOT / "reports" / "calibration_recommendations_latest.json"
     release_readiness_path = ROOT / "reports" / "release_readiness_latest.json"
@@ -513,6 +533,14 @@ def collect_scan_snapshot() -> dict:
             "stop_hit_review_close": 0,
             "target_hit_review_close": 0,
             "data_unavailable": 0,
+        },
+        "paper_trade_close": {
+            "status": "MISSING",
+            "rows": 0,
+            "open_paper_trades": 0,
+            "closed_paper_trades": 0,
+            "pending_export": 0,
+            "exported_outcomes": 0,
         },
     }
 
@@ -633,6 +661,21 @@ def collect_scan_snapshot() -> dict:
                 paper_followup_data.get("target_hit_review_close", 0) or 0
             ),
             "data_unavailable": int(paper_followup_data.get("data_unavailable", 0) or 0),
+        }
+
+    if paper_close_path.exists():
+        try:
+            paper_close_data = json.loads(paper_close_path.read_text(encoding="utf-8"))
+        except Exception:
+            paper_close_data = {}
+
+        snapshot["paper_trade_close"] = {
+            "status": str(paper_close_data.get("status", "UNKNOWN")),
+            "rows": int(paper_close_data.get("rows", 0) or 0),
+            "open_paper_trades": int(paper_close_data.get("open_paper_trades", 0) or 0),
+            "closed_paper_trades": int(paper_close_data.get("closed_paper_trades", 0) or 0),
+            "pending_export": int(paper_close_data.get("pending_export", 0) or 0),
+            "exported_outcomes": int(paper_close_data.get("exported_outcomes", 0) or 0),
         }
 
     if calibration_path.exists():
@@ -800,6 +843,7 @@ def _build_operational_next_steps(status: str, snapshot: dict) -> list[str]:
     lines.append("- Revisar fichas por candidato: reports/trade_candidate_cards_latest.md")
     lines.append("- Revisar journal paper trading: reports/paper_trading_journal_latest.md")
     lines.append("- Revisar seguimiento paper trading: reports/paper_trade_followup_latest.md")
+    lines.append("- Revisar cierres paper manuales: reports/paper_trade_close_latest.md")
     lines.append("- Revisar calibración de scores: reports/trade_score_calibration_latest.md")
     lines.append("- Revisar recomendaciones de calibración: reports/calibration_recommendations_latest.md")
     lines.append("- Revisar release readiness: reports/release_readiness_latest.md")
@@ -876,6 +920,9 @@ def build_summary_text(
         "reports/paper_trade_followup_latest.csv",
         "reports/paper_trade_followup_latest.json",
         "reports/paper_trade_followup_latest.md",
+        "reports/paper_trade_close_latest.csv",
+        "reports/paper_trade_close_latest.json",
+        "reports/paper_trade_close_latest.md",
         "reports/reports_cleanup_latest.json",
         "reports/reports_cleanup_latest.md",
         "reports/daily_run_manifest_latest.json",
@@ -901,6 +948,7 @@ def build_summary_text(
     cards = snapshot.get("trade_candidate_cards", {}) or {}
     paper = snapshot.get("paper_trading_journal", {}) or {}
     paper_followup = snapshot.get("paper_trade_followup", {}) or {}
+    paper_close = snapshot.get("paper_trade_close", {}) or {}
     calibration = snapshot.get("trade_score_calibration", {}) or {}
     calibration_recommendations = snapshot.get("calibration_recommendations", {}) or {}
     release_readiness = snapshot.get("release_readiness", {}) or {}
@@ -909,6 +957,8 @@ def build_summary_text(
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
     lines.append(f"- Paper trading journal rows: {paper.get('rows')}")
     lines.append(f"- Paper trade follow-up rows: {paper_followup.get('rows')}")
+    lines.append(f"- Paper trade close open trades: {paper_close.get('open_paper_trades')}")
+    lines.append(f"- Paper trade close pending export: {paper_close.get('pending_export')}")
     lines.append(f"- Trade score calibration closed trades: {calibration.get('closed_trades')}")
     lines.append(
         "- Calibration recommendations count: "
@@ -1059,6 +1109,17 @@ def build_summary_text(
     lines.append(f"- stop_hit_review_close: {paper_followup.get('stop_hit_review_close')}")
     lines.append(f"- target_hit_review_close: {paper_followup.get('target_hit_review_close')}")
     lines.append(f"- data_unavailable: {paper_followup.get('data_unavailable')}")
+
+    paper_close = snapshot.get("paper_trade_close", {}) or {}
+    lines.append("")
+    lines.append("Paper trade close:")
+    lines.append(f"- status: {paper_close.get('status')}")
+    lines.append(f"- rows: {paper_close.get('rows')}")
+    lines.append(f"- open_paper_trades: {paper_close.get('open_paper_trades')}")
+    lines.append(f"- closed_paper_trades: {paper_close.get('closed_paper_trades')}")
+    lines.append(f"- pending_export: {paper_close.get('pending_export')}")
+    lines.append(f"- exported_outcomes: {paper_close.get('exported_outcomes')}")
+    lines.append("- notice: paper trading only; no real order")
 
     lines.append("")
     lines.append("[Manual operating reminder]")

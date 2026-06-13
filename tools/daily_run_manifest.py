@@ -32,6 +32,7 @@ KEY_SCRIPT_PATHS = [
     "tools/trade_candidate_cards.py",
     "tools/paper_trading_journal.py",
     "tools/paper_trade_followup.py",
+    "tools/paper_trade_close.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
     "tools/release_readiness_audit.py",
@@ -63,6 +64,9 @@ KEY_REPORT_PATHS = [
     "reports/paper_trade_followup_latest.csv",
     "reports/paper_trade_followup_latest.json",
     "reports/paper_trade_followup_latest.md",
+    "reports/paper_trade_close_latest.csv",
+    "reports/paper_trade_close_latest.json",
+    "reports/paper_trade_close_latest.md",
     "reports/trade_score_calibration_latest.csv",
     "reports/trade_score_calibration_latest.json",
     "reports/trade_score_calibration_latest.md",
@@ -329,6 +333,7 @@ def collect_daily_run_manifest(
     trade_candidate_cards_path = reports / "trade_candidate_cards_latest.json"
     paper_trading_journal_path = reports / "paper_trading_journal_latest.json"
     paper_trade_followup_path = reports / "paper_trade_followup_latest.json"
+    paper_trade_close_path = reports / "paper_trade_close_latest.json"
     trade_score_calibration_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_path = reports / "calibration_recommendations_latest.json"
     release_readiness_path = reports / "release_readiness_latest.json"
@@ -393,6 +398,7 @@ def collect_daily_run_manifest(
             "trade_candidate_cards": _load_json(trade_candidate_cards_path),
             "paper_trading_journal": _load_json(paper_trading_journal_path),
             "paper_trade_followup": _load_json(paper_trade_followup_path),
+            "paper_trade_close": _load_json(paper_trade_close_path),
             "trade_score_calibration": _load_json(trade_score_calibration_path),
             "calibration_recommendations": _load_json(calibration_recommendations_path),
             "release_readiness": _load_json(release_readiness_path),
@@ -606,6 +612,17 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- stop_hit_review_close: {paper_followup.get('stop_hit_review_close', 0)}")
     lines.append(f"- target_hit_review_close: {paper_followup.get('target_hit_review_close', 0)}")
     lines.append(f"- data_unavailable: {paper_followup.get('data_unavailable', 0)}")
+    lines.append("- notice: paper trading only; no real order")
+    lines.append("")
+
+    paper_close = scan.get("paper_trade_close", {}) or {}
+    lines.append("Paper trade close:")
+    lines.append(f"- status: {paper_close.get('status', 'MISSING')}")
+    lines.append(f"- rows: {paper_close.get('rows', 0)}")
+    lines.append(f"- open_paper_trades: {paper_close.get('open_paper_trades', 0)}")
+    lines.append(f"- closed_paper_trades: {paper_close.get('closed_paper_trades', 0)}")
+    lines.append(f"- pending_export: {paper_close.get('pending_export', 0)}")
+    lines.append(f"- exported_outcomes: {paper_close.get('exported_outcomes', 0)}")
     lines.append("- notice: paper trading only; no real order")
     lines.append("")
 

@@ -35,6 +35,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/trade_candidate_cards.py",
         "tools/paper_trading_journal.py",
         "tools/paper_trade_followup.py",
+        "tools/paper_trade_close.py",
         "tools/trade_score_calibration.py",
         "tools/calibration_recommendations.py",
         "tools/release_readiness_audit.py",
@@ -203,6 +204,24 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "paper_trade_close_latest.csv").write_text(
+        "ticker,paper_close_action\n",
+        encoding="utf-8",
+    )
+    (reports / "paper_trade_close_latest.md").write_text("# paper close\n", encoding="utf-8")
+    (reports / "paper_trade_close_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 0,
+                "open_paper_trades": 0,
+                "closed_paper_trades": 0,
+                "pending_export": 0,
+                "exported_outcomes": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "trade_score_calibration_latest.csv").write_text(
         "group,group_value,closed_trades\nOVERALL,ALL_CLOSED,0\n",
         encoding="utf-8",
@@ -269,6 +288,7 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["latest_scan_rows"] == 2
     assert data["scan_snapshot"]["manual_review_rows"] == 2
     assert data["scan_snapshot"]["recommendations"]["RECHECK_LIVE_QUOTE"] == 1
+    assert data["scan_snapshot"]["paper_trade_close"]["status"] == "PASS"
     assert data["summary"]["missing_script_files"] == []
 
     script_files = data["script_files"]
@@ -292,6 +312,7 @@ def test_daily_run_manifest_markdown_contains_sections(tmp_path: Path):
     assert "## Report files" in text
     assert "## Summary" in text
     assert "RECHECK_LIVE_QUOTE" in text
+    assert "Paper trade close:" in text
 
 
 def test_save_daily_run_manifest_writes_outputs(tmp_path: Path):
