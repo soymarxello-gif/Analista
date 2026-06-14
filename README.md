@@ -68,6 +68,25 @@ Run release readiness audit:
 python .\tools\release_readiness_audit.py
 ```
 
+## Launching the GUI
+
+Run the controlled Streamlit interface:
+
+```powershell
+streamlit run .\app.py
+```
+
+Before daily GUI use, validate:
+
+```powershell
+python .\tools\streamlit_smoke_test.py
+python .\tools\gui_actions_audit.py
+python .\tools\gui_visuals_audit.py
+python .\tools\gui_release_audit.py
+```
+
+The GUI is manual review and paper trading only. It does not execute the scanner, send real orders, or change scoring weights.
+
 Review Git state:
 
 ```powershell

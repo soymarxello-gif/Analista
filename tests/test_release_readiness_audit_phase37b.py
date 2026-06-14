@@ -42,6 +42,7 @@ TOOLS = [
     "tools/streamlit_smoke_test.py",
     "tools/gui_actions_audit.py",
     "tools/gui_visuals_audit.py",
+    "tools/gui_release_audit.py",
 ]
 
 TESTS = [
@@ -62,6 +63,7 @@ TESTS = [
     "tests/test_streamlit_dashboard_phase39b.py",
     "tests/test_gui_actions_phase39c.py",
     "tests/test_gui_visuals_phase39d.py",
+    "tests/test_gui_release_phase39e.py",
 ]
 
 
@@ -132,6 +134,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "streamlit_smoke_test",
                 "gui_actions_audit",
                 "gui_visuals_audit",
+                "gui_release_audit",
             ]
         ),
     )
@@ -152,6 +155,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/streamlit_smoke_test_latest.md",
                 "reports/gui_actions_audit_latest.md",
                 "reports/gui_visuals_audit_latest.md",
+                "reports/gui_release_audit_latest.md",
             ]
         ),
     )
@@ -172,6 +176,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "tools/streamlit_smoke_test.py",
                 "tools/gui_actions_audit.py",
                 "tools/gui_visuals_audit.py",
+                "tools/gui_release_audit.py",
                 "reports/live_quote_recheck_latest.json",
                 "reports/trade_decision_checklist_latest.json",
                 "reports/trade_candidate_cards_latest.json",
@@ -185,6 +190,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/streamlit_smoke_test_latest.json",
                 "reports/gui_actions_audit_latest.json",
                 "reports/gui_visuals_audit_latest.json",
+                "reports/gui_release_audit_latest.json",
             ]
         ),
     )
@@ -219,6 +225,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "streamlit_smoke_test_latest.md",
         "gui_actions_audit_latest.md",
         "gui_visuals_audit_latest.md",
+        "gui_release_audit_latest.md",
         "trade_outcome_analytics_latest.csv",
         "trade_outcome_analytics_latest.md",
         "reports_cleanup_latest.md",
@@ -244,6 +251,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "streamlit_smoke_test_latest.json",
         "gui_actions_audit_latest.json",
         "gui_visuals_audit_latest.json",
+        "gui_release_audit_latest.json",
         "reports_cleanup_latest.json",
         "report_consistency_latest.json",
     ]:
@@ -354,10 +362,12 @@ def test_daily_validation_has_optional_release_readiness_audit_at_end():
     assert "streamlit_smoke_test" in post_names
     assert "gui_actions_audit" in post_names
     assert "gui_visuals_audit" in post_names
+    assert "gui_release_audit" in post_names
     assert post_names.index("release_readiness_audit") < post_names.index("streamlit_smoke_test")
     assert post_names.index("streamlit_smoke_test") < post_names.index("gui_actions_audit")
     assert post_names.index("gui_actions_audit") < post_names.index("gui_visuals_audit")
-    assert post_names.index("gui_visuals_audit") < post_names.index("ui_data_contract_audit")
+    assert post_names.index("gui_visuals_audit") < post_names.index("gui_release_audit")
+    assert post_names.index("gui_release_audit") < post_names.index("ui_data_contract_audit")
     assert post_names[-1] == "ui_data_contract_audit"
 
     step = next(item for item in daily_validation.POST_SUMMARY_STEPS if item["name"] == "release_readiness_audit")
@@ -399,6 +409,7 @@ def test_daily_operator_index_renders_release_readiness_section():
             "streamlit_smoke_test": {"available": False},
             "gui_actions_audit": {"available": False},
             "gui_visuals_audit": {"available": False},
+            "gui_release_audit": {"available": False},
             "top_candidates": pd.DataFrame(),
             "recheck_candidates": pd.DataFrame(),
             "open_trades": pd.DataFrame(),
@@ -420,6 +431,7 @@ def test_daily_run_manifest_tracks_release_readiness_outputs():
     assert "tools/streamlit_smoke_test.py" in KEY_SCRIPT_PATHS
     assert "tools/gui_actions_audit.py" in KEY_SCRIPT_PATHS
     assert "tools/gui_visuals_audit.py" in KEY_SCRIPT_PATHS
+    assert "tools/gui_release_audit.py" in KEY_SCRIPT_PATHS
     assert "reports/release_readiness_latest.json" in KEY_REPORT_PATHS
     assert "reports/release_readiness_latest.md" in KEY_REPORT_PATHS
     assert "reports/streamlit_smoke_test_latest.json" in KEY_REPORT_PATHS
@@ -428,3 +440,5 @@ def test_daily_run_manifest_tracks_release_readiness_outputs():
     assert "reports/gui_actions_audit_latest.md" in KEY_REPORT_PATHS
     assert "reports/gui_visuals_audit_latest.json" in KEY_REPORT_PATHS
     assert "reports/gui_visuals_audit_latest.md" in KEY_REPORT_PATHS
+    assert "reports/gui_release_audit_latest.json" in KEY_REPORT_PATHS
+    assert "reports/gui_release_audit_latest.md" in KEY_REPORT_PATHS

@@ -343,6 +343,19 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "gui_release_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_release_audit.py",
+            "--json-out",
+            "reports/gui_release_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_release_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "ui_data_contract_audit",
         "cmd": [
             sys.executable,
@@ -508,6 +521,8 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "gui_actions_audit_latest.md",
         ROOT / "reports" / "gui_visuals_audit_latest.json",
         ROOT / "reports" / "gui_visuals_audit_latest.md",
+        ROOT / "reports" / "gui_release_audit_latest.json",
+        ROOT / "reports" / "gui_release_audit_latest.md",
         ROOT / "reports" / "reports_cleanup_latest.json",
         ROOT / "reports" / "reports_cleanup_latest.md",
         ROOT / "reports" / "source_coverage_latest.json",
@@ -545,6 +560,7 @@ def collect_scan_snapshot() -> dict:
     streamlit_smoke_path = ROOT / "reports" / "streamlit_smoke_test_latest.json"
     gui_actions_path = ROOT / "reports" / "gui_actions_audit_latest.json"
     gui_visuals_path = ROOT / "reports" / "gui_visuals_audit_latest.json"
+    gui_release_path = ROOT / "reports" / "gui_release_audit_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -600,6 +616,16 @@ def collect_scan_snapshot() -> dict:
             "empty_data_safe": False,
             "broker_guardrail_ok": False,
             "shell_guardrail_ok": False,
+        },
+        "gui_release_audit": {
+            "status": "MISSING",
+            "app_exists": False,
+            "guards_exists": False,
+            "formatters_exists": False,
+            "read_write_guardrail_ok": False,
+            "broker_guardrail_ok": False,
+            "shell_guardrail_ok": False,
+            "confirmation_guardrail_ok": False,
         },
         "live_quote_recheck": {
             "status": "MISSING",
@@ -918,6 +944,23 @@ def collect_scan_snapshot() -> dict:
             "shell_guardrail_ok": bool(gui_visuals_data.get("shell_guardrail_ok", False)),
         }
 
+    if gui_release_path.exists():
+        try:
+            gui_release_data = json.loads(gui_release_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_release_data = {}
+
+        snapshot["gui_release_audit"] = {
+            "status": str(gui_release_data.get("status", "UNKNOWN")),
+            "app_exists": bool(gui_release_data.get("app_exists", False)),
+            "guards_exists": bool(gui_release_data.get("guards_exists", False)),
+            "formatters_exists": bool(gui_release_data.get("formatters_exists", False)),
+            "read_write_guardrail_ok": bool(gui_release_data.get("read_write_guardrail_ok", False)),
+            "broker_guardrail_ok": bool(gui_release_data.get("broker_guardrail_ok", False)),
+            "shell_guardrail_ok": bool(gui_release_data.get("shell_guardrail_ok", False)),
+            "confirmation_guardrail_ok": bool(gui_release_data.get("confirmation_guardrail_ok", False)),
+        }
+
     return snapshot
 
 
@@ -1140,6 +1183,8 @@ def build_summary_text(
         "reports/gui_actions_audit_latest.md",
         "reports/gui_visuals_audit_latest.json",
         "reports/gui_visuals_audit_latest.md",
+        "reports/gui_release_audit_latest.json",
+        "reports/gui_release_audit_latest.md",
     ]
 
     lines.append("=== ANALISTA DAILY VALIDATION SUMMARY ===")
@@ -1166,6 +1211,7 @@ def build_summary_text(
     streamlit_smoke = snapshot.get("streamlit_smoke_test", {}) or {}
     gui_actions = snapshot.get("gui_actions_audit", {}) or {}
     gui_visuals = snapshot.get("gui_visuals_audit", {}) or {}
+    gui_release = snapshot.get("gui_release_audit", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
@@ -1184,6 +1230,7 @@ def build_summary_text(
     lines.append(f"- Streamlit smoke test status: {streamlit_smoke.get('status')}")
     lines.append(f"- GUI actions audit status: {gui_actions.get('status')}")
     lines.append(f"- GUI visuals audit status: {gui_visuals.get('status')}")
+    lines.append(f"- GUI release audit status: {gui_release.get('status')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -1313,6 +1360,18 @@ def build_summary_text(
     lines.append(f"- empty_data_safe: {gui_visuals.get('empty_data_safe')}")
     lines.append(f"- broker_guardrail_ok: {gui_visuals.get('broker_guardrail_ok')}")
     lines.append(f"- shell_guardrail_ok: {gui_visuals.get('shell_guardrail_ok')}")
+
+    gui_release = snapshot.get("gui_release_audit", {}) or {}
+    lines.append("")
+    lines.append("GUI release audit:")
+    lines.append(f"- status: {gui_release.get('status')}")
+    lines.append(f"- app_exists: {gui_release.get('app_exists')}")
+    lines.append(f"- guards_exists: {gui_release.get('guards_exists')}")
+    lines.append(f"- formatters_exists: {gui_release.get('formatters_exists')}")
+    lines.append(f"- read_write_guardrail_ok: {gui_release.get('read_write_guardrail_ok')}")
+    lines.append(f"- broker_guardrail_ok: {gui_release.get('broker_guardrail_ok')}")
+    lines.append(f"- shell_guardrail_ok: {gui_release.get('shell_guardrail_ok')}")
+    lines.append(f"- confirmation_guardrail_ok: {gui_release.get('confirmation_guardrail_ok')}")
 
     live = snapshot.get("live_quote_recheck", {}) or {}
     lines.append("")

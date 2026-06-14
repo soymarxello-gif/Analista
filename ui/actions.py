@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 
+from ui import guards
 from tools.paper_trade_close import CLOSE_REASONS, save_paper_trade_close_reports
 from tools.paper_trade_followup import save_paper_trade_followup_reports
 from tools.paper_trading_journal import (
@@ -19,7 +20,7 @@ from tools.paper_trading_journal import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-NO_REAL_ORDER_NOTICE = "paper trading only; no real order"
+NO_REAL_ORDER_NOTICE = guards.NO_REAL_ORDER_NOTICE
 ACTION_LOG_COLUMNS = [
     "action_id",
     "timestamp",
@@ -31,13 +32,7 @@ ACTION_LOG_COLUMNS = [
     "message",
     "no_real_order_notice",
 ]
-ALLOWED_MANUAL_DECISIONS = {
-    "PAPER_WATCH",
-    "PAPER_ENTER",
-    "SKIP",
-    "BLOCKED",
-    "NEEDS_LIVE_QUOTE_RECHECK",
-}
+ALLOWED_MANUAL_DECISIONS = guards.ALLOWED_MANUAL_DECISIONS
 ALLOWED_FOLLOWUP_STATUSES = {
     "OPEN_MONITORING",
     "NOT_ENTERED",

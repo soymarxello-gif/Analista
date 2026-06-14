@@ -44,6 +44,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/streamlit_smoke_test.py",
         "tools/gui_actions_audit.py",
         "tools/gui_visuals_audit.py",
+        "tools/gui_release_audit.py",
     ]
 
     for script in scripts:
@@ -345,6 +346,22 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "gui_release_audit_latest.md").write_text("# gui release\n", encoding="utf-8")
+    (reports / "gui_release_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "app_exists": True,
+                "guards_exists": True,
+                "formatters_exists": True,
+                "read_write_guardrail_ok": True,
+                "broker_guardrail_ok": True,
+                "shell_guardrail_ok": True,
+                "confirmation_guardrail_ok": True,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
     (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
     (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")
@@ -372,6 +389,7 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["streamlit_smoke_test"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_actions_audit"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_visuals_audit"]["status"] == "PASS"
+    assert data["scan_snapshot"]["gui_release_audit"]["status"] == "PASS"
     assert data["summary"]["missing_script_files"] == []
 
     script_files = data["script_files"]

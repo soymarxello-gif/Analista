@@ -290,3 +290,11 @@ If a candidate cannot be verified manually, do not use it operationally.
 - Los graficos deben construirse desde `ui.view_models` y `ui.charts`; no deben leer reportes directamente ni escribir datos operativos.
 - Validar cambios visuales con `python .\tools\gui_visuals_audit.py`.
 - La calibracion mostrada en GUI sigue siendo observacional; no cambia pesos automaticamente.
+
+## GUI release hardening
+
+- `ui/guards.py` centraliza confirmaciones, decisiones permitidas, motivos de cierre y terminos prohibidos.
+- `ui/formatters.py` centraliza formatos seguros para estados, numeros, porcentajes, precios y textos.
+- `ui/layout.py` centraliza mensajes de estado, empty states, notices y tabla de fuentes.
+- Validar el release candidate de GUI con `python .\tools\gui_release_audit.py`.
+- La interfaz no debe ejecutar scanner, cambiar scoring, cambiar thresholds, conectar servicios de ejecucion ni enviar ordenes reales.

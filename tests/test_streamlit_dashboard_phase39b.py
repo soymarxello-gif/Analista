@@ -79,6 +79,7 @@ def test_report_loader_exposes_streamlit_smoke_source(tmp_path: Path):
 
     assert "streamlit_smoke_test" in SOURCE_SPECS
     assert "gui_visuals_audit" in SOURCE_SPECS
+    assert "gui_release_audit" in SOURCE_SPECS
     assert streamlit_source["status"] == "AVAILABLE"
     assert streamlit_source["exists"] is True
     assert streamlit_source["data"]["read_only"] is True

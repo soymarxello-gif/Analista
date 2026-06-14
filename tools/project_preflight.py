@@ -69,6 +69,8 @@ OPTIONAL_FILES = [
     "reports/gui_actions_audit_latest.md",
     "reports/gui_visuals_audit_latest.json",
     "reports/gui_visuals_audit_latest.md",
+    "reports/gui_release_audit_latest.json",
+    "reports/gui_release_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",

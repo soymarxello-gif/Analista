@@ -23,6 +23,7 @@ def test_daily_quality_gate_runs_before_release_readiness_audit():
     assert "streamlit_smoke_test" in post_names
     assert "gui_actions_audit" in post_names
     assert "gui_visuals_audit" in post_names
+    assert "gui_release_audit" in post_names
 
     assert post_names.index("daily_operator_index") < post_names.index("daily_run_manifest")
     assert post_names.index("daily_run_manifest") < post_names.index("encoding_audit")
@@ -31,7 +32,8 @@ def test_daily_quality_gate_runs_before_release_readiness_audit():
     assert post_names.index("release_readiness_audit") < post_names.index("streamlit_smoke_test")
     assert post_names.index("streamlit_smoke_test") < post_names.index("gui_actions_audit")
     assert post_names.index("gui_actions_audit") < post_names.index("gui_visuals_audit")
-    assert post_names.index("gui_visuals_audit") < post_names.index("ui_data_contract_audit")
+    assert post_names.index("gui_visuals_audit") < post_names.index("gui_release_audit")
+    assert post_names.index("gui_release_audit") < post_names.index("ui_data_contract_audit")
 
     assert post_names[-1] == "ui_data_contract_audit"
 
@@ -75,6 +77,8 @@ def test_daily_validation_tracks_daily_quality_gate_outputs():
     assert "reports/gui_actions_audit_latest.md" in paths
     assert "reports/gui_visuals_audit_latest.json" in paths
     assert "reports/gui_visuals_audit_latest.md" in paths
+    assert "reports/gui_release_audit_latest.json" in paths
+    assert "reports/gui_release_audit_latest.md" in paths
 
 
 def test_daily_validation_summary_includes_daily_quality_gate_reports():

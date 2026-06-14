@@ -7,6 +7,9 @@ import streamlit as st
 
 from ui import actions as paper_actions
 from ui import charts as ui_charts
+from ui import formatters as ui_formatters
+from ui import guards as ui_guards
+from ui import layout as ui_layout
 from ui.report_loader import load_all_ui_sources
 from ui.view_models import (
     build_calibration_model,
@@ -23,18 +26,7 @@ ROOT = Path(__file__).resolve().parent
 
 
 def _status_message(status: str, text: str = "") -> None:
-    status = str(status or "UNKNOWN").upper()
-    message = text or f"Status: {status}"
-    if status == "FAIL":
-        st.error(message)
-    elif status == "WARN":
-        st.warning(message)
-    elif status in {"PASS", "AVAILABLE"}:
-        st.success(message)
-    elif status in {"MISSING", "EMPTY"}:
-        st.info(message)
-    else:
-        st.warning(message)
+    ui_layout.render_status_message(status, text)
 
 
 def _metrics(items: list[tuple[str, object]], columns: int = 4) -> None:
@@ -108,18 +100,7 @@ def _filtered_dataframe(df: pd.DataFrame, filters: list[str]) -> pd.DataFrame:
 
 
 def _rules_panel() -> None:
-    disabled_setup = "_".join(["BUY", "SETUP", "ACTIVE"])
-    trigger_state = "_".join(["TRIGGER", "CONFIRMED"])
-    st.markdown(
-        "\n".join(
-            [
-                f"- `{disabled_setup}` disabled",
-                "- No automatic trading",
-                f"- `{trigger_state}` requires quote_status `VALID` and execution_quote_quality `HIGH`",
-                "- `RECHECK_LIVE_QUOTE` is not entry",
-            ]
-        )
-    )
+    ui_layout.render_guardrail_notice()
 
 
 def _show_action_result(result: dict | None) -> None:
@@ -134,6 +115,15 @@ def _show_action_result(result: dict | None) -> None:
     notice = result.get("no_real_order_notice")
     if notice:
         st.caption(str(notice))
+
+
+def _show_guard_result(validation: dict) -> bool:
+    if validation.get("ok"):
+        return True
+    errors = validation.get("errors", []) or ["validation_failed"]
+    st.error("; ".join(str(error) for error in errors))
+    st.caption(ui_guards.NO_REAL_ORDER_NOTICE)
+    return False
 
 
 def _paper_identifier_options(paper_rows: pd.DataFrame) -> tuple[list[str], list[str]]:
@@ -152,6 +142,43 @@ def _selectable(values: list[str]) -> list[str]:
     return values if values else [""]
 
 
+def _source_status(sources: dict, name: str) -> str:
+    source = (sources or {}).get("sources", {}).get(name, {}) or {}
+    data = source.get("data", {}) if isinstance(source, dict) else {}
+    if isinstance(data, dict) and data.get("status"):
+        return str(data.get("status"))
+    return str(source.get("status", "MISSING"))
+
+
+def _latest_source_timestamp(sources: dict) -> str:
+    modified_values = [
+        source.get("modified")
+        for source in (sources or {}).get("sources", {}).values()
+        if source.get("modified") is not None
+    ]
+    if not modified_values:
+        return "N/A"
+    return str(max(modified_values))
+
+
+def _render_sidebar(sources: dict) -> None:
+    st.sidebar.header("Status")
+    status_items = [
+        ("Daily validation", "daily_run_manifest"),
+        ("Quality gate", "daily_quality_gate"),
+        ("Release readiness", "release_readiness"),
+        ("UI data contract", "ui_data_contract"),
+        ("GUI actions audit", "gui_actions_audit"),
+        ("GUI visuals audit", "gui_visuals_audit"),
+        ("GUI release audit", "gui_release_audit"),
+    ]
+    for label, source_name in status_items:
+        st.sidebar.metric(label, ui_formatters.format_status_badge(_source_status(sources, source_name)))
+    st.sidebar.caption(f"Last source update: {_latest_source_timestamp(sources)}")
+    if st.sidebar.button("Refresh screen", key="refresh_screen_only"):
+        st.rerun()
+
+
 def main() -> None:
     st.set_page_config(page_title="Analista Dashboard", layout="wide")
 
@@ -165,7 +192,9 @@ def main() -> None:
     calibration = build_calibration_model(sources)
 
     st.title("Analista Dashboard")
-    st.warning("Manual review only. No real orders.")
+    _render_sidebar(sources)
+    ui_layout.render_no_real_order_notice()
+    st.caption("Manual review only. No real orders.")
 
     tabs = st.tabs(
         [
@@ -239,7 +268,7 @@ def main() -> None:
         st.markdown("### Top scores")
         _bar_chart(ui_charts.build_candidate_score_chart_data(candidates), value_column="final_trade_score")
         if candidate_df.empty:
-            st.info("No candidate rows available.")
+            ui_layout.render_empty_state("No candidate rows available.")
         else:
             filtered = _filtered_dataframe(
                 candidate_df,
@@ -357,7 +386,7 @@ def main() -> None:
 
     with tabs[7]:
         st.subheader("Paper actions")
-        st.warning("Paper trading only. No real orders.")
+        ui_layout.render_no_real_order_notice()
         paper_rows = _records_to_dataframe(paper.get("data", {}).get("rows", []))
         journal_options, ticker_options = _paper_identifier_options(paper_rows)
 
@@ -371,8 +400,9 @@ def main() -> None:
             disabled=not import_confirmed,
             key="import_today_candidates",
         ):
-            result = paper_actions.import_today_candidates(root=ROOT, confirmed=import_confirmed)
-            _show_action_result(result)
+            if _show_guard_result(ui_guards.validate_paper_action_confirmation(import_confirmed)):
+                result = paper_actions.import_today_candidates(root=ROOT, confirmed=import_confirmed)
+                _show_action_result(result)
 
         st.markdown("### Marcar decision manual")
         decision_identifier_mode = st.radio(
@@ -401,7 +431,7 @@ def main() -> None:
             selected_journal_id = ""
         manual_decision = st.selectbox(
             "manual_decision",
-            ["PAPER_WATCH", "PAPER_ENTER", "SKIP", "BLOCKED", "NEEDS_LIVE_QUOTE_RECHECK"],
+            sorted(ui_guards.ALLOWED_MANUAL_DECISIONS),
             key="paper_manual_decision",
         )
         decision_reason = st.text_input("reason", key="paper_decision_reason")
@@ -417,18 +447,26 @@ def main() -> None:
         if manual_decision == "PAPER_ENTER":
             decision_ready = decision_ready and entry_value > 0 and stop_value > 0 and target_value > 0
         if st.button("Apply paper decision", disabled=not decision_ready, key="apply_paper_decision"):
-            result = paper_actions.set_paper_decision(
-                root=ROOT,
-                ticker=selected_ticker or "",
-                journal_id=selected_journal_id or "",
+            validation = ui_guards.validate_paper_enter_payload(
                 manual_decision=manual_decision,
-                reason=decision_reason,
                 entry=entry_value,
                 stop=stop_value,
                 target=target_value,
                 confirmed=decision_confirmed,
             )
-            _show_action_result(result)
+            if _show_guard_result(validation):
+                result = paper_actions.set_paper_decision(
+                    root=ROOT,
+                    ticker=selected_ticker or "",
+                    journal_id=selected_journal_id or "",
+                    manual_decision=manual_decision,
+                    reason=decision_reason,
+                    entry=entry_value,
+                    stop=stop_value,
+                    target=target_value,
+                    confirmed=decision_confirmed,
+                )
+                _show_action_result(result)
 
         st.markdown("### Actualizar follow-up")
         if st.button("Refresh paper follow-up", key="refresh_paper_followup"):
@@ -446,15 +484,7 @@ def main() -> None:
         close_price = st.number_input("exit_price", min_value=0.0, step=0.01, key="paper_exit_price")
         close_reason = st.selectbox(
             "close reason",
-            [
-                "TARGET_REACHED_MANUAL",
-                "STOP_REACHED_MANUAL",
-                "TECHNICAL_INVALIDATION",
-                "TIME_EXIT",
-                "MANUAL_RISK_REDUCTION",
-                "DATA_QUALITY_EXIT",
-                "OTHER",
-            ],
+            sorted(ui_guards.ALLOWED_CLOSE_REASONS),
             key="paper_close_reason",
         )
         close_exit_date = st.text_input("exit_date optional", key="paper_exit_date")
@@ -464,15 +494,22 @@ def main() -> None:
         )
         close_ready = bool(close_confirmed and close_journal_id and close_price > 0 and close_reason)
         if st.button("Close paper trade", disabled=not close_ready, key="close_paper_trade"):
-            result = paper_actions.close_paper_trade(
-                root=ROOT,
-                journal_id=close_journal_id or "",
+            validation = ui_guards.validate_close_payload(
+                journal_id=close_journal_id,
                 exit_price=close_price,
                 reason=close_reason,
-                exit_date=close_exit_date,
                 confirmed=close_confirmed,
             )
-            _show_action_result(result)
+            if _show_guard_result(validation):
+                result = paper_actions.close_paper_trade(
+                    root=ROOT,
+                    journal_id=close_journal_id or "",
+                    exit_price=close_price,
+                    reason=close_reason,
+                    exit_date=close_exit_date,
+                    confirmed=close_confirmed,
+                )
+                _show_action_result(result)
 
         st.markdown("### Exportar closed paper trades a outcomes")
         export_confirmed = st.checkbox(
@@ -484,30 +521,13 @@ def main() -> None:
             disabled=not export_confirmed,
             key="export_closed_paper_outcomes",
         ):
-            result = paper_actions.export_closed_paper_outcomes(root=ROOT, confirmed=export_confirmed)
-            _show_action_result(result)
+            if _show_guard_result(ui_guards.validate_export_confirmation(export_confirmed)):
+                result = paper_actions.export_closed_paper_outcomes(root=ROOT, confirmed=export_confirmed)
+                _show_action_result(result)
 
     with tabs[8]:
         st.subheader("Reports status")
-        report_rows = []
-        for source in sources.get("sources", {}).values():
-            report_rows.append(
-                {
-                    "path": source.get("path", ""),
-                    "status": source.get("status", "UNKNOWN"),
-                    "exists": source.get("exists", False),
-                    "size_bytes": source.get("size_bytes", 0),
-                    "modified": source.get("modified"),
-                    "error": source.get("error", ""),
-                }
-            )
-        reports_df = pd.DataFrame(report_rows)
-        if not reports_df.empty:
-            st.dataframe(reports_df, use_container_width=True, hide_index=True)
-        missing_invalid = reports_df[reports_df["status"].isin(["MISSING", "INVALID"])] if not reports_df.empty else pd.DataFrame()
-        if not missing_invalid.empty:
-            st.warning("Missing or invalid sources detected.")
-            st.dataframe(missing_invalid, use_container_width=True, hide_index=True)
+        ui_layout.render_source_status_table(sources)
 
 
 if __name__ == "__main__":

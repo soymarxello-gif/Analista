@@ -15,6 +15,7 @@ SOURCE_SPECS = {
     "streamlit_smoke_test": ("json", "reports/streamlit_smoke_test_latest.json"),
     "gui_actions_audit": ("json", "reports/gui_actions_audit_latest.json"),
     "gui_visuals_audit": ("json", "reports/gui_visuals_audit_latest.json"),
+    "gui_release_audit": ("json", "reports/gui_release_audit_latest.json"),
     "manual_review_top": ("csv", "reports/manual_review_top.csv"),
     "manual_review_latest": ("csv", "reports/manual_review_latest.csv"),
     "trade_candidate_cards": ("json", "reports/trade_candidate_cards_latest.json"),

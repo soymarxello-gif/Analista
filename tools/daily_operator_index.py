@@ -717,6 +717,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     streamlit_smoke_json_path = reports / "streamlit_smoke_test_latest.json"
     gui_actions_json_path = reports / "gui_actions_audit_latest.json"
     gui_visuals_json_path = reports / "gui_visuals_audit_latest.json"
+    gui_release_json_path = reports / "gui_release_audit_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -771,6 +772,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_visuals_data = _normalize_gui_visuals_audit_status(
         _load_json(gui_visuals_json_path)
     )
+    gui_release_data = _normalize_gui_release_audit_status(
+        _load_json(gui_release_json_path)
+    )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
     git_dirty = bool(manifest_data.get("git", {}).get("dirty", False))
@@ -810,6 +814,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "gui_actions_audit_latest.md",
         reports / "gui_visuals_audit_latest.json",
         reports / "gui_visuals_audit_latest.md",
+        reports / "gui_release_audit_latest.json",
+        reports / "gui_release_audit_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -893,6 +899,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "streamlit_smoke_test": streamlit_smoke_data,
         "gui_actions_audit": gui_actions_data,
         "gui_visuals_audit": gui_visuals_data,
+        "gui_release_audit": gui_release_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -1227,6 +1234,26 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- json: reports/gui_visuals_audit_latest.json")
     lines.append("")
 
+    gui_release = data.get("gui_release_audit", {}) or {}
+    gui_release_available = bool(gui_release.get("available", False))
+    lines.append("## GUI release")
+    lines.append("")
+    if not gui_release_available:
+        lines.append("- No hay reporte de GUI release audit disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_release_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {gui_release.get('status', 'UNKNOWN')}")
+        lines.append(f"- app_exists: {gui_release.get('app_exists', False)}")
+        lines.append(f"- guards_exists: {gui_release.get('guards_exists', False)}")
+        lines.append(f"- formatters_exists: {gui_release.get('formatters_exists', False)}")
+        lines.append(f"- read_write_guardrail_ok: {gui_release.get('read_write_guardrail_ok', False)}")
+        lines.append(f"- broker_guardrail_ok: {gui_release.get('broker_guardrail_ok', False)}")
+        lines.append(f"- shell_guardrail_ok: {gui_release.get('shell_guardrail_ok', False)}")
+        lines.append(f"- confirmation_guardrail_ok: {gui_release.get('confirmation_guardrail_ok', False)}")
+        lines.append("- markdown: reports/gui_release_audit_latest.md")
+        lines.append("- json: reports/gui_release_audit_latest.json")
+    lines.append("")
+
     cards = data.get("trade_candidate_cards", {}) or {}
     cards_available = bool(cards.get("available", False))
 
@@ -1402,6 +1429,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("23. `reports/streamlit_smoke_test_latest.md`")
     lines.append("24. `reports/gui_actions_audit_latest.md`")
     lines.append("25. `reports/gui_visuals_audit_latest.md`")
+    lines.append("26. `reports/gui_release_audit_latest.md`")
     lines.append("")
 
     lines.append("## Señales")
@@ -1610,6 +1638,32 @@ def _normalize_gui_visuals_audit_status(data: dict) -> dict:
         "empty_data_safe": bool(data.get("empty_data_safe", False)),
         "broker_guardrail_ok": bool(data.get("broker_guardrail_ok", False)),
         "shell_guardrail_ok": bool(data.get("shell_guardrail_ok", False)),
+    }
+
+
+def _normalize_gui_release_audit_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "app_exists": False,
+            "guards_exists": False,
+            "formatters_exists": False,
+            "read_write_guardrail_ok": False,
+            "broker_guardrail_ok": False,
+            "shell_guardrail_ok": False,
+            "confirmation_guardrail_ok": False,
+        }
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")),
+        "app_exists": bool(data.get("app_exists", False)),
+        "guards_exists": bool(data.get("guards_exists", False)),
+        "formatters_exists": bool(data.get("formatters_exists", False)),
+        "read_write_guardrail_ok": bool(data.get("read_write_guardrail_ok", False)),
+        "broker_guardrail_ok": bool(data.get("broker_guardrail_ok", False)),
+        "shell_guardrail_ok": bool(data.get("shell_guardrail_ok", False)),
+        "confirmation_guardrail_ok": bool(data.get("confirmation_guardrail_ok", False)),
     }
 
 

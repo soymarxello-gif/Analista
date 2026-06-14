@@ -41,6 +41,7 @@ KEY_SCRIPT_PATHS = [
     "tools/streamlit_smoke_test.py",
     "tools/gui_actions_audit.py",
     "tools/gui_visuals_audit.py",
+    "tools/gui_release_audit.py",
 ]
 
 
@@ -89,6 +90,8 @@ KEY_REPORT_PATHS = [
     "reports/gui_actions_audit_latest.md",
     "reports/gui_visuals_audit_latest.json",
     "reports/gui_visuals_audit_latest.md",
+    "reports/gui_release_audit_latest.json",
+    "reports/gui_release_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -357,6 +360,7 @@ def collect_daily_run_manifest(
     streamlit_smoke_path = reports / "streamlit_smoke_test_latest.json"
     gui_actions_path = reports / "gui_actions_audit_latest.json"
     gui_visuals_path = reports / "gui_visuals_audit_latest.json"
+    gui_release_path = reports / "gui_release_audit_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -427,6 +431,7 @@ def collect_daily_run_manifest(
             "streamlit_smoke_test": _load_json(streamlit_smoke_path),
             "gui_actions_audit": _load_json(gui_actions_path),
             "gui_visuals_audit": _load_json(gui_visuals_path),
+            "gui_release_audit": _load_json(gui_release_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -630,6 +635,18 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- empty_data_safe: {gui_visuals.get('empty_data_safe', False)}")
     lines.append(f"- broker_guardrail_ok: {gui_visuals.get('broker_guardrail_ok', False)}")
     lines.append(f"- shell_guardrail_ok: {gui_visuals.get('shell_guardrail_ok', False)}")
+    lines.append("")
+
+    gui_release = scan.get("gui_release_audit", {}) or {}
+    lines.append("GUI release:")
+    lines.append(f"- status: {gui_release.get('status', 'MISSING')}")
+    lines.append(f"- app_exists: {gui_release.get('app_exists', False)}")
+    lines.append(f"- guards_exists: {gui_release.get('guards_exists', False)}")
+    lines.append(f"- formatters_exists: {gui_release.get('formatters_exists', False)}")
+    lines.append(f"- read_write_guardrail_ok: {gui_release.get('read_write_guardrail_ok', False)}")
+    lines.append(f"- broker_guardrail_ok: {gui_release.get('broker_guardrail_ok', False)}")
+    lines.append(f"- shell_guardrail_ok: {gui_release.get('shell_guardrail_ok', False)}")
+    lines.append(f"- confirmation_guardrail_ok: {gui_release.get('confirmation_guardrail_ok', False)}")
     lines.append("")
 
     checklist = scan.get("trade_decision_checklist", {}) or {}

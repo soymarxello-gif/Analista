@@ -48,8 +48,10 @@ def collect_gui_actions_audit(root: Path = ROOT) -> dict:
     root = root.resolve()
     app_path = root / "app.py"
     actions_path = root / "ui" / "actions.py"
+    guards_path = root / "ui" / "guards.py"
     app_text = _read_text(app_path)
     actions_text = _read_text(actions_path)
+    guards_text = _read_text(guards_path)
     combined = f"{app_text}\n{actions_text}"
     action_log_exists, logged_actions, action_types = _load_action_log(root)
 
@@ -68,7 +70,7 @@ def collect_gui_actions_audit(root: Path = ROOT) -> dict:
     shell_guardrail_ok = "shell=True" not in combined
     command_guardrail_ok = not arbitrary_command_hits
     broker_guardrail_ok = not order_hits and not api_hits
-    no_real_order_notice_present = NO_REAL_ORDER_NOTICE in actions_text
+    no_real_order_notice_present = NO_REAL_ORDER_NOTICE in actions_text or NO_REAL_ORDER_NOTICE in guards_text
     confirmations = [
         "Confirm paper-only import; no real order",
         "Confirm paper-only decision; no real order",

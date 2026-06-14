@@ -38,6 +38,7 @@ CRITICAL_TOOLS = [
     "tools/streamlit_smoke_test.py",
     "tools/gui_actions_audit.py",
     "tools/gui_visuals_audit.py",
+    "tools/gui_release_audit.py",
 ]
 
 CRITICAL_TESTS = [
@@ -58,6 +59,7 @@ CRITICAL_TESTS = [
     "tests/test_streamlit_dashboard_phase39b.py",
     "tests/test_gui_actions_phase39c.py",
     "tests/test_gui_visuals_phase39d.py",
+    "tests/test_gui_release_phase39e.py",
 ]
 
 OPTIONAL_REPORTS = [
@@ -113,6 +115,8 @@ OPTIONAL_REPORTS = [
     "reports/gui_actions_audit_latest.md",
     "reports/gui_visuals_audit_latest.json",
     "reports/gui_visuals_audit_latest.md",
+    "reports/gui_release_audit_latest.json",
+    "reports/gui_release_audit_latest.md",
 ]
 
 RECENT_DAILY_VALIDATION_STEPS = [
@@ -129,6 +133,7 @@ RECENT_DAILY_VALIDATION_STEPS = [
     "streamlit_smoke_test",
     "gui_actions_audit",
     "gui_visuals_audit",
+    "gui_release_audit",
 ]
 
 OPERATOR_INDEX_REPORT_REFERENCES = [
@@ -145,6 +150,7 @@ OPERATOR_INDEX_REPORT_REFERENCES = [
     "reports/streamlit_smoke_test_latest.md",
     "reports/gui_actions_audit_latest.md",
     "reports/gui_visuals_audit_latest.md",
+    "reports/gui_release_audit_latest.md",
 ]
 
 MANIFEST_REFERENCES = [
@@ -161,6 +167,7 @@ MANIFEST_REFERENCES = [
     "tools/streamlit_smoke_test.py",
     "tools/gui_actions_audit.py",
     "tools/gui_visuals_audit.py",
+    "tools/gui_release_audit.py",
     "reports/live_quote_recheck_latest.json",
     "reports/trade_decision_checklist_latest.json",
     "reports/trade_candidate_cards_latest.json",
@@ -174,6 +181,7 @@ MANIFEST_REFERENCES = [
     "reports/streamlit_smoke_test_latest.json",
     "reports/gui_actions_audit_latest.json",
     "reports/gui_visuals_audit_latest.json",
+    "reports/gui_release_audit_latest.json",
 ]
 
 ALLOWED_DISABLED_SIGNAL_PATHS = {

@@ -330,3 +330,9 @@ Do not commit generated reports unless the project explicitly decides to version
 - Ejecutar `python .\tools\gui_visuals_audit.py` cuando se agreguen graficos, metricas o cambios visuales al dashboard.
 - Revisar `reports/gui_visuals_audit_latest.md`.
 - Las visualizaciones usan datos ya cargados por la capa UI; no deben modificar scanner, scoring, journal ni outcomes.
+
+## GUI release
+
+- Ejecutar `python .\tools\gui_release_audit.py` antes de usar la interfaz como release candidate diario.
+- Revisar `reports/gui_release_audit_latest.md`.
+- La GUI debe mostrar solo revision manual, paper trading y acciones confirmadas; no ejecuta scanner, no conecta a servicios de ejecucion y no envia ordenes reales.

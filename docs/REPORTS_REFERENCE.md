@@ -144,3 +144,9 @@ These are runtime artifacts. Keep durable source code, tests, configuration, and
 - `reports/gui_visuals_audit_latest.json`
 - `reports/gui_visuals_audit_latest.md`
 - Auditoria que verifica que las visualizaciones del dashboard usan `ui/charts.py`, toleran datos vacios y no introducen ejecucion automatica ni cambios de scoring.
+
+## gui_release_audit_latest.*
+
+- `reports/gui_release_audit_latest.json`
+- `reports/gui_release_audit_latest.md`
+- Auditoria final de la interfaz Streamlit como release candidate: valida modulos UI, confirmaciones, ausencia de lecturas/escrituras directas en `app.py`, ausencia de comandos arbitrarios y guardrails de paper trading.
