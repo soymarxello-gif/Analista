@@ -398,4 +398,19 @@ Review:
 - `reports/gui_operational_decision_log_latest.md`
 - `reports/gui_post_session_review_latest.md`
 - `reports/gui_operational_decision_log_audit_latest.md`
+
+## Decision Quality Review
+
+Use `tools/gui_decision_quality_review.py` after recording operational decisions and post-session notes. The review scores decision discipline from reasons, checklist alignment, post-session review, quote discipline, follow-up planning, no-real-order confirmation, and lessons captured. It is observational only; no automatic trading changes are applied.
+
+Commands:
+
+- `python .\tools\gui_decision_quality_review.py`
+- `python .\tools\gui_decision_quality_audit.py`
+
+Review:
+
+- `reports/gui_decision_quality_review_latest.md`
+- `reports/gui_decision_quality_review_latest.csv`
+- `reports/gui_decision_quality_audit_latest.md`
  

@@ -177,3 +177,20 @@ Core commands:
 - `python .\tools\gui_operational_decision_log.py --summary`
 - `python .\tools\gui_post_session_review.py`
 - `python .\tools\gui_operational_decision_log_audit.py`
+
+## Decision quality review
+
+`tools/gui_decision_quality_review.py` evaluates operating discipline from the GUI decision log, supervised sessions, daily checklist, and GUI action log. It is observational only and does not change signals, scoring, thresholds, calibration, paper journal rows, outcomes, or execution state.
+
+Run:
+
+- `python .\tools\gui_decision_quality_review.py`
+- `python .\tools\gui_decision_quality_audit.py`
+
+Outputs:
+
+- `reports/gui_decision_quality_review_latest.json`
+- `reports/gui_decision_quality_review_latest.md`
+- `reports/gui_decision_quality_review_latest.csv`
+- `reports/gui_decision_quality_audit_latest.json`
+- `reports/gui_decision_quality_audit_latest.md`

@@ -176,3 +176,5 @@ These are runtime artifacts. Keep durable source code, tests, configuration, and
 - `gui_operational_decision_log_latest.*`: daily bitacora of manual GUI operating decisions, including reason, context, perceived risk, follow-up plan, checklist alignment, post-session review status, and lessons.
 - `gui_post_session_review_latest.*`: post-session summary of decisions, missing reasons, missing reviews, paper-enter/skip/recheck counts, risk notes, lessons, and action-log consistency.
 - `gui_operational_decision_log_audit_latest.*`: audit that the operational decision log and post-session review are report-only and preserve paper-only/manual-review guardrails.
+- `gui_decision_quality_review_latest.*`: observational quality review of operating decisions, with per-decision quality scores, buckets, warnings, and recommendations.
+- `gui_decision_quality_audit_latest.*`: audit that decision quality review is read-only and does not change trading logic or execution state.

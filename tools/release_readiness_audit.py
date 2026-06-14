@@ -47,6 +47,8 @@ CRITICAL_TOOLS = [
     "tools/gui_operational_decision_log.py",
     "tools/gui_post_session_review.py",
     "tools/gui_operational_decision_log_audit.py",
+    "tools/gui_decision_quality_review.py",
+    "tools/gui_decision_quality_audit.py",
 ]
 
 CRITICAL_TESTS = [
@@ -72,6 +74,7 @@ CRITICAL_TESTS = [
     "tests/test_gui_daily_operating_checklist_phase40b.py",
     "tests/test_alpaca_readonly_connectivity_audit.py",
     "tests/test_gui_operational_decision_log_phase40c.py",
+    "tests/test_gui_decision_quality_phase40d.py",
 ]
 
 OPTIONAL_REPORTS = [
@@ -145,6 +148,11 @@ OPTIONAL_REPORTS = [
     "reports/gui_post_session_review_latest.md",
     "reports/gui_operational_decision_log_audit_latest.json",
     "reports/gui_operational_decision_log_audit_latest.md",
+    "reports/gui_decision_quality_review_latest.json",
+    "reports/gui_decision_quality_review_latest.md",
+    "reports/gui_decision_quality_review_latest.csv",
+    "reports/gui_decision_quality_audit_latest.json",
+    "reports/gui_decision_quality_audit_latest.md",
 ]
 
 RECENT_DAILY_VALIDATION_STEPS = [
@@ -166,6 +174,7 @@ RECENT_DAILY_VALIDATION_STEPS = [
     "gui_daily_operating_checklist_audit",
     "alpaca_readonly_connectivity_audit",
     "gui_operational_decision_log_audit",
+    "gui_decision_quality_audit",
 ]
 
 OPERATOR_INDEX_REPORT_REFERENCES = [

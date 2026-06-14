@@ -726,6 +726,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_decision_log_json_path = reports / "gui_operational_decision_log_latest.json"
     gui_post_session_review_json_path = reports / "gui_post_session_review_latest.json"
     gui_decision_log_audit_json_path = reports / "gui_operational_decision_log_audit_latest.json"
+    gui_decision_quality_json_path = reports / "gui_decision_quality_review_latest.json"
+    gui_decision_quality_audit_json_path = reports / "gui_decision_quality_audit_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -799,6 +801,10 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         _load_json(gui_post_session_review_json_path),
         _load_json(gui_decision_log_audit_json_path),
     )
+    gui_decision_quality_data = _normalize_gui_decision_quality_status(
+        _load_json(gui_decision_quality_json_path),
+        _load_json(gui_decision_quality_audit_json_path),
+    )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
     git_dirty = bool(manifest_data.get("git", {}).get("dirty", False))
@@ -856,6 +862,11 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "gui_post_session_review_latest.md",
         reports / "gui_operational_decision_log_audit_latest.json",
         reports / "gui_operational_decision_log_audit_latest.md",
+        reports / "gui_decision_quality_review_latest.json",
+        reports / "gui_decision_quality_review_latest.md",
+        reports / "gui_decision_quality_review_latest.csv",
+        reports / "gui_decision_quality_audit_latest.json",
+        reports / "gui_decision_quality_audit_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -944,6 +955,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "gui_daily_operating_checklist": gui_daily_checklist_data,
         "alpaca_readonly_connectivity": alpaca_readonly_data,
         "gui_operational_decision_log": gui_decision_log_data,
+        "gui_decision_quality": gui_decision_quality_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -1393,6 +1405,31 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- post_session_json: reports/gui_post_session_review_latest.json")
         lines.append("- audit_markdown: reports/gui_operational_decision_log_audit_latest.md")
         lines.append("- audit_json: reports/gui_operational_decision_log_audit_latest.json")
+    lines.append("")
+
+    gui_quality = data.get("gui_decision_quality", {}) or {}
+    gui_quality_available = bool(gui_quality.get("available", False))
+    lines.append("## GUI decision quality")
+    lines.append("")
+    if not gui_quality_available:
+        lines.append("- No hay reporte de GUI decision quality disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_decision_quality_review.py` para generarlo.")
+    else:
+        lines.append(f"- status: {gui_quality.get('status', 'UNKNOWN')}")
+        lines.append(f"- total_decisions: {gui_quality.get('total_decisions', 0)}")
+        lines.append(f"- decision_quality_score: {gui_quality.get('decision_quality_score', '')}")
+        lines.append(f"- decision_quality_bucket: {gui_quality.get('decision_quality_bucket', 'MISSING')}")
+        lines.append(f"- paper_enter_count: {gui_quality.get('paper_enter_count', 0)}")
+        lines.append(f"- decisions_without_reason: {gui_quality.get('decisions_without_reason', 0)}")
+        lines.append(f"- decisions_without_post_review: {gui_quality.get('decisions_without_post_review', 0)}")
+        lines.append(f"- paper_enter_with_low_quote_quality: {gui_quality.get('paper_enter_with_low_quote_quality', 0)}")
+        lines.append(f"- quality_warnings_count: {gui_quality.get('quality_warnings_count', 0)}")
+        lines.append(f"- audit_status: {gui_quality.get('audit_status', 'MISSING')}")
+        lines.append("- markdown: reports/gui_decision_quality_review_latest.md")
+        lines.append("- json: reports/gui_decision_quality_review_latest.json")
+        lines.append("- csv: reports/gui_decision_quality_review_latest.csv")
+        lines.append("- audit_markdown: reports/gui_decision_quality_audit_latest.md")
+        lines.append("- audit_json: reports/gui_decision_quality_audit_latest.json")
     lines.append("")
 
     cards = data.get("trade_candidate_cards", {}) or {}
@@ -1917,6 +1954,22 @@ def _normalize_gui_operational_decision_log_status(log_data: dict, review_data: 
         ),
         "lessons_added": _safe_int(log_data.get("lessons_added") or review_data.get("lessons_added"), 0),
         "post_session_status": str(review_data.get("status", "MISSING")),
+        "audit_status": str(audit_data.get("status", "MISSING")),
+    }
+
+
+def _normalize_gui_decision_quality_status(review_data: dict, audit_data: dict) -> dict:
+    return {
+        "available": bool(review_data) or bool(audit_data),
+        "status": str(audit_data.get("status") or review_data.get("status") or "MISSING"),
+        "total_decisions": _safe_int(review_data.get("total_decisions"), 0),
+        "decision_quality_score": review_data.get("decision_quality_score", ""),
+        "decision_quality_bucket": str(review_data.get("decision_quality_bucket", "MISSING")),
+        "paper_enter_count": _safe_int(review_data.get("paper_enter_count"), 0),
+        "decisions_without_reason": _safe_int(review_data.get("decisions_without_reason"), 0),
+        "decisions_without_post_review": _safe_int(review_data.get("decisions_without_post_review"), 0),
+        "paper_enter_with_low_quote_quality": _safe_int(review_data.get("paper_enter_with_low_quote_quality"), 0),
+        "quality_warnings_count": _safe_int(review_data.get("quality_warnings_count"), 0),
         "audit_status": str(audit_data.get("status", "MISSING")),
     }
 

@@ -53,6 +53,8 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/gui_operational_decision_log.py",
         "tools/gui_post_session_review.py",
         "tools/gui_operational_decision_log_audit.py",
+        "tools/gui_decision_quality_review.py",
+        "tools/gui_decision_quality_audit.py",
     ]
 
     for script in scripts:
@@ -494,6 +496,39 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "gui_decision_quality_review_latest.csv").write_text(
+        "decision_id,decision_quality_score\n",
+        encoding="utf-8",
+    )
+    (reports / "gui_decision_quality_review_latest.md").write_text("# quality\n", encoding="utf-8")
+    (reports / "gui_decision_quality_review_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "total_decisions": 1,
+                "decision_quality_score": 92,
+                "decision_quality_bucket": "A_DISCIPLINED",
+                "paper_enter_count": 0,
+                "decisions_without_reason": 0,
+                "decisions_without_post_review": 0,
+                "paper_enter_with_low_quote_quality": 0,
+                "quality_warnings_count": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_decision_quality_audit_latest.md").write_text("# quality audit\n", encoding="utf-8")
+    (reports / "gui_decision_quality_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "tool_exists": True,
+                "review_reports_generated": True,
+                "critical_failures": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
     (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
     (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")
@@ -528,6 +563,7 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["alpaca_readonly_connectivity"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_operational_decision_log"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_post_session_review"]["status"] == "WARN"
+    assert data["scan_snapshot"]["gui_decision_quality_review"]["status"] == "PASS"
     assert data["summary"]["missing_script_files"] == []
 
     script_files = data["script_files"]

@@ -50,6 +50,8 @@ KEY_SCRIPT_PATHS = [
     "tools/gui_operational_decision_log.py",
     "tools/gui_post_session_review.py",
     "tools/gui_operational_decision_log_audit.py",
+    "tools/gui_decision_quality_review.py",
+    "tools/gui_decision_quality_audit.py",
 ]
 
 
@@ -116,6 +118,11 @@ KEY_REPORT_PATHS = [
     "reports/gui_post_session_review_latest.md",
     "reports/gui_operational_decision_log_audit_latest.json",
     "reports/gui_operational_decision_log_audit_latest.md",
+    "reports/gui_decision_quality_review_latest.json",
+    "reports/gui_decision_quality_review_latest.md",
+    "reports/gui_decision_quality_review_latest.csv",
+    "reports/gui_decision_quality_audit_latest.json",
+    "reports/gui_decision_quality_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -393,6 +400,8 @@ def collect_daily_run_manifest(
     gui_decision_log_path = reports / "gui_operational_decision_log_latest.json"
     gui_post_session_review_path = reports / "gui_post_session_review_latest.json"
     gui_decision_log_audit_path = reports / "gui_operational_decision_log_audit_latest.json"
+    gui_decision_quality_path = reports / "gui_decision_quality_review_latest.json"
+    gui_decision_quality_audit_path = reports / "gui_decision_quality_audit_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -472,6 +481,8 @@ def collect_daily_run_manifest(
             "gui_operational_decision_log": _load_json(gui_decision_log_path),
             "gui_post_session_review": _load_json(gui_post_session_review_path),
             "gui_operational_decision_log_audit": _load_json(gui_decision_log_audit_path),
+            "gui_decision_quality_review": _load_json(gui_decision_quality_path),
+            "gui_decision_quality_audit": _load_json(gui_decision_quality_audit_path),
         },
         "script_files": script_files,
         "report_files": report_files,

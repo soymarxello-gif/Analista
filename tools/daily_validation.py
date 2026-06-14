@@ -408,6 +408,19 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "gui_decision_quality_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_decision_quality_audit.py",
+            "--json-out",
+            "reports/gui_decision_quality_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_decision_quality_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "ui_data_contract_audit",
         "cmd": [
             sys.executable,
@@ -591,6 +604,11 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "gui_post_session_review_latest.md",
         ROOT / "reports" / "gui_operational_decision_log_audit_latest.json",
         ROOT / "reports" / "gui_operational_decision_log_audit_latest.md",
+        ROOT / "reports" / "gui_decision_quality_review_latest.json",
+        ROOT / "reports" / "gui_decision_quality_review_latest.md",
+        ROOT / "reports" / "gui_decision_quality_review_latest.csv",
+        ROOT / "reports" / "gui_decision_quality_audit_latest.json",
+        ROOT / "reports" / "gui_decision_quality_audit_latest.md",
         ROOT / "reports" / "reports_cleanup_latest.json",
         ROOT / "reports" / "reports_cleanup_latest.md",
         ROOT / "reports" / "source_coverage_latest.json",
@@ -1379,6 +1397,11 @@ def build_summary_text(
         "reports/gui_post_session_review_latest.md",
         "reports/gui_operational_decision_log_audit_latest.json",
         "reports/gui_operational_decision_log_audit_latest.md",
+        "reports/gui_decision_quality_review_latest.json",
+        "reports/gui_decision_quality_review_latest.md",
+        "reports/gui_decision_quality_review_latest.csv",
+        "reports/gui_decision_quality_audit_latest.json",
+        "reports/gui_decision_quality_audit_latest.md",
     ]
 
     lines.append("=== ANALISTA DAILY VALIDATION SUMMARY ===")

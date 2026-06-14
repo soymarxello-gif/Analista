@@ -561,6 +561,24 @@ def main() -> None:
                 if column in decision_rows.columns
             ]
             st.dataframe(decision_rows[display_columns] if display_columns else decision_rows, use_container_width=True)
+        quality_source = sources.get("sources", {}).get("gui_decision_quality_review", {}) or {}
+        quality_data = quality_source.get("data", {}) if isinstance(quality_source, dict) else {}
+        st.markdown("### Decision quality")
+        _metrics(
+            [
+                ("quality_score", quality_data.get("decision_quality_score", "N/A")),
+                ("quality_bucket", quality_data.get("decision_quality_bucket", "MISSING")),
+                ("warnings", quality_data.get("quality_warnings_count", 0)),
+                ("paper_enter_low_quote", quality_data.get("paper_enter_with_low_quote_quality", 0)),
+            ],
+            columns=4,
+        )
+        recommendations = quality_data.get("observational_recommendations", [])
+        if recommendations:
+            st.markdown("#### Observational recommendations")
+            for item in recommendations:
+                st.write(f"- {item}")
+        st.caption(str(quality_data.get("notice", "observational only; no automatic trading changes")))
 
 
 if __name__ == "__main__":

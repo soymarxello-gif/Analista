@@ -349,3 +349,17 @@ Primary outputs:
 - `reports/gui_operational_decision_log_audit_latest.json`
 
 The bitacora does not modify scanner outputs, scoring, thresholds, config, signals, paper journal rows, trade outcomes, or execution state.
+
+## Decision Quality Review
+
+`tools/gui_decision_quality_review.py` evaluates the quality of recorded operating decisions without changing trading logic. It computes a 0-100 `decision_quality_score`, assigns a bucket from `A_DISCIPLINED` through `D_UNDISCIPLINED`, and flags missing reasons, missing post-session reviews, missing follow-up plans, checklist misalignment, low quote quality, missing paper-only confirmation, and repeated ticker reviews without context.
+
+Primary outputs:
+
+- `reports/gui_decision_quality_review_latest.md`
+- `reports/gui_decision_quality_review_latest.json`
+- `reports/gui_decision_quality_review_latest.csv`
+- `reports/gui_decision_quality_audit_latest.md`
+- `reports/gui_decision_quality_audit_latest.json`
+
+The review is observational only; no automatic trading changes are applied.

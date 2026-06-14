@@ -51,6 +51,8 @@ TOOLS = [
     "tools/gui_operational_decision_log.py",
     "tools/gui_post_session_review.py",
     "tools/gui_operational_decision_log_audit.py",
+    "tools/gui_decision_quality_review.py",
+    "tools/gui_decision_quality_audit.py",
 ]
 
 TESTS = [
@@ -76,6 +78,7 @@ TESTS = [
     "tests/test_gui_daily_operating_checklist_phase40b.py",
     "tests/test_alpaca_readonly_connectivity_audit.py",
     "tests/test_gui_operational_decision_log_phase40c.py",
+    "tests/test_gui_decision_quality_phase40d.py",
 ]
 
 
@@ -151,6 +154,7 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "gui_daily_operating_checklist_audit",
                 "alpaca_readonly_connectivity_audit",
                 "gui_operational_decision_log_audit",
+                "gui_decision_quality_audit",
             ]
         ),
     )
@@ -180,6 +184,8 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/gui_operational_decision_log_latest.md",
                 "reports/gui_post_session_review_latest.md",
                 "reports/gui_operational_decision_log_audit_latest.md",
+                "reports/gui_decision_quality_review_latest.md",
+                "reports/gui_decision_quality_audit_latest.md",
             ]
         ),
     )
@@ -209,6 +215,8 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "tools/gui_operational_decision_log.py",
                 "tools/gui_post_session_review.py",
                 "tools/gui_operational_decision_log_audit.py",
+                "tools/gui_decision_quality_review.py",
+                "tools/gui_decision_quality_audit.py",
                 "reports/live_quote_recheck_latest.json",
                 "reports/trade_decision_checklist_latest.json",
                 "reports/trade_candidate_cards_latest.json",
@@ -231,6 +239,8 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/gui_operational_decision_log_latest.json",
                 "reports/gui_post_session_review_latest.json",
                 "reports/gui_operational_decision_log_audit_latest.json",
+                "reports/gui_decision_quality_review_latest.json",
+                "reports/gui_decision_quality_audit_latest.json",
             ]
         ),
     )
@@ -274,6 +284,9 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "gui_operational_decision_log_latest.md",
         "gui_post_session_review_latest.md",
         "gui_operational_decision_log_audit_latest.md",
+        "gui_decision_quality_review_latest.md",
+        "gui_decision_quality_review_latest.csv",
+        "gui_decision_quality_audit_latest.md",
         "trade_outcome_analytics_latest.csv",
         "trade_outcome_analytics_latest.md",
         "reports_cleanup_latest.md",
@@ -308,6 +321,8 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "gui_operational_decision_log_latest.json",
         "gui_post_session_review_latest.json",
         "gui_operational_decision_log_audit_latest.json",
+        "gui_decision_quality_review_latest.json",
+        "gui_decision_quality_audit_latest.json",
         "reports_cleanup_latest.json",
         "report_consistency_latest.json",
     ]:
