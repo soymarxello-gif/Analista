@@ -150,3 +150,15 @@ These are runtime artifacts. Keep durable source code, tests, configuration, and
 - `reports/gui_release_audit_latest.json`
 - `reports/gui_release_audit_latest.md`
 - Auditoria final de la interfaz Streamlit como release candidate: valida modulos UI, confirmaciones, ausencia de lecturas/escrituras directas en `app.py`, ausencia de comandos arbitrarios y guardrails de paper trading.
+
+## gui_supervised_session_latest.*
+
+- `reports/gui_supervised_session_latest.json`
+- `reports/gui_supervised_session_latest.md`
+- Resumen de la sesion GUI supervisada: estado, resultado, candidatos revisables, acciones paper registradas, paper trades abiertos/cerrados y pending exports.
+
+## gui_supervised_session_audit_latest.*
+
+- `reports/gui_supervised_session_audit_latest.json`
+- `reports/gui_supervised_session_audit_latest.md`
+- Auditoria de la herramienta de sesion GUI supervisada. Verifica que la herramienta sea paper-only, no ejecute scanner y solo escriba su bitacora y reportes propios.

@@ -336,3 +336,13 @@ Do not commit generated reports unless the project explicitly decides to version
 - Ejecutar `python .\tools\gui_release_audit.py` antes de usar la interfaz como release candidate diario.
 - Revisar `reports/gui_release_audit_latest.md`.
 - La GUI debe mostrar solo revision manual, paper trading y acciones confirmadas; no ejecuta scanner, no conecta a servicios de ejecucion y no envia ordenes reales.
+
+## GUI supervised session
+
+- Iniciar bitacora diaria supervisada con `python .\tools\gui_supervised_session.py --start`.
+- Revisar estado con `python .\tools\gui_supervised_session.py --status`.
+- Agregar notas con `python .\tools\gui_supervised_session.py --note "nota operativa"`.
+- Generar resumen con `python .\tools\gui_supervised_session.py --summary`.
+- Cerrar la sesion con `python .\tools\gui_supervised_session.py --close --result PASS`.
+- Auditar la herramienta con `python .\tools\gui_supervised_session_audit.py`.
+- Revisar `reports/gui_supervised_session_latest.md` y `reports/gui_supervised_session_audit_latest.md`.

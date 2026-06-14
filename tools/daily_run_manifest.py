@@ -42,6 +42,8 @@ KEY_SCRIPT_PATHS = [
     "tools/gui_actions_audit.py",
     "tools/gui_visuals_audit.py",
     "tools/gui_release_audit.py",
+    "tools/gui_supervised_session.py",
+    "tools/gui_supervised_session_audit.py",
 ]
 
 
@@ -92,6 +94,10 @@ KEY_REPORT_PATHS = [
     "reports/gui_visuals_audit_latest.md",
     "reports/gui_release_audit_latest.json",
     "reports/gui_release_audit_latest.md",
+    "reports/gui_supervised_session_latest.json",
+    "reports/gui_supervised_session_latest.md",
+    "reports/gui_supervised_session_audit_latest.json",
+    "reports/gui_supervised_session_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -361,6 +367,8 @@ def collect_daily_run_manifest(
     gui_actions_path = reports / "gui_actions_audit_latest.json"
     gui_visuals_path = reports / "gui_visuals_audit_latest.json"
     gui_release_path = reports / "gui_release_audit_latest.json"
+    gui_supervised_session_path = reports / "gui_supervised_session_latest.json"
+    gui_supervised_session_audit_path = reports / "gui_supervised_session_audit_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -432,6 +440,8 @@ def collect_daily_run_manifest(
             "gui_actions_audit": _load_json(gui_actions_path),
             "gui_visuals_audit": _load_json(gui_visuals_path),
             "gui_release_audit": _load_json(gui_release_path),
+            "gui_supervised_session": _load_json(gui_supervised_session_path),
+            "gui_supervised_session_audit": _load_json(gui_supervised_session_audit_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -647,6 +657,27 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- broker_guardrail_ok: {gui_release.get('broker_guardrail_ok', False)}")
     lines.append(f"- shell_guardrail_ok: {gui_release.get('shell_guardrail_ok', False)}")
     lines.append(f"- confirmation_guardrail_ok: {gui_release.get('confirmation_guardrail_ok', False)}")
+    lines.append("")
+
+    gui_session = scan.get("gui_supervised_session", {}) or {}
+    lines.append("GUI supervised session:")
+    lines.append(f"- status: {gui_session.get('status', 'MISSING')}")
+    lines.append(f"- latest_session_id: {gui_session.get('latest_session_id', '')}")
+    lines.append(f"- latest_session_status: {gui_session.get('latest_session_status', 'MISSING')}")
+    lines.append(f"- latest_session_result: {gui_session.get('latest_session_result', '')}")
+    lines.append(f"- paper_actions_logged: {gui_session.get('paper_actions_logged', 0)}")
+    lines.append(f"- paper_enter_count: {gui_session.get('paper_enter_count', 0)}")
+    lines.append(f"- closed_paper_count: {gui_session.get('closed_paper_count', 0)}")
+    lines.append(f"- pending_export_count: {gui_session.get('pending_export_count', 0)}")
+    lines.append("")
+
+    gui_session_audit = scan.get("gui_supervised_session_audit", {}) or {}
+    lines.append("GUI supervised session audit:")
+    lines.append(f"- status: {gui_session_audit.get('status', 'MISSING')}")
+    lines.append(f"- tool_exists: {gui_session_audit.get('tool_exists', False)}")
+    lines.append(f"- data_file_can_be_created: {gui_session_audit.get('data_file_can_be_created', False)}")
+    lines.append(f"- broker_guardrail_ok: {gui_session_audit.get('broker_guardrail_ok', False)}")
+    lines.append(f"- shell_guardrail_ok: {gui_session_audit.get('shell_guardrail_ok', False)}")
     lines.append("")
 
     checklist = scan.get("trade_decision_checklist", {}) or {}

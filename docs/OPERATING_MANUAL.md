@@ -298,3 +298,12 @@ If a candidate cannot be verified manually, do not use it operationally.
 - `ui/layout.py` centraliza mensajes de estado, empty states, notices y tabla de fuentes.
 - Validar el release candidate de GUI con `python .\tools\gui_release_audit.py`.
 - La interfaz no debe ejecutar scanner, cambiar scoring, cambiar thresholds, conectar servicios de ejecucion ni enviar ordenes reales.
+
+## GUI supervised operation
+
+- `tools/gui_supervised_session.py` registra una sesion diaria supervisada de uso GUI paper-only.
+- La bitacora queda en `data/gui_supervised_sessions.csv`.
+- Los reportes quedan en `reports/gui_supervised_session_latest.json` y `reports/gui_supervised_session_latest.md`.
+- Comandos principales: `--start`, `--status`, `--note`, `--summary`, `--close --result PASS|WARN|FAIL|ABORTED`.
+- La herramienta solo lee reportes existentes y el log de acciones GUI; no abre Streamlit, no ejecuta scanner, no modifica journal/outcomes y no envia ordenes reales.
+- Validar con `python .\tools\gui_supervised_session_audit.py`.

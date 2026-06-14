@@ -87,6 +87,21 @@ python .\tools\gui_release_audit.py
 
 The GUI is manual review and paper trading only. It does not execute the scanner, send real orders, or change scoring weights.
 
+## Supervised GUI operation
+
+Record a supervised paper-only GUI session:
+
+```powershell
+python .\tools\gui_supervised_session.py --start
+python .\tools\gui_supervised_session.py --status
+python .\tools\gui_supervised_session.py --note "Daily supervised GUI review"
+python .\tools\gui_supervised_session.py --summary
+python .\tools\gui_supervised_session.py --close --result PASS
+python .\tools\gui_supervised_session_audit.py
+```
+
+The supervised session log is stored in `data/gui_supervised_sessions.csv`; reports are generated under `reports/gui_supervised_session_latest.*`.
+
 Review Git state:
 
 ```powershell

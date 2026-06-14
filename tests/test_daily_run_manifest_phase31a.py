@@ -45,6 +45,8 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/gui_actions_audit.py",
         "tools/gui_visuals_audit.py",
         "tools/gui_release_audit.py",
+        "tools/gui_supervised_session.py",
+        "tools/gui_supervised_session_audit.py",
     ]
 
     for script in scripts:
@@ -362,6 +364,35 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "gui_supervised_session_latest.md").write_text("# gui supervised session\n", encoding="utf-8")
+    (reports / "gui_supervised_session_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "latest_session_id": "S1",
+                "latest_session_status": "OPEN",
+                "latest_session_result": "",
+                "paper_actions_logged": 2,
+                "paper_enter_count": 1,
+                "closed_paper_count": 0,
+                "pending_export_count": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_supervised_session_audit_latest.md").write_text("# gui supervised audit\n", encoding="utf-8")
+    (reports / "gui_supervised_session_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "tool_exists": True,
+                "data_file_can_be_created": True,
+                "broker_guardrail_ok": True,
+                "shell_guardrail_ok": True,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
     (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
     (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")
@@ -390,6 +421,8 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["gui_actions_audit"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_visuals_audit"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_release_audit"]["status"] == "PASS"
+    assert data["scan_snapshot"]["gui_supervised_session"]["latest_session_status"] == "OPEN"
+    assert data["scan_snapshot"]["gui_supervised_session_audit"]["status"] == "PASS"
     assert data["summary"]["missing_script_files"] == []
 
     script_files = data["script_files"]

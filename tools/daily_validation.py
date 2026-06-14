@@ -356,6 +356,19 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "gui_supervised_session_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_supervised_session_audit.py",
+            "--json-out",
+            "reports/gui_supervised_session_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_supervised_session_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "ui_data_contract_audit",
         "cmd": [
             sys.executable,
@@ -523,6 +536,10 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "gui_visuals_audit_latest.md",
         ROOT / "reports" / "gui_release_audit_latest.json",
         ROOT / "reports" / "gui_release_audit_latest.md",
+        ROOT / "reports" / "gui_supervised_session_latest.json",
+        ROOT / "reports" / "gui_supervised_session_latest.md",
+        ROOT / "reports" / "gui_supervised_session_audit_latest.json",
+        ROOT / "reports" / "gui_supervised_session_audit_latest.md",
         ROOT / "reports" / "reports_cleanup_latest.json",
         ROOT / "reports" / "reports_cleanup_latest.md",
         ROOT / "reports" / "source_coverage_latest.json",
@@ -561,6 +578,8 @@ def collect_scan_snapshot() -> dict:
     gui_actions_path = ROOT / "reports" / "gui_actions_audit_latest.json"
     gui_visuals_path = ROOT / "reports" / "gui_visuals_audit_latest.json"
     gui_release_path = ROOT / "reports" / "gui_release_audit_latest.json"
+    gui_supervised_session_path = ROOT / "reports" / "gui_supervised_session_latest.json"
+    gui_supervised_session_audit_path = ROOT / "reports" / "gui_supervised_session_audit_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -626,6 +645,23 @@ def collect_scan_snapshot() -> dict:
             "broker_guardrail_ok": False,
             "shell_guardrail_ok": False,
             "confirmation_guardrail_ok": False,
+        },
+        "gui_supervised_session": {
+            "status": "MISSING",
+            "latest_session_id": "",
+            "latest_session_status": "MISSING",
+            "latest_session_result": "",
+            "paper_actions_logged": 0,
+            "paper_enter_count": 0,
+            "closed_paper_count": 0,
+            "pending_export_count": 0,
+        },
+        "gui_supervised_session_audit": {
+            "status": "MISSING",
+            "tool_exists": False,
+            "data_file_can_be_created": False,
+            "broker_guardrail_ok": False,
+            "shell_guardrail_ok": False,
         },
         "live_quote_recheck": {
             "status": "MISSING",
@@ -961,6 +997,37 @@ def collect_scan_snapshot() -> dict:
             "confirmation_guardrail_ok": bool(gui_release_data.get("confirmation_guardrail_ok", False)),
         }
 
+    if gui_supervised_session_path.exists():
+        try:
+            gui_session_data = json.loads(gui_supervised_session_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_session_data = {}
+
+        snapshot["gui_supervised_session"] = {
+            "status": str(gui_session_data.get("status", "UNKNOWN")),
+            "latest_session_id": str(gui_session_data.get("latest_session_id", "")),
+            "latest_session_status": str(gui_session_data.get("latest_session_status", "UNKNOWN")),
+            "latest_session_result": str(gui_session_data.get("latest_session_result", "")),
+            "paper_actions_logged": int(gui_session_data.get("paper_actions_logged", 0) or 0),
+            "paper_enter_count": int(gui_session_data.get("paper_enter_count", 0) or 0),
+            "closed_paper_count": int(gui_session_data.get("closed_paper_count", 0) or 0),
+            "pending_export_count": int(gui_session_data.get("pending_export_count", 0) or 0),
+        }
+
+    if gui_supervised_session_audit_path.exists():
+        try:
+            gui_session_audit_data = json.loads(gui_supervised_session_audit_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_session_audit_data = {}
+
+        snapshot["gui_supervised_session_audit"] = {
+            "status": str(gui_session_audit_data.get("status", "UNKNOWN")),
+            "tool_exists": bool(gui_session_audit_data.get("tool_exists", False)),
+            "data_file_can_be_created": bool(gui_session_audit_data.get("data_file_can_be_created", False)),
+            "broker_guardrail_ok": bool(gui_session_audit_data.get("broker_guardrail_ok", False)),
+            "shell_guardrail_ok": bool(gui_session_audit_data.get("shell_guardrail_ok", False)),
+        }
+
     return snapshot
 
 
@@ -1185,6 +1252,10 @@ def build_summary_text(
         "reports/gui_visuals_audit_latest.md",
         "reports/gui_release_audit_latest.json",
         "reports/gui_release_audit_latest.md",
+        "reports/gui_supervised_session_latest.json",
+        "reports/gui_supervised_session_latest.md",
+        "reports/gui_supervised_session_audit_latest.json",
+        "reports/gui_supervised_session_audit_latest.md",
     ]
 
     lines.append("=== ANALISTA DAILY VALIDATION SUMMARY ===")
@@ -1212,6 +1283,8 @@ def build_summary_text(
     gui_actions = snapshot.get("gui_actions_audit", {}) or {}
     gui_visuals = snapshot.get("gui_visuals_audit", {}) or {}
     gui_release = snapshot.get("gui_release_audit", {}) or {}
+    gui_session = snapshot.get("gui_supervised_session", {}) or {}
+    gui_session_audit = snapshot.get("gui_supervised_session_audit", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
@@ -1231,6 +1304,8 @@ def build_summary_text(
     lines.append(f"- GUI actions audit status: {gui_actions.get('status')}")
     lines.append(f"- GUI visuals audit status: {gui_visuals.get('status')}")
     lines.append(f"- GUI release audit status: {gui_release.get('status')}")
+    lines.append(f"- GUI supervised session status: {gui_session.get('latest_session_status')}")
+    lines.append(f"- GUI supervised session audit status: {gui_session_audit.get('status')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -1372,6 +1447,27 @@ def build_summary_text(
     lines.append(f"- broker_guardrail_ok: {gui_release.get('broker_guardrail_ok')}")
     lines.append(f"- shell_guardrail_ok: {gui_release.get('shell_guardrail_ok')}")
     lines.append(f"- confirmation_guardrail_ok: {gui_release.get('confirmation_guardrail_ok')}")
+
+    gui_session = snapshot.get("gui_supervised_session", {}) or {}
+    lines.append("")
+    lines.append("GUI supervised session:")
+    lines.append(f"- status: {gui_session.get('status')}")
+    lines.append(f"- latest_session_id: {gui_session.get('latest_session_id')}")
+    lines.append(f"- latest_session_status: {gui_session.get('latest_session_status')}")
+    lines.append(f"- latest_session_result: {gui_session.get('latest_session_result')}")
+    lines.append(f"- paper_actions_logged: {gui_session.get('paper_actions_logged')}")
+    lines.append(f"- paper_enter_count: {gui_session.get('paper_enter_count')}")
+    lines.append(f"- closed_paper_count: {gui_session.get('closed_paper_count')}")
+    lines.append(f"- pending_export_count: {gui_session.get('pending_export_count')}")
+
+    gui_session_audit = snapshot.get("gui_supervised_session_audit", {}) or {}
+    lines.append("")
+    lines.append("GUI supervised session audit:")
+    lines.append(f"- status: {gui_session_audit.get('status')}")
+    lines.append(f"- tool_exists: {gui_session_audit.get('tool_exists')}")
+    lines.append(f"- data_file_can_be_created: {gui_session_audit.get('data_file_can_be_created')}")
+    lines.append(f"- broker_guardrail_ok: {gui_session_audit.get('broker_guardrail_ok')}")
+    lines.append(f"- shell_guardrail_ok: {gui_session_audit.get('shell_guardrail_ok')}")
 
     live = snapshot.get("live_quote_recheck", {}) or {}
     lines.append("")

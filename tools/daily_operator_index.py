@@ -718,6 +718,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_actions_json_path = reports / "gui_actions_audit_latest.json"
     gui_visuals_json_path = reports / "gui_visuals_audit_latest.json"
     gui_release_json_path = reports / "gui_release_audit_latest.json"
+    gui_supervised_session_json_path = reports / "gui_supervised_session_latest.json"
+    gui_supervised_session_audit_json_path = reports / "gui_supervised_session_audit_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -775,6 +777,10 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_release_data = _normalize_gui_release_audit_status(
         _load_json(gui_release_json_path)
     )
+    gui_supervised_session_data = _normalize_gui_supervised_session_status(
+        _load_json(gui_supervised_session_json_path),
+        _load_json(gui_supervised_session_audit_json_path),
+    )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
     git_dirty = bool(manifest_data.get("git", {}).get("dirty", False))
@@ -816,6 +822,10 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "gui_visuals_audit_latest.md",
         reports / "gui_release_audit_latest.json",
         reports / "gui_release_audit_latest.md",
+        reports / "gui_supervised_session_latest.json",
+        reports / "gui_supervised_session_latest.md",
+        reports / "gui_supervised_session_audit_latest.json",
+        reports / "gui_supervised_session_audit_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -900,6 +910,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "gui_actions_audit": gui_actions_data,
         "gui_visuals_audit": gui_visuals_data,
         "gui_release_audit": gui_release_data,
+        "gui_supervised_session": gui_supervised_session_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -1254,6 +1265,29 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- json: reports/gui_release_audit_latest.json")
     lines.append("")
 
+    gui_session = data.get("gui_supervised_session", {}) or {}
+    gui_session_available = bool(gui_session.get("available", False))
+    lines.append("## GUI supervised session")
+    lines.append("")
+    if not gui_session_available:
+        lines.append("- No hay reporte de GUI supervised session disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_supervised_session.py --summary` para generarlo.")
+        lines.append("- Ejecutar `python .\\tools\\gui_supervised_session_audit.py` para auditarlo.")
+    else:
+        lines.append(f"- status: {gui_session.get('status', 'UNKNOWN')}")
+        lines.append(f"- latest_session_id: {gui_session.get('latest_session_id', '')}")
+        lines.append(f"- latest_session_status: {gui_session.get('latest_session_status', 'MISSING')}")
+        lines.append(f"- latest_session_result: {gui_session.get('latest_session_result', '')}")
+        lines.append(f"- paper_actions_logged: {gui_session.get('paper_actions_logged', 0)}")
+        lines.append(f"- paper_enter_count: {gui_session.get('paper_enter_count', 0)}")
+        lines.append(f"- closed_paper_count: {gui_session.get('closed_paper_count', 0)}")
+        lines.append(f"- pending_export_count: {gui_session.get('pending_export_count', 0)}")
+        lines.append("- markdown: reports/gui_supervised_session_latest.md")
+        lines.append("- json: reports/gui_supervised_session_latest.json")
+        lines.append("- audit_markdown: reports/gui_supervised_session_audit_latest.md")
+        lines.append("- audit_json: reports/gui_supervised_session_audit_latest.json")
+    lines.append("")
+
     cards = data.get("trade_candidate_cards", {}) or {}
     cards_available = bool(cards.get("available", False))
 
@@ -1430,6 +1464,8 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("24. `reports/gui_actions_audit_latest.md`")
     lines.append("25. `reports/gui_visuals_audit_latest.md`")
     lines.append("26. `reports/gui_release_audit_latest.md`")
+    lines.append("27. `reports/gui_supervised_session_latest.md`")
+    lines.append("28. `reports/gui_supervised_session_audit_latest.md`")
     lines.append("")
 
     lines.append("## Señales")
@@ -1664,6 +1700,23 @@ def _normalize_gui_release_audit_status(data: dict) -> dict:
         "broker_guardrail_ok": bool(data.get("broker_guardrail_ok", False)),
         "shell_guardrail_ok": bool(data.get("shell_guardrail_ok", False)),
         "confirmation_guardrail_ok": bool(data.get("confirmation_guardrail_ok", False)),
+    }
+
+
+def _normalize_gui_supervised_session_status(session_data: dict, audit_data: dict) -> dict:
+    available = bool(session_data)
+    audit_available = bool(audit_data)
+    return {
+        "available": available or audit_available,
+        "status": str(audit_data.get("status") or session_data.get("status") or "MISSING"),
+        "latest_session_id": str(session_data.get("latest_session_id", "")),
+        "latest_session_status": str(session_data.get("latest_session_status", "MISSING")),
+        "latest_session_result": str(session_data.get("latest_session_result", "")),
+        "paper_actions_logged": int(session_data.get("paper_actions_logged", 0) or 0),
+        "paper_enter_count": int(session_data.get("paper_enter_count", 0) or 0),
+        "closed_paper_count": int(session_data.get("closed_paper_count", 0) or 0),
+        "pending_export_count": int(session_data.get("pending_export_count", 0) or 0),
+        "audit_status": str(audit_data.get("status", "MISSING")),
     }
 
 
