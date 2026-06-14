@@ -307,3 +307,45 @@ If a candidate cannot be verified manually, do not use it operationally.
 - Comandos principales: `--start`, `--status`, `--note`, `--summary`, `--close --result PASS|WARN|FAIL|ABORTED`.
 - La herramienta solo lee reportes existentes y el log de acciones GUI; no abre Streamlit, no ejecuta scanner, no modifica journal/outcomes y no envia ordenes reales.
 - Validar con `python .\tools\gui_supervised_session_audit.py`.
+## Daily GUI Operating Checklist
+
+`tools/gui_daily_operating_checklist.py` creates and maintains the daily GUI operating checklist. It is a manual review artifact for paper trading only. It can initialize today's checklist, show status, mark individual steps as `DONE`, `SKIPPED`, or `BLOCKED`, attach notes, close the checklist with `PASS`, `WARN`, `FAIL`, or `ABORTED`, and regenerate summary reports.
+
+The checklist is intentionally read/manual in spirit: it does not execute scanner runs, does not start Streamlit, does not modify scoring, does not modify paper journal or trade outcomes, does not connect to any execution venue, and does not send real orders. Always keep the notice: paper trading only; no real order.
+
+Primary outputs:
+
+- `reports/gui_daily_operating_checklist_latest.md`
+- `reports/gui_daily_operating_checklist_latest.json`
+- `reports/gui_daily_operating_checklist_audit_latest.md`
+- `reports/gui_daily_operating_checklist_audit_latest.json`
+
+## Alpaca Read-Only Connectivity Audit
+
+`tools/alpaca_readonly_connectivity_audit.py` validates whether Alpaca credentials can read account status, market clock, and IEX latest quote data. This is diagnostic only. It does not place orders, does not enable execution, does not connect the scanner to execution, and does not modify scores, thresholds, config, signals, journal, or outcomes.
+
+Use:
+
+- `python .\tools\alpaca_readonly_connectivity_audit.py`
+
+Review:
+
+- `reports/alpaca_readonly_connectivity_latest.md`
+- `reports/alpaca_readonly_connectivity_latest.json`
+
+## Operational Decision Log
+
+`tools/gui_operational_decision_log.py` records human operating decisions made while reviewing the GUI. It is a bitacora for manual reasoning, not a trading engine. It can record ticker, journal id, session id, checklist id, decision type, reason, observed context, perceived risk, follow-up plan, checklist alignment, and later post-session review notes or lessons.
+
+`tools/gui_post_session_review.py` summarizes the day's decisions, decisions without post review, paper-enter decisions, skipped decisions, recheck decisions, high-risk notes, missing reasons, checklist alignment gaps, lessons, and consistency with the UI action log.
+
+Primary outputs:
+
+- `reports/gui_operational_decision_log_latest.md`
+- `reports/gui_operational_decision_log_latest.json`
+- `reports/gui_post_session_review_latest.md`
+- `reports/gui_post_session_review_latest.json`
+- `reports/gui_operational_decision_log_audit_latest.md`
+- `reports/gui_operational_decision_log_audit_latest.json`
+
+The bitacora does not modify scanner outputs, scoring, thresholds, config, signals, paper journal rows, trade outcomes, or execution state.

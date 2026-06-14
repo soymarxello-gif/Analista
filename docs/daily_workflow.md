@@ -346,3 +346,56 @@ Do not commit generated reports unless the project explicitly decides to version
 - Cerrar la sesion con `python .\tools\gui_supervised_session.py --close --result PASS`.
 - Auditar la herramienta con `python .\tools\gui_supervised_session_audit.py`.
 - Revisar `reports/gui_supervised_session_latest.md` y `reports/gui_supervised_session_audit_latest.md`.
+## Daily GUI Operating Checklist
+
+Use `tools/gui_daily_operating_checklist.py` as a manual paper-only checklist for GUI operation. The checklist records confirmations and notes only; it does not start Streamlit, run the scanner, change journal rows, close trades, connect to a broker, or send real orders.
+
+Recommended commands:
+
+- `python .\tools\gui_daily_operating_checklist.py --init-today`
+- `python .\tools\gui_daily_operating_checklist.py --status`
+- `python .\tools\gui_daily_operating_checklist.py --mark STEP_ID DONE --note "..."`
+- `python .\tools\gui_daily_operating_checklist.py --summary`
+- `python .\tools\gui_daily_operating_checklist_audit.py`
+
+Review:
+
+- `reports/gui_daily_operating_checklist_latest.md`
+- `reports/gui_daily_operating_checklist_audit_latest.md`
+
+## Alpaca Read-Only Connectivity Audit
+
+Use `tools/alpaca_readonly_connectivity_audit.py` only to validate credentials and read-only connectivity against Alpaca paper trading and IEX data. It checks account, clock, and latest IEX quote data. It does not place orders, does not enable execution, does not modify scanner outputs, and does not change signals, scores, thresholds, config, journal, or outcomes.
+
+Credentials are read from environment variables:
+
+- `APCA_API_KEY_ID` or `ALPACA_API_KEY_ID`
+- `APCA_API_SECRET_KEY` or `ALPACA_API_SECRET_KEY`
+
+Run:
+
+- `python .\tools\alpaca_readonly_connectivity_audit.py`
+
+Review:
+
+- `reports/alpaca_readonly_connectivity_latest.md`
+
+## Operational Decision Log
+
+Use `tools/gui_operational_decision_log.py` to record manual GUI decisions during the day. This bitacora is observational and paper-only: it does not modify paper journal rows, does not export outcomes, does not run the scanner, and does not change scoring, config, thresholds, or signals.
+
+Commands:
+
+- `python .\tools\gui_operational_decision_log.py --add --ticker AAPL --decision PAPER_WATCH --reason "..."`
+- `python .\tools\gui_operational_decision_log.py --list-today`
+- `python .\tools\gui_operational_decision_log.py --review DECISION_ID --outcome-note "..." --lesson "..."`
+- `python .\tools\gui_operational_decision_log.py --summary`
+- `python .\tools\gui_post_session_review.py`
+- `python .\tools\gui_operational_decision_log_audit.py`
+
+Review:
+
+- `reports/gui_operational_decision_log_latest.md`
+- `reports/gui_post_session_review_latest.md`
+- `reports/gui_operational_decision_log_audit_latest.md`
+ 

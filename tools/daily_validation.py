@@ -369,6 +369,45 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "gui_daily_operating_checklist_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_daily_operating_checklist_audit.py",
+            "--json-out",
+            "reports/gui_daily_operating_checklist_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_daily_operating_checklist_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "alpaca_readonly_connectivity_audit",
+        "cmd": [
+            sys.executable,
+            "tools/alpaca_readonly_connectivity_audit.py",
+            "--json-out",
+            "reports/alpaca_readonly_connectivity_latest.json",
+            "--markdown-out",
+            "reports/alpaca_readonly_connectivity_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "gui_operational_decision_log_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_operational_decision_log_audit.py",
+            "--json-out",
+            "reports/gui_operational_decision_log_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_operational_decision_log_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "ui_data_contract_audit",
         "cmd": [
             sys.executable,
@@ -540,6 +579,18 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "gui_supervised_session_latest.md",
         ROOT / "reports" / "gui_supervised_session_audit_latest.json",
         ROOT / "reports" / "gui_supervised_session_audit_latest.md",
+        ROOT / "reports" / "gui_daily_operating_checklist_latest.json",
+        ROOT / "reports" / "gui_daily_operating_checklist_latest.md",
+        ROOT / "reports" / "gui_daily_operating_checklist_audit_latest.json",
+        ROOT / "reports" / "gui_daily_operating_checklist_audit_latest.md",
+        ROOT / "reports" / "alpaca_readonly_connectivity_latest.json",
+        ROOT / "reports" / "alpaca_readonly_connectivity_latest.md",
+        ROOT / "reports" / "gui_operational_decision_log_latest.json",
+        ROOT / "reports" / "gui_operational_decision_log_latest.md",
+        ROOT / "reports" / "gui_post_session_review_latest.json",
+        ROOT / "reports" / "gui_post_session_review_latest.md",
+        ROOT / "reports" / "gui_operational_decision_log_audit_latest.json",
+        ROOT / "reports" / "gui_operational_decision_log_audit_latest.md",
         ROOT / "reports" / "reports_cleanup_latest.json",
         ROOT / "reports" / "reports_cleanup_latest.md",
         ROOT / "reports" / "source_coverage_latest.json",
@@ -580,6 +631,8 @@ def collect_scan_snapshot() -> dict:
     gui_release_path = ROOT / "reports" / "gui_release_audit_latest.json"
     gui_supervised_session_path = ROOT / "reports" / "gui_supervised_session_latest.json"
     gui_supervised_session_audit_path = ROOT / "reports" / "gui_supervised_session_audit_latest.json"
+    gui_daily_checklist_path = ROOT / "reports" / "gui_daily_operating_checklist_latest.json"
+    gui_daily_checklist_audit_path = ROOT / "reports" / "gui_daily_operating_checklist_audit_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -662,6 +715,26 @@ def collect_scan_snapshot() -> dict:
             "data_file_can_be_created": False,
             "broker_guardrail_ok": False,
             "shell_guardrail_ok": False,
+        },
+        "gui_daily_operating_checklist": {
+            "status": "MISSING",
+            "checklist_id": "",
+            "checklist_date": "",
+            "pending_steps": 0,
+            "done_steps": 0,
+            "blocked_steps": 0,
+            "skipped_steps": 0,
+            "required_pending_steps": 0,
+            "latest_result": "MISSING",
+        },
+        "gui_daily_operating_checklist_audit": {
+            "status": "MISSING",
+            "tool_exists": False,
+            "data_file_can_be_created": False,
+            "no_real_order_notice_present": False,
+            "manual_review_only": False,
+            "critical_failures": 0,
+            "warnings": 0,
         },
         "live_quote_recheck": {
             "status": "MISSING",
@@ -1028,6 +1101,44 @@ def collect_scan_snapshot() -> dict:
             "shell_guardrail_ok": bool(gui_session_audit_data.get("shell_guardrail_ok", False)),
         }
 
+    if gui_daily_checklist_path.exists():
+        try:
+            gui_daily_checklist_data = json.loads(gui_daily_checklist_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_daily_checklist_data = {}
+
+        snapshot["gui_daily_operating_checklist"] = {
+            "status": str(gui_daily_checklist_data.get("status", "UNKNOWN")),
+            "checklist_id": str(gui_daily_checklist_data.get("checklist_id", "")),
+            "checklist_date": str(gui_daily_checklist_data.get("checklist_date", "")),
+            "pending_steps": int(gui_daily_checklist_data.get("pending_steps", 0) or 0),
+            "done_steps": int(gui_daily_checklist_data.get("done_steps", 0) or 0),
+            "blocked_steps": int(gui_daily_checklist_data.get("blocked_steps", 0) or 0),
+            "skipped_steps": int(gui_daily_checklist_data.get("skipped_steps", 0) or 0),
+            "required_pending_steps": int(gui_daily_checklist_data.get("required_pending_steps", 0) or 0),
+            "latest_result": str(gui_daily_checklist_data.get("latest_result", "MISSING")),
+        }
+
+    if gui_daily_checklist_audit_path.exists():
+        try:
+            gui_daily_checklist_audit_data = json.loads(
+                gui_daily_checklist_audit_path.read_text(encoding="utf-8")
+            )
+        except Exception:
+            gui_daily_checklist_audit_data = {}
+
+        snapshot["gui_daily_operating_checklist_audit"] = {
+            "status": str(gui_daily_checklist_audit_data.get("status", "UNKNOWN")),
+            "tool_exists": bool(gui_daily_checklist_audit_data.get("tool_exists", False)),
+            "data_file_can_be_created": bool(gui_daily_checklist_audit_data.get("data_file_can_be_created", False)),
+            "no_real_order_notice_present": bool(
+                gui_daily_checklist_audit_data.get("no_real_order_notice_present", False)
+            ),
+            "manual_review_only": bool(gui_daily_checklist_audit_data.get("manual_review_only", False)),
+            "critical_failures": int(gui_daily_checklist_audit_data.get("critical_failures", 0) or 0),
+            "warnings": int(gui_daily_checklist_audit_data.get("warnings", 0) or 0),
+        }
+
     return snapshot
 
 
@@ -1256,6 +1367,18 @@ def build_summary_text(
         "reports/gui_supervised_session_latest.md",
         "reports/gui_supervised_session_audit_latest.json",
         "reports/gui_supervised_session_audit_latest.md",
+        "reports/gui_daily_operating_checklist_latest.json",
+        "reports/gui_daily_operating_checklist_latest.md",
+        "reports/gui_daily_operating_checklist_audit_latest.json",
+        "reports/gui_daily_operating_checklist_audit_latest.md",
+        "reports/alpaca_readonly_connectivity_latest.json",
+        "reports/alpaca_readonly_connectivity_latest.md",
+        "reports/gui_operational_decision_log_latest.json",
+        "reports/gui_operational_decision_log_latest.md",
+        "reports/gui_post_session_review_latest.json",
+        "reports/gui_post_session_review_latest.md",
+        "reports/gui_operational_decision_log_audit_latest.json",
+        "reports/gui_operational_decision_log_audit_latest.md",
     ]
 
     lines.append("=== ANALISTA DAILY VALIDATION SUMMARY ===")
@@ -1285,6 +1408,8 @@ def build_summary_text(
     gui_release = snapshot.get("gui_release_audit", {}) or {}
     gui_session = snapshot.get("gui_supervised_session", {}) or {}
     gui_session_audit = snapshot.get("gui_supervised_session_audit", {}) or {}
+    gui_daily_checklist = snapshot.get("gui_daily_operating_checklist", {}) or {}
+    gui_daily_checklist_audit = snapshot.get("gui_daily_operating_checklist_audit", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")

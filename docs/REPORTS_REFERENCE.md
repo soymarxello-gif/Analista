@@ -162,3 +162,17 @@ These are runtime artifacts. Keep durable source code, tests, configuration, and
 - `reports/gui_supervised_session_audit_latest.json`
 - `reports/gui_supervised_session_audit_latest.md`
 - Auditoria de la herramienta de sesion GUI supervisada. Verifica que la herramienta sea paper-only, no ejecute scanner y solo escriba su bitacora y reportes propios.
+## GUI Daily Operating Checklist Reports
+
+- `gui_daily_operating_checklist_latest.*`: daily manual GUI operating checklist. It tracks step status, notes, required pending steps, close result, and the paper-only/no-real-order notice.
+- `gui_daily_operating_checklist_audit_latest.*`: audit of the checklist tool and reports. It verifies the tool exists, reports can be generated, no shell/order/API execution path is present, and the flow remains manual review only.
+
+## Alpaca Read-Only Connectivity Reports
+
+- `alpaca_readonly_connectivity_latest.*`: read-only connectivity audit for Alpaca credentials, account, clock, and IEX latest quote checks. It masks credentials, does not place orders, does not enable execution, and does not modify scanner, scoring, thresholds, config, journal, or outcomes.
+
+## GUI Operational Decision Log Reports
+
+- `gui_operational_decision_log_latest.*`: daily bitacora of manual GUI operating decisions, including reason, context, perceived risk, follow-up plan, checklist alignment, post-session review status, and lessons.
+- `gui_post_session_review_latest.*`: post-session summary of decisions, missing reasons, missing reviews, paper-enter/skip/recheck counts, risk notes, lessons, and action-log consistency.
+- `gui_operational_decision_log_audit_latest.*`: audit that the operational decision log and post-session review are report-only and preserve paper-only/manual-review guardrails.

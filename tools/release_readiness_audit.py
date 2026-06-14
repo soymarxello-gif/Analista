@@ -41,6 +41,12 @@ CRITICAL_TOOLS = [
     "tools/gui_release_audit.py",
     "tools/gui_supervised_session.py",
     "tools/gui_supervised_session_audit.py",
+    "tools/gui_daily_operating_checklist.py",
+    "tools/gui_daily_operating_checklist_audit.py",
+    "tools/alpaca_readonly_connectivity_audit.py",
+    "tools/gui_operational_decision_log.py",
+    "tools/gui_post_session_review.py",
+    "tools/gui_operational_decision_log_audit.py",
 ]
 
 CRITICAL_TESTS = [
@@ -63,6 +69,9 @@ CRITICAL_TESTS = [
     "tests/test_gui_visuals_phase39d.py",
     "tests/test_gui_release_phase39e.py",
     "tests/test_gui_supervised_session_phase40a.py",
+    "tests/test_gui_daily_operating_checklist_phase40b.py",
+    "tests/test_alpaca_readonly_connectivity_audit.py",
+    "tests/test_gui_operational_decision_log_phase40c.py",
 ]
 
 OPTIONAL_REPORTS = [
@@ -124,6 +133,18 @@ OPTIONAL_REPORTS = [
     "reports/gui_supervised_session_latest.md",
     "reports/gui_supervised_session_audit_latest.json",
     "reports/gui_supervised_session_audit_latest.md",
+    "reports/gui_daily_operating_checklist_latest.json",
+    "reports/gui_daily_operating_checklist_latest.md",
+    "reports/gui_daily_operating_checklist_audit_latest.json",
+    "reports/gui_daily_operating_checklist_audit_latest.md",
+    "reports/alpaca_readonly_connectivity_latest.json",
+    "reports/alpaca_readonly_connectivity_latest.md",
+    "reports/gui_operational_decision_log_latest.json",
+    "reports/gui_operational_decision_log_latest.md",
+    "reports/gui_post_session_review_latest.json",
+    "reports/gui_post_session_review_latest.md",
+    "reports/gui_operational_decision_log_audit_latest.json",
+    "reports/gui_operational_decision_log_audit_latest.md",
 ]
 
 RECENT_DAILY_VALIDATION_STEPS = [
@@ -142,6 +163,9 @@ RECENT_DAILY_VALIDATION_STEPS = [
     "gui_visuals_audit",
     "gui_release_audit",
     "gui_supervised_session_audit",
+    "gui_daily_operating_checklist_audit",
+    "alpaca_readonly_connectivity_audit",
+    "gui_operational_decision_log_audit",
 ]
 
 OPERATOR_INDEX_REPORT_REFERENCES = [

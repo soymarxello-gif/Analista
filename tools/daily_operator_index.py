@@ -720,6 +720,12 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_release_json_path = reports / "gui_release_audit_latest.json"
     gui_supervised_session_json_path = reports / "gui_supervised_session_latest.json"
     gui_supervised_session_audit_json_path = reports / "gui_supervised_session_audit_latest.json"
+    gui_daily_checklist_json_path = reports / "gui_daily_operating_checklist_latest.json"
+    gui_daily_checklist_audit_json_path = reports / "gui_daily_operating_checklist_audit_latest.json"
+    alpaca_readonly_json_path = reports / "alpaca_readonly_connectivity_latest.json"
+    gui_decision_log_json_path = reports / "gui_operational_decision_log_latest.json"
+    gui_post_session_review_json_path = reports / "gui_post_session_review_latest.json"
+    gui_decision_log_audit_json_path = reports / "gui_operational_decision_log_audit_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -781,6 +787,18 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         _load_json(gui_supervised_session_json_path),
         _load_json(gui_supervised_session_audit_json_path),
     )
+    gui_daily_checklist_data = _normalize_gui_daily_operating_checklist_status(
+        _load_json(gui_daily_checklist_json_path),
+        _load_json(gui_daily_checklist_audit_json_path),
+    )
+    alpaca_readonly_data = _normalize_alpaca_readonly_connectivity_status(
+        _load_json(alpaca_readonly_json_path),
+    )
+    gui_decision_log_data = _normalize_gui_operational_decision_log_status(
+        _load_json(gui_decision_log_json_path),
+        _load_json(gui_post_session_review_json_path),
+        _load_json(gui_decision_log_audit_json_path),
+    )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
     git_dirty = bool(manifest_data.get("git", {}).get("dirty", False))
@@ -826,6 +844,18 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "gui_supervised_session_latest.md",
         reports / "gui_supervised_session_audit_latest.json",
         reports / "gui_supervised_session_audit_latest.md",
+        reports / "gui_daily_operating_checklist_latest.json",
+        reports / "gui_daily_operating_checklist_latest.md",
+        reports / "gui_daily_operating_checklist_audit_latest.json",
+        reports / "gui_daily_operating_checklist_audit_latest.md",
+        reports / "alpaca_readonly_connectivity_latest.json",
+        reports / "alpaca_readonly_connectivity_latest.md",
+        reports / "gui_operational_decision_log_latest.json",
+        reports / "gui_operational_decision_log_latest.md",
+        reports / "gui_post_session_review_latest.json",
+        reports / "gui_post_session_review_latest.md",
+        reports / "gui_operational_decision_log_audit_latest.json",
+        reports / "gui_operational_decision_log_audit_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -911,6 +941,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "gui_visuals_audit": gui_visuals_data,
         "gui_release_audit": gui_release_data,
         "gui_supervised_session": gui_supervised_session_data,
+        "gui_daily_operating_checklist": gui_daily_checklist_data,
+        "alpaca_readonly_connectivity": alpaca_readonly_data,
+        "gui_operational_decision_log": gui_decision_log_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -1288,6 +1321,80 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- audit_json: reports/gui_supervised_session_audit_latest.json")
     lines.append("")
 
+    gui_daily_checklist = data.get("gui_daily_operating_checklist", {}) or {}
+    gui_daily_checklist_available = bool(gui_daily_checklist.get("available", False))
+    lines.append("## GUI daily operating checklist")
+    lines.append("")
+    if not gui_daily_checklist_available:
+        lines.append("- No hay reporte de GUI daily operating checklist disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_daily_operating_checklist.py --summary` para generarlo.")
+        lines.append("- Ejecutar `python .\\tools\\gui_daily_operating_checklist_audit.py` para auditarlo.")
+    else:
+        lines.append(f"- status: {gui_daily_checklist.get('status', 'UNKNOWN')}")
+        lines.append(f"- checklist_id: {gui_daily_checklist.get('checklist_id', '')}")
+        lines.append(f"- checklist_date: {gui_daily_checklist.get('checklist_date', '')}")
+        lines.append(f"- pending_steps: {gui_daily_checklist.get('pending_steps', 0)}")
+        lines.append(f"- done_steps: {gui_daily_checklist.get('done_steps', 0)}")
+        lines.append(f"- blocked_steps: {gui_daily_checklist.get('blocked_steps', 0)}")
+        lines.append(f"- skipped_steps: {gui_daily_checklist.get('skipped_steps', 0)}")
+        lines.append(f"- required_pending_steps: {gui_daily_checklist.get('required_pending_steps', 0)}")
+        lines.append(f"- latest_result: {gui_daily_checklist.get('latest_result', 'MISSING')}")
+        lines.append(f"- audit_status: {gui_daily_checklist.get('audit_status', 'MISSING')}")
+        lines.append("- markdown: reports/gui_daily_operating_checklist_latest.md")
+        lines.append("- json: reports/gui_daily_operating_checklist_latest.json")
+        lines.append("- audit_markdown: reports/gui_daily_operating_checklist_audit_latest.md")
+        lines.append("- audit_json: reports/gui_daily_operating_checklist_audit_latest.json")
+    lines.append("")
+
+    alpaca_readonly = data.get("alpaca_readonly_connectivity", {}) or {}
+    alpaca_available = bool(alpaca_readonly.get("available", False))
+    lines.append("## Alpaca read-only connectivity")
+    lines.append("")
+    if not alpaca_available:
+        lines.append("- No hay reporte de Alpaca read-only connectivity disponible.")
+        lines.append("- Ejecutar `python .\\tools\\alpaca_readonly_connectivity_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {alpaca_readonly.get('status', 'UNKNOWN')}")
+        lines.append(f"- credentials_present: {alpaca_readonly.get('credentials_present', False)}")
+        lines.append(f"- account_status: {alpaca_readonly.get('account_status', 'UNKNOWN')}")
+        lines.append(f"- account_check: {alpaca_readonly.get('account_check_status', 'MISSING')}")
+        lines.append(f"- clock_check: {alpaca_readonly.get('clock_check_status', 'MISSING')}")
+        lines.append(f"- iex_quote_check: {alpaca_readonly.get('iex_quote_check_status', 'MISSING')}")
+        lines.append(f"- read_only: {alpaca_readonly.get('read_only', True)}")
+        lines.append(f"- execution_enabled: {alpaca_readonly.get('execution_enabled', False)}")
+        lines.append(f"- orders_endpoint_called: {alpaca_readonly.get('orders_endpoint_called', False)}")
+        lines.append("- markdown: reports/alpaca_readonly_connectivity_latest.md")
+        lines.append("- json: reports/alpaca_readonly_connectivity_latest.json")
+    lines.append("")
+
+    gui_decision_log = data.get("gui_operational_decision_log", {}) or {}
+    gui_decision_available = bool(gui_decision_log.get("available", False))
+    lines.append("## GUI operational decision log")
+    lines.append("")
+    if not gui_decision_available:
+        lines.append("- No hay reporte de GUI operational decision log disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_operational_decision_log.py --summary` para generarlo.")
+        lines.append("- Ejecutar `python .\\tools\\gui_post_session_review.py` para revisión post-sesión.")
+    else:
+        lines.append(f"- status: {gui_decision_log.get('status', 'UNKNOWN')}")
+        lines.append(f"- decisions_today: {gui_decision_log.get('decisions_today', 0)}")
+        lines.append(f"- paper_watch_decisions: {gui_decision_log.get('paper_watch_decisions', 0)}")
+        lines.append(f"- paper_enter_decisions: {gui_decision_log.get('paper_enter_decisions', 0)}")
+        lines.append(f"- skip_decisions: {gui_decision_log.get('skip_decisions', 0)}")
+        lines.append(f"- needs_recheck_decisions: {gui_decision_log.get('needs_recheck_decisions', 0)}")
+        lines.append(f"- decisions_without_reason: {gui_decision_log.get('decisions_without_reason', 0)}")
+        lines.append(f"- decisions_without_post_review: {gui_decision_log.get('decisions_without_post_review', 0)}")
+        lines.append(f"- lessons_added: {gui_decision_log.get('lessons_added', 0)}")
+        lines.append(f"- post_session_status: {gui_decision_log.get('post_session_status', 'MISSING')}")
+        lines.append(f"- audit_status: {gui_decision_log.get('audit_status', 'MISSING')}")
+        lines.append("- markdown: reports/gui_operational_decision_log_latest.md")
+        lines.append("- json: reports/gui_operational_decision_log_latest.json")
+        lines.append("- post_session_markdown: reports/gui_post_session_review_latest.md")
+        lines.append("- post_session_json: reports/gui_post_session_review_latest.json")
+        lines.append("- audit_markdown: reports/gui_operational_decision_log_audit_latest.md")
+        lines.append("- audit_json: reports/gui_operational_decision_log_audit_latest.json")
+    lines.append("")
+
     cards = data.get("trade_candidate_cards", {}) or {}
     cards_available = bool(cards.get("available", False))
 
@@ -1466,6 +1573,8 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("26. `reports/gui_release_audit_latest.md`")
     lines.append("27. `reports/gui_supervised_session_latest.md`")
     lines.append("28. `reports/gui_supervised_session_audit_latest.md`")
+    lines.append("29. `reports/gui_daily_operating_checklist_latest.md`")
+    lines.append("30. `reports/gui_daily_operating_checklist_audit_latest.md`")
     lines.append("")
 
     lines.append("## Señales")
@@ -1740,6 +1849,76 @@ def main() -> int:
     print(f"Output: {result['output_path']}")
 
     return 0
+
+
+def _normalize_gui_daily_operating_checklist_status(checklist_data: dict, audit_data: dict) -> dict:
+    available = bool(checklist_data) or bool(audit_data)
+    return {
+        "available": available,
+        "status": str(audit_data.get("status") or checklist_data.get("status") or "MISSING"),
+        "checklist_id": str(checklist_data.get("checklist_id", "")),
+        "checklist_date": str(checklist_data.get("checklist_date", "")),
+        "pending_steps": _safe_int(checklist_data.get("pending_steps"), 0),
+        "done_steps": _safe_int(checklist_data.get("done_steps"), 0),
+        "blocked_steps": _safe_int(checklist_data.get("blocked_steps"), 0),
+        "skipped_steps": _safe_int(checklist_data.get("skipped_steps"), 0),
+        "required_pending_steps": _safe_int(checklist_data.get("required_pending_steps"), 0),
+        "latest_result": str(checklist_data.get("latest_result", "MISSING")),
+        "audit_status": str(audit_data.get("status", "MISSING")),
+        "critical_failures": _safe_int(audit_data.get("critical_failures"), 0),
+        "warnings": _safe_int(audit_data.get("warnings"), 0),
+    }
+
+
+def _normalize_alpaca_readonly_connectivity_status(data: dict) -> dict:
+    account_check = data.get("account_check", {}) or {}
+    clock_check = data.get("clock_check", {}) or {}
+    quote_check = data.get("iex_quote_check", {}) or {}
+    account_summary = data.get("account_summary", {}) or {}
+    return {
+        "available": bool(data),
+        "status": str(data.get("status", "MISSING")),
+        "credentials_present": bool(data.get("credentials_present", False)),
+        "account_status": str(account_summary.get("status", "UNKNOWN")),
+        "account_check_status": str(account_check.get("status", "MISSING")),
+        "clock_check_status": str(clock_check.get("status", "MISSING")),
+        "iex_quote_check_status": str(quote_check.get("status", "MISSING")),
+        "read_only": bool(data.get("read_only", True)),
+        "execution_enabled": bool(data.get("execution_enabled", False)),
+        "orders_endpoint_called": bool(data.get("orders_endpoint_called", False)),
+    }
+
+
+def _normalize_gui_operational_decision_log_status(log_data: dict, review_data: dict, audit_data: dict) -> dict:
+    return {
+        "available": bool(log_data) or bool(review_data) or bool(audit_data),
+        "status": str(audit_data.get("status") or review_data.get("status") or log_data.get("status") or "MISSING"),
+        "decisions_today": _safe_int(log_data.get("decisions_today") or review_data.get("decisions_today"), 0),
+        "paper_watch_decisions": _safe_int(
+            log_data.get("paper_watch_decisions") or review_data.get("paper_watch_decisions"),
+            0,
+        ),
+        "paper_enter_decisions": _safe_int(
+            log_data.get("paper_enter_decisions") or review_data.get("paper_enter_decisions"),
+            0,
+        ),
+        "skip_decisions": _safe_int(log_data.get("skip_decisions") or review_data.get("skip_decisions"), 0),
+        "needs_recheck_decisions": _safe_int(
+            log_data.get("needs_recheck_decisions") or review_data.get("needs_recheck_decisions"),
+            0,
+        ),
+        "decisions_without_reason": _safe_int(
+            log_data.get("decisions_without_reason") or review_data.get("decisions_without_reason"),
+            0,
+        ),
+        "decisions_without_post_review": _safe_int(
+            log_data.get("decisions_without_post_review") or review_data.get("decisions_without_post_review"),
+            0,
+        ),
+        "lessons_added": _safe_int(log_data.get("lessons_added") or review_data.get("lessons_added"), 0),
+        "post_session_status": str(review_data.get("status", "MISSING")),
+        "audit_status": str(audit_data.get("status", "MISSING")),
+    }
 
 
 if __name__ == "__main__":

@@ -528,6 +528,39 @@ def main() -> None:
     with tabs[8]:
         st.subheader("Reports status")
         ui_layout.render_source_status_table(sources)
+        decision_source = sources.get("sources", {}).get("gui_operational_decision_log", {}) or {}
+        review_source = sources.get("sources", {}).get("gui_post_session_review", {}) or {}
+        decision_data = decision_source.get("data", {}) if isinstance(decision_source, dict) else {}
+        review_data = review_source.get("data", {}) if isinstance(review_source, dict) else {}
+        st.markdown("### Decision log")
+        _metrics(
+            [
+                ("decision_log", decision_data.get("status", decision_source.get("status", "MISSING"))),
+                ("decisions_today", decision_data.get("decisions_today", 0)),
+                ("without_review", review_data.get("decisions_without_post_review", 0)),
+                ("lessons", review_data.get("lessons_added", decision_data.get("lessons_added", 0))),
+            ],
+            columns=4,
+        )
+        decision_rows = _records_to_dataframe(decision_data.get("decisions", []))
+        if decision_rows.empty:
+            ui_layout.render_empty_state("No decision log rows available.")
+        else:
+            display_columns = [
+                column
+                for column in [
+                    "timestamp",
+                    "ticker",
+                    "journal_id",
+                    "decision_type",
+                    "reason",
+                    "risk_note",
+                    "post_session_review_status",
+                    "lesson_learned",
+                ]
+                if column in decision_rows.columns
+            ]
+            st.dataframe(decision_rows[display_columns] if display_columns else decision_rows, use_container_width=True)
 
 
 if __name__ == "__main__":

@@ -47,6 +47,12 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/gui_release_audit.py",
         "tools/gui_supervised_session.py",
         "tools/gui_supervised_session_audit.py",
+        "tools/gui_daily_operating_checklist.py",
+        "tools/gui_daily_operating_checklist_audit.py",
+        "tools/alpaca_readonly_connectivity_audit.py",
+        "tools/gui_operational_decision_log.py",
+        "tools/gui_post_session_review.py",
+        "tools/gui_operational_decision_log_audit.py",
     ]
 
     for script in scripts:
@@ -393,6 +399,101 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "gui_daily_operating_checklist_latest.md").write_text("# gui daily checklist\n", encoding="utf-8")
+    (reports / "gui_daily_operating_checklist_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "checklist_id": "C1",
+                "checklist_date": "2026-06-14",
+                "pending_steps": 0,
+                "done_steps": 10,
+                "blocked_steps": 0,
+                "skipped_steps": 0,
+                "required_pending_steps": 0,
+                "latest_result": "PASS",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_daily_operating_checklist_audit_latest.md").write_text(
+        "# gui daily checklist audit\n",
+        encoding="utf-8",
+    )
+    (reports / "gui_daily_operating_checklist_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "tool_exists": True,
+                "data_file_can_be_created": True,
+                "no_real_order_notice_present": True,
+                "manual_review_only": True,
+                "critical_failures": 0,
+                "warnings": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "alpaca_readonly_connectivity_latest.md").write_text("# alpaca readonly\n", encoding="utf-8")
+    (reports / "alpaca_readonly_connectivity_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "credentials_present": True,
+                "account_check": {"status": "PASS"},
+                "clock_check": {"status": "PASS"},
+                "iex_quote_check": {"status": "PASS"},
+                "account_summary": {"status": "ACTIVE"},
+                "read_only": True,
+                "execution_enabled": False,
+                "orders_endpoint_called": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_operational_decision_log_latest.md").write_text("# decision log\n", encoding="utf-8")
+    (reports / "gui_operational_decision_log_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "decisions_today": 1,
+                "paper_watch_decisions": 1,
+                "paper_enter_decisions": 0,
+                "skip_decisions": 0,
+                "needs_recheck_decisions": 0,
+                "decisions_without_reason": 0,
+                "decisions_without_post_review": 1,
+                "lessons_added": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_post_session_review_latest.md").write_text("# post session\n", encoding="utf-8")
+    (reports / "gui_post_session_review_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "decisions_today": 1,
+                "decisions_without_post_review": 1,
+                "lessons_added": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_operational_decision_log_audit_latest.md").write_text("# decision audit\n", encoding="utf-8")
+    (reports / "gui_operational_decision_log_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "tool_exists": True,
+                "post_session_review_exists": True,
+                "data_file_can_be_created": True,
+                "decision_log_reports_generated": True,
+                "post_session_reports_generated": True,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
     (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
     (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")
@@ -423,6 +524,10 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["gui_release_audit"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_supervised_session"]["latest_session_status"] == "OPEN"
     assert data["scan_snapshot"]["gui_supervised_session_audit"]["status"] == "PASS"
+    assert data["scan_snapshot"]["gui_daily_operating_checklist"]["status"] == "PASS"
+    assert data["scan_snapshot"]["alpaca_readonly_connectivity"]["status"] == "PASS"
+    assert data["scan_snapshot"]["gui_operational_decision_log"]["status"] == "PASS"
+    assert data["scan_snapshot"]["gui_post_session_review"]["status"] == "WARN"
     assert data["summary"]["missing_script_files"] == []
 
     script_files = data["script_files"]

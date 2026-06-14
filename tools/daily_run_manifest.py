@@ -44,6 +44,12 @@ KEY_SCRIPT_PATHS = [
     "tools/gui_release_audit.py",
     "tools/gui_supervised_session.py",
     "tools/gui_supervised_session_audit.py",
+    "tools/gui_daily_operating_checklist.py",
+    "tools/gui_daily_operating_checklist_audit.py",
+    "tools/alpaca_readonly_connectivity_audit.py",
+    "tools/gui_operational_decision_log.py",
+    "tools/gui_post_session_review.py",
+    "tools/gui_operational_decision_log_audit.py",
 ]
 
 
@@ -98,6 +104,18 @@ KEY_REPORT_PATHS = [
     "reports/gui_supervised_session_latest.md",
     "reports/gui_supervised_session_audit_latest.json",
     "reports/gui_supervised_session_audit_latest.md",
+    "reports/gui_daily_operating_checklist_latest.json",
+    "reports/gui_daily_operating_checklist_latest.md",
+    "reports/gui_daily_operating_checklist_audit_latest.json",
+    "reports/gui_daily_operating_checklist_audit_latest.md",
+    "reports/alpaca_readonly_connectivity_latest.json",
+    "reports/alpaca_readonly_connectivity_latest.md",
+    "reports/gui_operational_decision_log_latest.json",
+    "reports/gui_operational_decision_log_latest.md",
+    "reports/gui_post_session_review_latest.json",
+    "reports/gui_post_session_review_latest.md",
+    "reports/gui_operational_decision_log_audit_latest.json",
+    "reports/gui_operational_decision_log_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
@@ -369,6 +387,12 @@ def collect_daily_run_manifest(
     gui_release_path = reports / "gui_release_audit_latest.json"
     gui_supervised_session_path = reports / "gui_supervised_session_latest.json"
     gui_supervised_session_audit_path = reports / "gui_supervised_session_audit_latest.json"
+    gui_daily_checklist_path = reports / "gui_daily_operating_checklist_latest.json"
+    gui_daily_checklist_audit_path = reports / "gui_daily_operating_checklist_audit_latest.json"
+    alpaca_readonly_path = reports / "alpaca_readonly_connectivity_latest.json"
+    gui_decision_log_path = reports / "gui_operational_decision_log_latest.json"
+    gui_post_session_review_path = reports / "gui_post_session_review_latest.json"
+    gui_decision_log_audit_path = reports / "gui_operational_decision_log_audit_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -442,6 +466,12 @@ def collect_daily_run_manifest(
             "gui_release_audit": _load_json(gui_release_path),
             "gui_supervised_session": _load_json(gui_supervised_session_path),
             "gui_supervised_session_audit": _load_json(gui_supervised_session_audit_path),
+            "gui_daily_operating_checklist": _load_json(gui_daily_checklist_path),
+            "gui_daily_operating_checklist_audit": _load_json(gui_daily_checklist_audit_path),
+            "alpaca_readonly_connectivity": _load_json(alpaca_readonly_path),
+            "gui_operational_decision_log": _load_json(gui_decision_log_path),
+            "gui_post_session_review": _load_json(gui_post_session_review_path),
+            "gui_operational_decision_log_audit": _load_json(gui_decision_log_audit_path),
         },
         "script_files": script_files,
         "report_files": report_files,

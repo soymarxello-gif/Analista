@@ -45,6 +45,12 @@ TOOLS = [
     "tools/gui_release_audit.py",
     "tools/gui_supervised_session.py",
     "tools/gui_supervised_session_audit.py",
+    "tools/gui_daily_operating_checklist.py",
+    "tools/gui_daily_operating_checklist_audit.py",
+    "tools/alpaca_readonly_connectivity_audit.py",
+    "tools/gui_operational_decision_log.py",
+    "tools/gui_post_session_review.py",
+    "tools/gui_operational_decision_log_audit.py",
 ]
 
 TESTS = [
@@ -67,6 +73,9 @@ TESTS = [
     "tests/test_gui_visuals_phase39d.py",
     "tests/test_gui_release_phase39e.py",
     "tests/test_gui_supervised_session_phase40a.py",
+    "tests/test_gui_daily_operating_checklist_phase40b.py",
+    "tests/test_alpaca_readonly_connectivity_audit.py",
+    "tests/test_gui_operational_decision_log_phase40c.py",
 ]
 
 
@@ -139,6 +148,9 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "gui_visuals_audit",
                 "gui_release_audit",
                 "gui_supervised_session_audit",
+                "gui_daily_operating_checklist_audit",
+                "alpaca_readonly_connectivity_audit",
+                "gui_operational_decision_log_audit",
             ]
         ),
     )
@@ -162,6 +174,12 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/gui_release_audit_latest.md",
                 "reports/gui_supervised_session_latest.md",
                 "reports/gui_supervised_session_audit_latest.md",
+                "reports/gui_daily_operating_checklist_latest.md",
+                "reports/gui_daily_operating_checklist_audit_latest.md",
+                "reports/alpaca_readonly_connectivity_latest.md",
+                "reports/gui_operational_decision_log_latest.md",
+                "reports/gui_post_session_review_latest.md",
+                "reports/gui_operational_decision_log_audit_latest.md",
             ]
         ),
     )
@@ -185,6 +203,12 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "tools/gui_release_audit.py",
                 "tools/gui_supervised_session.py",
                 "tools/gui_supervised_session_audit.py",
+                "tools/gui_daily_operating_checklist.py",
+                "tools/gui_daily_operating_checklist_audit.py",
+                "tools/alpaca_readonly_connectivity_audit.py",
+                "tools/gui_operational_decision_log.py",
+                "tools/gui_post_session_review.py",
+                "tools/gui_operational_decision_log_audit.py",
                 "reports/live_quote_recheck_latest.json",
                 "reports/trade_decision_checklist_latest.json",
                 "reports/trade_candidate_cards_latest.json",
@@ -201,6 +225,12 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/gui_release_audit_latest.json",
                 "reports/gui_supervised_session_latest.json",
                 "reports/gui_supervised_session_audit_latest.json",
+                "reports/gui_daily_operating_checklist_latest.json",
+                "reports/gui_daily_operating_checklist_audit_latest.json",
+                "reports/alpaca_readonly_connectivity_latest.json",
+                "reports/gui_operational_decision_log_latest.json",
+                "reports/gui_post_session_review_latest.json",
+                "reports/gui_operational_decision_log_audit_latest.json",
             ]
         ),
     )
@@ -238,6 +268,12 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "gui_release_audit_latest.md",
         "gui_supervised_session_latest.md",
         "gui_supervised_session_audit_latest.md",
+        "gui_daily_operating_checklist_latest.md",
+        "gui_daily_operating_checklist_audit_latest.md",
+        "alpaca_readonly_connectivity_latest.md",
+        "gui_operational_decision_log_latest.md",
+        "gui_post_session_review_latest.md",
+        "gui_operational_decision_log_audit_latest.md",
         "trade_outcome_analytics_latest.csv",
         "trade_outcome_analytics_latest.md",
         "reports_cleanup_latest.md",
@@ -266,6 +302,12 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "gui_release_audit_latest.json",
         "gui_supervised_session_latest.json",
         "gui_supervised_session_audit_latest.json",
+        "gui_daily_operating_checklist_latest.json",
+        "gui_daily_operating_checklist_audit_latest.json",
+        "alpaca_readonly_connectivity_latest.json",
+        "gui_operational_decision_log_latest.json",
+        "gui_post_session_review_latest.json",
+        "gui_operational_decision_log_audit_latest.json",
         "reports_cleanup_latest.json",
         "report_consistency_latest.json",
     ]:

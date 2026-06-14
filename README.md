@@ -137,3 +137,43 @@ Most files in `reports/`, `cache/`, `logs/`, `.pytest_cache/`, and `__pycache__/
 ## Disclaimer
 
 Analista is analytical software for manual decision support. It is not financial advice and does not execute trades.
+## Daily GUI operating checklist
+
+Phase 40B adds `tools/gui_daily_operating_checklist.py` for a manual, paper-only operating checklist around the Streamlit GUI. It records operator confirmations, notes, blocked steps, skipped steps, and a daily close result without running tests, scanner, Streamlit, broker APIs, or real orders.
+
+Core commands:
+
+- `python .\tools\gui_daily_operating_checklist.py --init-today`
+- `python .\tools\gui_daily_operating_checklist.py --status`
+- `python .\tools\gui_daily_operating_checklist.py --mark STEP_ID DONE --note "..."`
+- `python .\tools\gui_daily_operating_checklist.py --close --result WARN`
+- `python .\tools\gui_daily_operating_checklist.py --summary`
+- `python .\tools\gui_daily_operating_checklist_audit.py`
+
+Outputs are `reports/gui_daily_operating_checklist_latest.json`, `reports/gui_daily_operating_checklist_latest.md`, `reports/gui_daily_operating_checklist_audit_latest.json`, and `reports/gui_daily_operating_checklist_audit_latest.md`.
+
+## Alpaca read-only connectivity audit
+
+`tools/alpaca_readonly_connectivity_audit.py` validates Alpaca credentials and read-only connectivity for account, clock, and IEX latest quote checks. It uses environment variables, masks credentials in reports, and never places orders or enables execution.
+
+Run:
+
+- `python .\tools\alpaca_readonly_connectivity_audit.py`
+
+Outputs:
+
+- `reports/alpaca_readonly_connectivity_latest.json`
+- `reports/alpaca_readonly_connectivity_latest.md`
+
+## Operational decision log
+
+`tools/gui_operational_decision_log.py` records manual GUI operating decisions for paper-only review. It can associate a decision with a ticker, journal id, session id, checklist id, or action log id, then capture reason, context, perceived risk, follow-up plan, and post-session lessons. It does not edit the paper journal, outcomes, scanner, scoring, config, thresholds, or signals.
+
+Core commands:
+
+- `python .\tools\gui_operational_decision_log.py --add --ticker AAPL --decision PAPER_WATCH --reason "..."`
+- `python .\tools\gui_operational_decision_log.py --list-today`
+- `python .\tools\gui_operational_decision_log.py --review DECISION_ID --outcome-note "..." --lesson "..."`
+- `python .\tools\gui_operational_decision_log.py --summary`
+- `python .\tools\gui_post_session_review.py`
+- `python .\tools\gui_operational_decision_log_audit.py`
