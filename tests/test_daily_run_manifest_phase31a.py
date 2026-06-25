@@ -30,6 +30,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/open_trade_snapshot.py",
         "tools/latest_scan_health.py",
         "tools/source_coverage_audit.py",
+        "tools/scenario_engine_audit.py",
         "tools/live_quote_recheck.py",
         "tools/trade_decision_checklist.py",
         "tools/trade_candidate_cards.py",
@@ -39,6 +40,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/paper_trading_cycle_audit.py",
         "tools/trade_score_calibration.py",
         "tools/calibration_recommendations.py",
+        "tools/posttest_thesis_audit.py",
         "tools/release_readiness_audit.py",
         "tools/ui_data_contract_audit.py",
         "tools/streamlit_smoke_test.py",
@@ -50,11 +52,19 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/gui_daily_operating_checklist.py",
         "tools/gui_daily_operating_checklist_audit.py",
         "tools/alpaca_readonly_connectivity_audit.py",
+        "tools/webull_readonly_market_data_audit.py",
+        "tools/cboe_market_statistics_audit.py",
+        "tools/google_sheets_data_source_audit.py",
+        "tools/macro_event_context.py",
         "tools/gui_operational_decision_log.py",
         "tools/gui_post_session_review.py",
         "tools/gui_operational_decision_log_audit.py",
         "tools/gui_decision_quality_review.py",
         "tools/gui_decision_quality_audit.py",
+        "tools/gui_weekly_operational_review.py",
+        "tools/gui_weekly_operational_review_audit.py",
+        "tools/gui_evidence_collection_window.py",
+        "tools/gui_evidence_collection_audit.py",
     ]
 
     for script in scripts:
@@ -132,6 +142,22 @@ def _make_project(tmp_path: Path) -> Path:
     (reports / "manual_review_latest.md").write_text("# manual\n", encoding="utf-8")
     (reports / "manual_review_top.csv").write_text("ticker\nAAA\n", encoding="utf-8")
     (reports / "manual_review_top.md").write_text("# top\n", encoding="utf-8")
+    (reports / "scenario_engine_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 50,
+                "deep_analysis_rows": 50,
+                "within_target_band": True,
+                "shadow_mode": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "scenario_engine_audit_latest.md").write_text(
+        "# scenario engine audit\n",
+        encoding="utf-8",
+    )
     (reports / "daily_operator_index.md").write_text("# index\n", encoding="utf-8")
     (reports / "live_quote_recheck_latest.csv").write_text("ticker,recheck_decision\n", encoding="utf-8")
     (reports / "live_quote_recheck_latest.md").write_text("# live\n", encoding="utf-8")
@@ -256,6 +282,46 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "gui_weekly_operational_review_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "weekly_operational_score": 65,
+                "weekly_operational_bucket": "C_NEEDS_PROCESS_REVIEW",
+                "weekly_recommendation": "EXTEND_SAMPLE_SIZE",
+                "sessions_count": 0,
+                "total_decisions": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_weekly_operational_review_latest.md").write_text("# weekly review\n", encoding="utf-8")
+    (reports / "gui_weekly_operational_review_latest.csv").write_text("review_id,status\nR1,WARN\n", encoding="utf-8")
+    (reports / "gui_weekly_operational_review_audit_latest.json").write_text(
+        json.dumps({"status": "PASS", "critical_failures": 0}),
+        encoding="utf-8",
+    )
+    (reports / "gui_weekly_operational_review_audit_latest.md").write_text("# weekly audit\n", encoding="utf-8")
+    (reports / "gui_evidence_collection_window_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "readiness_status": "INSUFFICIENT_SAMPLE",
+                "calibration_readiness_score": 50,
+                "readiness_bucket": "C_NEEDS_MORE_EVIDENCE",
+                "sessions_count": 0,
+                "total_decisions": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "gui_evidence_collection_window_latest.md").write_text("# evidence window\n", encoding="utf-8")
+    (reports / "gui_evidence_collection_window_latest.csv").write_text("window_id,status\nE1,WARN\n", encoding="utf-8")
+    (reports / "gui_evidence_collection_audit_latest.json").write_text(
+        json.dumps({"status": "PASS", "critical_failures": 0}),
+        encoding="utf-8",
+    )
+    (reports / "gui_evidence_collection_audit_latest.md").write_text("# evidence audit\n", encoding="utf-8")
     (reports / "trade_score_calibration_latest.csv").write_text(
         "group,group_value,closed_trades\nOVERALL,ALL_CLOSED,0\n",
         encoding="utf-8",
@@ -286,6 +352,28 @@ def _make_project(tmp_path: Path) -> Path:
                 "recommendation_count": 1,
                 "do_not_change_automatically": True,
                 "recommendations": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "posttest_thesis_audit_latest.md").write_text(
+        "# four-day thesis audit\n",
+        encoding="utf-8",
+    )
+    (reports / "posttest_thesis_audit_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "horizon_days": 4,
+                "summary": {
+                    "executed_entries": 0,
+                    "no_entry_triggers": 0,
+                    "win_rate": None,
+                    "target_hit_rate": None,
+                    "stop_hit_rate": None,
+                },
+                "sample_size_warning": "sample too small",
+                "automatic_changes_allowed": False,
             }
         ),
         encoding="utf-8",
@@ -453,6 +541,69 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "webull_readonly_market_data_latest.md").write_text("# webull readonly\n", encoding="utf-8")
+    (reports / "webull_readonly_market_data_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "credentials_present": False,
+                "endpoint_checks": [],
+                "read_only": True,
+                "execution_enabled": False,
+                "issues": ["missing_webull_credentials"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "cboe_market_statistics_latest.md").write_text("# cboe market statistics\n", encoding="utf-8")
+    (reports / "cboe_market_statistics_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "datasets_checked": 3,
+                "datasets_available": 3,
+                "read_only": True,
+                "execution_enabled": False,
+                "issues": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "google_sheets_data_source_latest.md").write_text("# google sheets source\n", encoding="utf-8")
+    (reports / "google_sheets_data_source_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "WARN",
+                "csv_url_present": False,
+                "rows": 0,
+                "valid_rows": 0,
+                "stale_rows": 0,
+                "read_only": True,
+                "execution_enabled": False,
+                "issues": ["missing_google_sheets_csv_url"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "macro_event_context_latest.md").write_text("# macro context\n", encoding="utf-8")
+    (reports / "macro_event_context_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "next_critical_event": "CPI release",
+                "next_critical_event_date": "2026-07-14",
+                "days_to_critical_event": 21,
+                "event_risk_status": "CLEAR",
+                "liquidity_context": "MIXED",
+                "m2_change_4w_pct": 0.2,
+                "reverse_repo_change_4w_pct": -3.0,
+                "read_only": True,
+                "execution_enabled": False,
+                "issues": [],
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "gui_operational_decision_log_latest.md").write_text("# decision log\n", encoding="utf-8")
     (reports / "gui_operational_decision_log_latest.json").write_text(
         json.dumps(
@@ -532,6 +683,10 @@ def _make_project(tmp_path: Path) -> Path:
     (reports / "open_trades_snapshot_latest.csv").write_text("ticker\n", encoding="utf-8")
     (reports / "open_trades_snapshot_latest.md").write_text("# open\n", encoding="utf-8")
     (reports / "trade_outcome_analytics_latest.csv").write_text("group\n", encoding="utf-8")
+    (reports / "trade_outcome_analytics_latest.json").write_text(
+        json.dumps({"status": "PASS", "rows": 0, "closed_trades": 0}),
+        encoding="utf-8",
+    )
     (reports / "trade_outcome_analytics_latest.md").write_text("# analytics\n", encoding="utf-8")
 
     return tmp_path
@@ -550,6 +705,7 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["latest_scan_rows"] == 2
     assert data["scan_snapshot"]["manual_review_rows"] == 2
     assert data["scan_snapshot"]["recommendations"]["RECHECK_LIVE_QUOTE"] == 1
+    assert data["scan_snapshot"]["scenario_engine_audit"]["deep_analysis_rows"] == 50
     assert data["scan_snapshot"]["paper_trade_close"]["status"] == "PASS"
     assert data["scan_snapshot"]["paper_trading_cycle_audit"]["status"] == "WARN"
     assert data["scan_snapshot"]["ui_data_contract"]["status"] == "PASS"
@@ -561,6 +717,9 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["gui_supervised_session_audit"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_daily_operating_checklist"]["status"] == "PASS"
     assert data["scan_snapshot"]["alpaca_readonly_connectivity"]["status"] == "PASS"
+    assert data["scan_snapshot"]["webull_readonly_market_data"]["status"] == "WARN"
+    assert data["scan_snapshot"]["cboe_market_statistics"]["status"] == "PASS"
+    assert data["scan_snapshot"]["google_sheets_data_source"]["status"] == "WARN"
     assert data["scan_snapshot"]["gui_operational_decision_log"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_post_session_review"]["status"] == "WARN"
     assert data["scan_snapshot"]["gui_decision_quality_review"]["status"] == "PASS"
@@ -592,6 +751,7 @@ def test_daily_run_manifest_markdown_contains_sections(tmp_path: Path):
     assert "UI data contract:" in text
     assert "Streamlit dashboard:" in text
     assert "GUI actions:" in text
+    assert "Secondary read-only data sources:" in text
 
 
 def test_save_daily_run_manifest_writes_outputs(tmp_path: Path):

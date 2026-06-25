@@ -8,7 +8,6 @@ import pandas as pd
 from tools.gui_actions_audit import collect_gui_actions_audit, save_gui_actions_audit
 from ui import actions
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

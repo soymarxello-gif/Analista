@@ -15,6 +15,53 @@ The system combines:
 - Manual decision checklists and candidate cards.
 - Closed-trade calibration and non-automatic calibration recommendations.
 
+## Delayed And Manual Data Sources
+
+Yahoo Finance remains the primary source. Alpaca IEX delayed data and a published
+Google Sheets CSV may fill analysis-only gaps. They do not change
+`quote_status`, `execution_quote_quality`, signals, recommendations, or P0.
+
+The Google Sheets source is disabled by default. To enable it, publish one sheet
+tab as CSV and configure:
+
+```yaml
+data_sources:
+  providers:
+    google_sheets_manual:
+      enabled: true
+      published_csv_url: "https://docs.google.com/spreadsheets/d/.../pub?output=csv"
+```
+
+Required CSV columns:
+
+- `ticker`
+- `source`
+- `updated_at` as an ISO-8601 timestamp
+- `confidence` as `HIGH`, `MEDIUM`, `LOW`, or `UNKNOWN`
+
+Supported optional columns include `price`, `bid`, `ask`, `spread_pct`,
+`sector`, `industry`, `market_cap`, `earnings_date`, `next_earnings_date`,
+`put_call_ratio`, `options_volume`, `options_open_interest`, `iv`, `delta`,
+`gamma`, and `notes`.
+
+Rows with missing traceability, invalid timestamps, or age above
+`max_stale_minutes` are audited but not used. Yahoo values are never
+overwritten when valid. For quotes the priority is Yahoo, Alpaca IEX, then
+Google Sheets. For metadata Google Sheets is the last manual fallback after
+Finviz, MarketWatch, and TradingView/manual sources.
+
+Audit commands:
+
+```powershell
+python .\tools\google_sheets_data_source_audit.py
+python .\tools\source_coverage_audit.py
+```
+
+Cboe public market-share and equity-volume datasets are audited independently.
+The public `totalpc.csv` dataset may be historical. Its date and age are checked
+before use; a stale ratio is reported as `UNKNOWN_OPTIONS_CONTEXT` and is never
+treated as current sentiment or a ticker-level signal.
+
 ## Main Commands
 
 Activate environment:
@@ -52,13 +99,15 @@ git -c safe.directory="*" status --short
 7. `reports/paper_trade_followup_latest.md`
 8. `reports/paper_trade_close_latest.md`
 9. `reports/paper_trading_cycle_audit_latest.md`
-10. `reports/manual_review_top.md`
-11. `reports/daily_run_manifest_latest.md`
-12. `reports/release_readiness_latest.md`
-13. `reports/ui_data_contract_audit_latest.md`
-14. `reports/streamlit_smoke_test_latest.md`
-15. `reports/gui_actions_audit_latest.md`
-16. `reports/daily_validation_summary.txt`
+10. `reports/gui_weekly_operational_review_latest.md`
+11. `reports/gui_evidence_collection_window_latest.md`
+12. `reports/manual_review_top.md`
+13. `reports/daily_run_manifest_latest.md`
+14. `reports/release_readiness_latest.md`
+15. `reports/ui_data_contract_audit_latest.md`
+16. `reports/streamlit_smoke_test_latest.md`
+17. `reports/gui_actions_audit_latest.md`
+18. `reports/daily_validation_summary.txt`
 
 ## Signals
 
@@ -221,6 +270,31 @@ The tool does not modify scanner outputs and cannot create entry signals.
 
 Use calibration only after closed trades are recorded.
 
+## Four-day thesis posttest
+
+The historical posttest evaluates only candidates with non-veto signals, an
+operational recommendation, `quote_status VALID`,
+`execution_quote_quality HIGH`, and valid actionable entry, stop and target
+levels. It does not assume an entry: the proposed entry must be reached during
+the first two sessions after the scan.
+
+The principal horizon is four trading sessions from the executed entry. The
+audit separates target hits, stop hits, profitable four-day closes, negative
+closes, ambiguous daily bars where target and stop were both touched, and
+proposed entries that were never reached.
+
+Run:
+
+```powershell
+python .\tools\run_posttest_batch.py --horizons 4
+python .\tools\posttest_thesis_audit.py
+```
+
+Review `reports/posttest_thesis_audit_latest.md` for overall and per-ticker win
+rates, recurring successes, recurring failures, entry-level quality and
+diagnostic hints. Results are observational and never modify scoring,
+thresholds or signals automatically.
+
 ```powershell
 python .\tools\trade_score_calibration.py
 python .\tools\calibration_recommendations.py
@@ -363,3 +437,46 @@ Primary outputs:
 - `reports/gui_decision_quality_audit_latest.json`
 
 The review is observational only; no automatic trading changes are applied.
+
+## Weekly GUI Operational Review
+
+`tools/gui_weekly_operational_review.py` summarizes the GUI and paper trading operating cycle over a configurable window. It computes a 0-100 `weekly_operational_score`, a weekly bucket, and an observational recommendation from supervised sessions, daily checklists, GUI decisions, UI action logs, paper journal, outcomes, decision quality, cycle audit, and calibration reports.
+
+```powershell
+python .\tools\gui_weekly_operational_review.py
+python .\tools\gui_weekly_operational_review.py --days 5
+python .\tools\gui_weekly_operational_review_audit.py
+```
+
+Primary outputs:
+
+- `data/gui_weekly_operational_reviews.csv`
+- `reports/gui_weekly_operational_review_latest.md`
+- `reports/gui_weekly_operational_review_latest.json`
+- `reports/gui_weekly_operational_review_latest.csv`
+- `reports/gui_weekly_operational_review_audit_latest.md`
+- `reports/gui_weekly_operational_review_audit_latest.json`
+
+The review is observational only. It does not modify `data/gui_operational_decisions.csv`, `data/paper_trading_journal.csv`, `data/trade_outcomes.csv`, scanner logic, scoring, thresholds, config, weights, or signals. It can mark `READY_FOR_CALIBRATION_REVIEW` only as a human review label, never as an automatic calibration or trading action.
+
+## Evidence Collection Window
+
+`tools/gui_evidence_collection_window.py` consolidates multi-session evidence before any human calibration, ranking, or weight review. It reads supervised sessions, daily checklists, GUI decisions, weekly operational reviews, UI action logs, paper journal, paper outcomes, decision quality, cycle audit, and calibration reports.
+
+```powershell
+python .\tools\gui_evidence_collection_window.py
+python .\tools\gui_evidence_collection_window.py --days 20
+python .\tools\gui_evidence_collection_window.py --min-sessions 10 --min-decisions 40 --min-paper-enters 10 --min-closed-trades 5
+python .\tools\gui_evidence_collection_audit.py
+```
+
+Primary outputs:
+
+- `data/gui_evidence_collection_windows.csv`
+- `reports/gui_evidence_collection_window_latest.md`
+- `reports/gui_evidence_collection_window_latest.json`
+- `reports/gui_evidence_collection_window_latest.csv`
+- `reports/gui_evidence_collection_audit_latest.md`
+- `reports/gui_evidence_collection_audit_latest.json`
+
+Readiness states are `INSUFFICIENT_SAMPLE`, `COLLECT_MORE_EVIDENCE`, `PROCESS_REVIEW_REQUIRED`, `READY_FOR_CALIBRATION_REVIEW`, and `NOT_READY_GUARDRAIL_FAILURE`. They are observational labels only. The tool does not modify scanner logic, scoring, thresholds, config, journal rows, outcomes, ranking, calibration, or signals.

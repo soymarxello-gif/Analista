@@ -12,82 +12,51 @@ __pycache__/
 venv/
 env/
 
-# Logs
-logs/
-*.log
-
-# Cache
-cache/
-*.cache
-
-# Reports / generated outputs
-reports/*.csv
-reports/*.json
-reports/history/
-
-# Streamlit secrets
-.streamlit/secrets.toml
-
-# OS / editors
+# Editors and operating system
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# Data exports
+# Secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Runtime logs and caches
+logs/
+*.log
+cache/
+*.cache
+
+# Generated reports
+reports/
+reports/*.csv
+reports/*.json
+reports/*.md
+reports/*_latest.*
+reports/history/
+reports/tmp/
+reports/*_test.*
+reports/latest_scan_test.*
+
+# Generated exports and temporary artifacts
+outputs/
+Old files/
+*.zip
 *.xlsx
 *.xls
 *.parquet
 *.sqlite
 *.db
 
-# Additional ignores for Phase 32A
-reports/tmp/
-reports/*_test.*
-reports/latest_scan_test.*
-*.zip
-
-# Phase 32A: Git hygiene - ignore cache and temporary files
-cache/
-reports/tmp/
-reports/*_test.*
-reports/latest_scan_test.*
-*.zip
-.venv/
-__pycache__/
-*.py[cod]
-*.class
-
-# Analista generated runtime reports
-reports/*_latest.csv
-reports/*_latest.json
-reports/*_latest.md
-reports/daily_validation_summary.txt
-reports/daily_operator_index.md
-reports/daily_run_manifest_latest.*
-reports/project_preflight_latest.*
-reports/reports_cleanup_latest.*
-reports/manual_review_latest.*
-reports/manual_review_top.*
-reports/latest_scan_audited.*
-reports/daily_quality_gate_latest.*
-reports/encoding_audit_latest.*
-reports/history_evolution_latest.*
-reports/setup_persistence_latest.*
-reports/trade_outcome_analytics_latest.*
-reports/open_trades_snapshot_latest.*
-
-# Analista generated temp/history/cache
-reports/tmp/
-cache/
-*.zip
-__pycache__/
-.pytest_cache/
-
-# Analista generated audit reports
-reports/audits/*_latest.json
-reports/audits/audit_*.json
-
-# Analista generated audit reports
-reports/audits/*_latest.json
-reports/audits/audit_*.json
+# Generated operational data
+data/paper_trading_journal.csv
+data/trade_outcomes.csv
+data/ui_action_log.csv
+data/gui_daily_operating_checklists.csv
+data/gui_operational_decisions.csv
+data/gui_supervised_sessions.csv
+data/gui_weekly_operational_reviews.csv
+data/gui_evidence_collection_windows.csv

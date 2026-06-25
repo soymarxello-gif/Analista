@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 NO_REAL_ORDER_NOTICE = "paper trading only; no real order"
 

@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 SOURCE_SPECS = {
     "daily_operator_index": ("markdown", "reports/daily_operator_index.md"),
     "daily_run_manifest": ("json", "reports/daily_run_manifest_latest.json"),
@@ -16,6 +15,20 @@ SOURCE_SPECS = {
     "gui_actions_audit": ("json", "reports/gui_actions_audit_latest.json"),
     "gui_visuals_audit": ("json", "reports/gui_visuals_audit_latest.json"),
     "gui_release_audit": ("json", "reports/gui_release_audit_latest.json"),
+    "gui_supervised_session": ("json", "reports/gui_supervised_session_latest.json"),
+    "gui_supervised_session_audit": ("json", "reports/gui_supervised_session_audit_latest.json"),
+    "gui_daily_operating_checklist": ("json", "reports/gui_daily_operating_checklist_latest.json"),
+    "gui_daily_operating_checklist_audit": ("json", "reports/gui_daily_operating_checklist_audit_latest.json"),
+    "alpaca_readonly_connectivity": ("json", "reports/alpaca_readonly_connectivity_latest.json"),
+    "gui_operational_decision_log": ("json", "reports/gui_operational_decision_log_latest.json"),
+    "gui_post_session_review": ("json", "reports/gui_post_session_review_latest.json"),
+    "gui_operational_decision_log_audit": ("json", "reports/gui_operational_decision_log_audit_latest.json"),
+    "gui_decision_quality_review": ("json", "reports/gui_decision_quality_review_latest.json"),
+    "gui_decision_quality_audit": ("json", "reports/gui_decision_quality_audit_latest.json"),
+    "gui_weekly_operational_review": ("json", "reports/gui_weekly_operational_review_latest.json"),
+    "gui_weekly_operational_review_audit": ("json", "reports/gui_weekly_operational_review_audit_latest.json"),
+    "gui_evidence_collection_window": ("json", "reports/gui_evidence_collection_window_latest.json"),
+    "gui_evidence_collection_audit": ("json", "reports/gui_evidence_collection_audit_latest.json"),
     "manual_review_top": ("csv", "reports/manual_review_top.csv"),
     "manual_review_latest": ("csv", "reports/manual_review_latest.csv"),
     "trade_candidate_cards": ("json", "reports/trade_candidate_cards_latest.json"),
@@ -28,7 +41,10 @@ SOURCE_SPECS = {
     "trade_outcome_analytics": ("csv", "reports/trade_outcome_analytics_latest.csv"),
     "trade_score_calibration": ("json", "reports/trade_score_calibration_latest.json"),
     "calibration_recommendations": ("json", "reports/calibration_recommendations_latest.json"),
+    "latest_scan_audited": ("csv", "reports/latest_scan_audited.csv"),
+    "ai_review_latest": ("json", "reports/ai_review_latest.json"),
 }
+OPTIONAL_SOURCE_NAMES = {"ai_review_latest"}
 
 VALID_SOURCE_STATUSES = {"AVAILABLE", "MISSING", "INVALID", "EMPTY"}
 
@@ -204,9 +220,19 @@ def load_all_ui_sources(root: Path) -> dict:
                 "error": str(exc),
                 "rows_count": 0,
             }
+        sources[name]["optional"] = name in OPTIONAL_SOURCE_NAMES
 
     available = sum(1 for source in sources.values() if source.get("status") == "AVAILABLE")
-    missing = sum(1 for source in sources.values() if source.get("status") == "MISSING")
+    missing = sum(
+        1
+        for source in sources.values()
+        if source.get("status") == "MISSING" and not source.get("optional", False)
+    )
+    optional_missing = sum(
+        1
+        for source in sources.values()
+        if source.get("status") == "MISSING" and source.get("optional", False)
+    )
     invalid = sum(1 for source in sources.values() if source.get("status") == "INVALID")
     empty = sum(1 for source in sources.values() if source.get("status") == "EMPTY")
     return {
@@ -215,6 +241,7 @@ def load_all_ui_sources(root: Path) -> dict:
         "summary": {
             "available_sources": available,
             "missing_sources": missing,
+            "optional_missing_sources": optional_missing,
             "invalid_sources": invalid,
             "empty_sources": empty,
             "total_sources": len(sources),

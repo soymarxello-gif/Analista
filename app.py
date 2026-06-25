@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
 from ui import actions as paper_actions
+from ui import ai_review
 from ui import charts as ui_charts
 from ui import formatters as ui_formatters
 from ui import guards as ui_guards
@@ -21,7 +23,6 @@ from ui.view_models import (
     build_status_overview,
 )
 
-
 ROOT = Path(__file__).resolve().parent
 
 
@@ -32,7 +33,7 @@ def _status_message(status: str, text: str = "") -> None:
 def _metrics(items: list[tuple[str, object]], columns: int = 4) -> None:
     cols = st.columns(max(1, min(columns, len(items) or 1)))
     for index, (label, value) in enumerate(items):
-        cols[index % len(cols)].metric(label, value)
+        cols[index % len(cols)].metric(label, ui_formatters.format_cell_value(value))
 
 
 def _records_to_dataframe(records) -> pd.DataFrame:
@@ -93,7 +94,12 @@ def _filtered_dataframe(df: pd.DataFrame, filters: list[str]) -> pd.DataFrame:
         if column not in out.columns:
             continue
         values = sorted(value for value in out[column].fillna("").astype(str).unique() if value)
-        selected = st.multiselect(column, values, default=values, key=f"filter_{column}")
+        selected = st.multiselect(
+            ui_formatters.spanish_column_label(column),
+            values,
+            default=values,
+            key=f"filter_{column}",
+        )
         if selected:
             out = out[out[column].astype(str).isin(selected)]
     return out
@@ -162,25 +168,31 @@ def _latest_source_timestamp(sources: dict) -> str:
 
 
 def _render_sidebar(sources: dict) -> None:
-    st.sidebar.header("Status")
+    st.sidebar.header("Estado")
     status_items = [
-        ("Daily validation", "daily_run_manifest"),
+        ("Validación diaria", "daily_run_manifest"),
         ("Quality gate", "daily_quality_gate"),
         ("Release readiness", "release_readiness"),
-        ("UI data contract", "ui_data_contract"),
-        ("GUI actions audit", "gui_actions_audit"),
-        ("GUI visuals audit", "gui_visuals_audit"),
-        ("GUI release audit", "gui_release_audit"),
+        ("Contrato UI", "ui_data_contract"),
+        ("Acciones GUI", "gui_actions_audit"),
+        ("Visual GUI", "gui_visuals_audit"),
+        ("Release GUI", "gui_release_audit"),
+        ("Revisión semanal", "gui_weekly_operational_review"),
+        ("Ventana evidencia", "gui_evidence_collection_window"),
     ]
     for label, source_name in status_items:
         st.sidebar.metric(label, ui_formatters.format_status_badge(_source_status(sources, source_name)))
-    st.sidebar.caption(f"Last source update: {_latest_source_timestamp(sources)}")
-    if st.sidebar.button("Refresh screen", key="refresh_screen_only"):
+    st.sidebar.caption(f"Última actualización: {_latest_source_timestamp(sources)}")
+    if st.sidebar.button("Refrescar pantalla", key="refresh_screen_only"):
         st.rerun()
 
 
 def main() -> None:
-    st.set_page_config(page_title="Analista Dashboard", layout="wide")
+    st.set_page_config(page_title="Analista Cockpit", layout="wide")
+    ui_layout.render_cockpit_style()
+
+    os.makedirs(ROOT / "cache", exist_ok=True)
+    os.makedirs(ROOT / "reports", exist_ok=True)
 
     sources = load_all_ui_sources(ROOT)
     overview = build_status_overview(sources)
@@ -191,27 +203,27 @@ def main() -> None:
     cycle = build_cycle_audit_model(sources)
     calibration = build_calibration_model(sources)
 
-    st.title("Analista Dashboard")
+    ui_layout.render_cockpit_header()
     _render_sidebar(sources)
     ui_layout.render_no_real_order_notice()
     st.caption("Manual review only. No real orders.")
 
     tabs = st.tabs(
         [
-            "Overview",
-            "Candidates",
-            "Quality & guardrails",
+            "Resumen",
+            "Candidatos",
+            "Calidad y reglas",
             "Paper trading",
-            "Follow-up",
-            "Cycle audit",
-            "Calibration",
-            "Paper actions",
-            "Reports status",
+            "Seguimiento",
+            "Auditoría ciclo",
+            "Calibración",
+            "Acciones paper",
+            "Reportes",
         ]
     )
 
     with tabs[0]:
-        st.subheader("Overview")
+        st.subheader("Resumen")
         _status_message(overview["status"])
         quality_summary = quality.get("summary", {})
         cycle_summary = cycle.get("summary", {})
@@ -231,53 +243,117 @@ def main() -> None:
             )
         _metrics(
             [
-                ("quality_gate", quality["status"]),
-                ("release_readiness", sources["sources"].get("release_readiness", {}).get("data", {}).get("status", "MISSING")),
-                ("ui_data_contract", sources["sources"].get("ui_data_contract", {}).get("data", {}).get("status", "MISSING")),
-                ("cycle_audit", cycle["status"]),
-                ("total_candidates", candidates.get("rows_count", 0)),
+                ("Quality gate", quality["status"]),
+                ("Release readiness", sources["sources"].get("release_readiness", {}).get("data", {}).get("status", "MISSING")),
+                ("Contrato UI", sources["sources"].get("ui_data_contract", {}).get("data", {}).get("status", "MISSING")),
+                ("Auditoría ciclo", cycle["status"]),
+                ("Candidatos", candidates.get("rows_count", 0)),
                 (trigger_state, trigger_count),
                 ("WATCHLIST", watchlist_count),
-                ("quotes_VALID_HIGH", valid_high_count),
-                ("open_paper", cycle_summary.get("open_paper_count", 0)),
-                ("closed_paper", cycle_summary.get("closed_paper_count", paper_summary.get("closed_paper", 0))),
-                ("pending_exports", cycle_summary.get("pending_export_count", paper_summary.get("pending_export", 0))),
+                ("Quotes VALID/HIGH", valid_high_count),
+                ("Paper abiertos", cycle_summary.get("open_paper_count", 0)),
+                ("Paper cerrados", cycle_summary.get("closed_paper_count", paper_summary.get("closed_paper", 0))),
+                ("Exports pendientes", cycle_summary.get("pending_export_count", paper_summary.get("pending_export", 0))),
             ],
             columns=4,
         )
-        st.markdown("### Signal distribution")
+        ui_layout.render_section_title("Distribución de señales")
         _bar_chart(ui_charts.build_signal_distribution_chart_data(candidates))
-        st.caption(f"Calibration: {calibration_summary.get('calibration_status', 'MISSING')}")
+        st.caption(f"Calibración: {calibration_summary.get('calibration_status', 'MISSING')}")
         if quality_summary:
             st.json(quality_summary, expanded=False)
 
     with tabs[1]:
-        st.subheader("Candidates")
+        st.subheader("Candidatos / Watchlist")
         _status_message(candidates["status"])
         candidate_df = _records_to_dataframe(candidates.get("data", {}).get("rows", []))
-        chart_cols = st.columns(3)
-        with chart_cols[0]:
-            st.caption("Signal")
-            _bar_chart(ui_charts.build_signal_distribution_chart_data(candidates))
-        with chart_cols[1]:
-            st.caption("Recommendation")
-            _bar_chart(ui_charts.build_recommendation_distribution_chart_data(candidates))
-        with chart_cols[2]:
-            st.caption("Quote quality")
-            _bar_chart(ui_charts.build_quote_quality_chart_data(candidates))
-        st.markdown("### Top scores")
+        ui_layout.render_section_title("Señales")
+        _bar_chart(ui_charts.build_signal_distribution_chart_data(candidates))
+        ui_layout.render_section_title("Recomendaciones")
+        _bar_chart(ui_charts.build_recommendation_distribution_chart_data(candidates))
+        ui_layout.render_section_title("Calidad de quote")
+        _bar_chart(ui_charts.build_quote_quality_chart_data(candidates))
+        ui_layout.render_section_title("Top scores")
         _bar_chart(ui_charts.build_candidate_score_chart_data(candidates), value_column="final_trade_score")
         if candidate_df.empty:
-            ui_layout.render_empty_state("No candidate rows available.")
+            ui_layout.render_empty_state("No hay candidatos disponibles.")
         else:
             filtered = _filtered_dataframe(
                 candidate_df,
                 ["signal", "recommendation", "quote_status", "execution_quote_quality", "checklist_status"],
+            ).reset_index(drop=True)
+            watchlist_columns = [
+                "ticker",
+                "signal",
+                "recommendation",
+                "checklist_status",
+                "setup_type",
+                "final_trade_score",
+                "checklist_score",
+                "quote_status",
+                "execution_quote_quality",
+                "actionable_entry",
+                "actionable_stop",
+                "actionable_target",
+                "rr",
+                "sector",
+                "options_bias",
+                "options_confidence",
+                "reason_summary",
+            ]
+            ui_layout.render_section_title("Watchlist seleccionable")
+            event, _display = ui_layout.render_display_dataframe(
+                filtered,
+                columns=watchlist_columns,
+                key="candidate_watchlist",
+                height=430,
+                selectable=True,
             )
-            st.dataframe(filtered, use_container_width=True, hide_index=True)
+            selected_rows = getattr(getattr(event, "selection", None), "rows", []) if event is not None else []
+            selected_index = int(selected_rows[0]) if selected_rows else 0
+            selected_index = min(selected_index, len(filtered) - 1)
+            ui_layout.render_section_title("Ficha operativa")
+            selected_candidate = filtered.iloc[selected_index].to_dict()
+            ui_layout.render_candidate_detail(selected_candidate)
+            ui_layout.render_section_title("Segunda opinión IA")
+            ai_provider = st.selectbox(
+                "Proveedor",
+                ["PROMPT_ONLY", "OPENAI", "ANTHROPIC", "GEMINI"],
+                key="ai_review_provider",
+            )
+            default_models = {
+                "PROMPT_ONLY": "",
+                "OPENAI": "gpt-5-mini",
+                "ANTHROPIC": "claude-sonnet-4-20250514",
+                "GEMINI": "gemini-2.5-flash",
+            }
+            ai_model = st.text_input(
+                "Modelo",
+                value=default_models.get(ai_provider, ""),
+                key=f"ai_review_model_{ai_provider}",
+            )
+            st.caption("Revisión manual independiente. No modifica señales, scores ni niveles.")
+            if st.button("Generar análisis IA", key="generate_ai_review"):
+                result = ai_review.save_ai_review(
+                    root=ROOT,
+                    row=selected_candidate,
+                    provider=ai_provider,
+                    model=ai_model,
+                    execute=ai_provider != "PROMPT_ONLY",
+                )
+                _show_action_result(result)
+                if result.get("response"):
+                    st.code(result["response"], language="json")
+                else:
+                    st.text_area(
+                        "Prompt auditable",
+                        value=result.get("prompt", ""),
+                        height=320,
+                        key="ai_review_prompt_output",
+                    )
 
     with tabs[2]:
-        st.subheader("Quality & guardrails")
+        st.subheader("Calidad y reglas")
         _status_message(quality["status"])
         _rules_panel()
         execution_guard = "no " + "bro" + "ker"
@@ -289,8 +365,8 @@ def main() -> None:
                 {"guardrail": "_".join(["TRIGGER", "CONFIRMED"]) + " requires VALID/HIGH", "status": "OK"},
             ]
         )
-        st.dataframe(guardrail_rows, use_container_width=True, hide_index=True)
-        st.markdown("### Quote quality")
+        ui_layout.render_display_dataframe(guardrail_rows)
+        ui_layout.render_section_title("Calidad de quote")
         _bar_chart(ui_charts.build_quote_quality_chart_data(candidates))
         if quality.get("warnings"):
             st.warning("\n".join(str(item) for item in quality["warnings"]))
@@ -304,25 +380,25 @@ def main() -> None:
         paper_summary = paper.get("summary", {})
         _metrics(
             [
-                ("journal_rows", paper_summary.get("journal_rows", 0)),
-                ("pending_review", paper_summary.get("pending_review", 0)),
-                ("paper_watch", paper_summary.get("paper_watch", 0)),
-                ("paper_enter", paper_summary.get("paper_enter", 0)),
-                ("blocked", paper_summary.get("blocked", 0)),
-                ("closed_paper", paper_summary.get("closed_paper", 0)),
-                ("pending_export", paper_summary.get("pending_export", 0)),
-                ("exported_outcomes", paper_summary.get("exported_outcomes", 0)),
+                ("Filas journal", paper_summary.get("journal_rows", 0)),
+                ("Pendientes", paper_summary.get("pending_review", 0)),
+                ("Paper watch", paper_summary.get("paper_watch", 0)),
+                ("Paper enter", paper_summary.get("paper_enter", 0)),
+                ("Bloqueados", paper_summary.get("blocked", 0)),
+                ("Cerrados", paper_summary.get("closed_paper", 0)),
+                ("Export pendiente", paper_summary.get("pending_export", 0)),
+                ("Outcomes exportados", paper_summary.get("exported_outcomes", 0)),
             ],
             columns=4,
         )
-        st.markdown("### Paper status")
+        ui_layout.render_section_title("Estado paper")
         _bar_chart(ui_charts.build_paper_status_chart_data(paper))
         paper_rows = _records_to_dataframe(paper.get("data", {}).get("rows", []))
         if not paper_rows.empty:
-            st.dataframe(paper_rows, use_container_width=True, hide_index=True)
+            ui_layout.render_display_dataframe(paper_rows, height=460)
 
     with tabs[4]:
-        st.subheader("Follow-up")
+        st.subheader("Seguimiento")
         _status_message(followup["status"])
         decisions = followup.get("summary", {}).get("decisions", {})
         _metrics(
@@ -336,14 +412,14 @@ def main() -> None:
             ],
             columns=3,
         )
-        st.markdown("### Follow-up decisions")
+        ui_layout.render_section_title("Decisiones de seguimiento")
         _bar_chart(ui_charts.build_followup_decision_chart_data(followup))
         followup_rows = _records_to_dataframe(followup.get("data", {}).get("rows", []))
         if not followup_rows.empty:
-            st.dataframe(followup_rows, use_container_width=True, hide_index=True)
+            ui_layout.render_display_dataframe(followup_rows, height=420)
 
     with tabs[5]:
-        st.subheader("Cycle audit")
+        st.subheader("Auditoría ciclo")
         _status_message(cycle["status"])
         cycle_summary = cycle.get("summary", {})
         _metrics(
@@ -363,11 +439,11 @@ def main() -> None:
             st.warning("\n".join(str(item) for item in cycle["warnings"]))
         if cycle.get("errors"):
             st.error("\n".join(str(item) for item in cycle["errors"]))
-        st.markdown("### Closed outcomes")
+        ui_layout.render_section_title("Outcomes cerrados")
         _bar_chart(ui_charts.build_closed_outcomes_chart_data(cycle))
 
     with tabs[6]:
-        st.subheader("Calibration")
+        st.subheader("Calibración")
         st.warning("Calibration is observational. No automatic weight changes.")
         _status_message(calibration["status"])
         _metrics(
@@ -379,13 +455,13 @@ def main() -> None:
             ],
             columns=4,
         )
-        st.markdown("### Score buckets")
+        ui_layout.render_section_title("Buckets de score")
         _bar_chart(ui_charts.build_calibration_bucket_chart_data(calibration), value_column="value")
-        st.markdown("### R multiple")
+        ui_layout.render_section_title("R multiple")
         _bar_chart(ui_charts.build_r_multiple_chart_data(calibration), value_column="r_multiple")
 
     with tabs[7]:
-        st.subheader("Paper actions")
+        st.subheader("Acciones paper")
         ui_layout.render_no_real_order_notice()
         paper_rows = _records_to_dataframe(paper.get("data", {}).get("rows", []))
         journal_options, ticker_options = _paper_identifier_options(paper_rows)
@@ -468,7 +544,7 @@ def main() -> None:
                 )
                 _show_action_result(result)
 
-        st.markdown("### Actualizar follow-up")
+        st.markdown("### Actualizar seguimiento")
         if st.button("Refresh paper follow-up", key="refresh_paper_followup"):
             result = paper_actions.refresh_paper_followup(root=ROOT)
             _show_action_result(result)
@@ -526,7 +602,7 @@ def main() -> None:
                 _show_action_result(result)
 
     with tabs[8]:
-        st.subheader("Reports status")
+        st.subheader("Reportes")
         ui_layout.render_source_status_table(sources)
         decision_source = sources.get("sources", {}).get("gui_operational_decision_log", {}) or {}
         review_source = sources.get("sources", {}).get("gui_post_session_review", {}) or {}
@@ -579,6 +655,65 @@ def main() -> None:
             for item in recommendations:
                 st.write(f"- {item}")
         st.caption(str(quality_data.get("notice", "observational only; no automatic trading changes")))
+
+        weekly_source = sources.get("sources", {}).get("gui_weekly_operational_review", {}) or {}
+        weekly_data = weekly_source.get("data", {}) if isinstance(weekly_source, dict) else {}
+        st.markdown("### Weekly review")
+        _metrics(
+            [
+                ("weekly_score", weekly_data.get("weekly_operational_score", "N/A")),
+                ("weekly_bucket", weekly_data.get("weekly_operational_bucket", "MISSING")),
+                ("recommendation", weekly_data.get("weekly_recommendation", "MISSING")),
+                ("ready_calibration_review", weekly_data.get("ready_for_calibration_review", False)),
+                ("sessions", weekly_data.get("sessions_count", 0)),
+                ("checklist_completion", weekly_data.get("checklist_completion_rate", "N/A")),
+                ("decisions", weekly_data.get("total_decisions", 0)),
+                ("paper_enter", weekly_data.get("paper_enter_decisions", 0)),
+                ("quality_score", weekly_data.get("avg_decision_quality_score", "N/A")),
+                ("guardrail_violations", weekly_data.get("guardrail_violations_count", 0)),
+            ],
+            columns=5,
+        )
+        recurrent = weekly_data.get("recurrent_problems", [])
+        if recurrent:
+            st.markdown("#### Recurrent warnings")
+            for item in recurrent:
+                st.write(f"- {item}")
+        weekly_recommendations = weekly_data.get("observational_recommendations", [])
+        if weekly_recommendations:
+            st.markdown("#### Observational decision")
+            for item in weekly_recommendations:
+                st.write(f"- {item}")
+        st.caption(str(weekly_data.get("manual_notice", "manual review only; paper trading only; no real orders")))
+
+        evidence_source = sources.get("sources", {}).get("gui_evidence_collection_window", {}) or {}
+        evidence_data = evidence_source.get("data", {}) if isinstance(evidence_source, dict) else {}
+        st.markdown("### Evidence window")
+        _metrics(
+            [
+                ("readiness_status", evidence_data.get("readiness_status", "MISSING")),
+                ("readiness_score", evidence_data.get("calibration_readiness_score", "N/A")),
+                ("bucket", evidence_data.get("readiness_bucket", "MISSING")),
+                ("sessions", evidence_data.get("sessions_count", 0)),
+                ("decisions", evidence_data.get("total_decisions", 0)),
+                ("paper_enters", evidence_data.get("paper_enter_decisions", 0)),
+                ("closed_paper", evidence_data.get("closed_paper_count", 0)),
+                ("checklist_completion", evidence_data.get("checklist_completion_rate", "N/A")),
+                ("decision_quality", evidence_data.get("avg_decision_quality_score", "N/A")),
+                ("guardrail_violations", evidence_data.get("guardrail_violations_count", 0)),
+            ],
+            columns=5,
+        )
+        reason = evidence_data.get("readiness_reason", "")
+        if reason:
+            st.markdown("#### No-readiness reasons")
+            st.write(f"- {reason}")
+        next_steps = evidence_data.get("observational_next_steps", [])
+        if next_steps:
+            st.markdown("#### Observational next steps")
+            for item in next_steps:
+                st.write(f"- {item}")
+        st.caption(str(evidence_data.get("manual_notice", "manual review only; paper trading only; no real orders")))
 
 
 if __name__ == "__main__":

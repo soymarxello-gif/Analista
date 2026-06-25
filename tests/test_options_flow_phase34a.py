@@ -240,6 +240,9 @@ def test_source_coverage_reports_options_flow_counts():
                 "options_source": "yfinance",
                 "options_available": True,
                 "options_error": "",
+                "options_priority_selected": True,
+                "options_priority_reason": "preliminary_watchlist",
+                "options_preliminary_signal": "WATCHLIST",
             },
             {
                 "ticker": "BBB",
@@ -248,6 +251,9 @@ def test_source_coverage_reports_options_flow_counts():
                 "options_source": "yfinance",
                 "options_available": False,
                 "options_error": "no_options_listed",
+                "options_priority_selected": False,
+                "options_priority_reason": "not_selected_by_priority_budget",
+                "options_preliminary_signal": "AVOID",
             },
         ]
     )
@@ -257,6 +263,8 @@ def test_source_coverage_reports_options_flow_counts():
     assert report["options_flow"]["options_bias"]["NEUTRAL_WITH_DATA"] == 1
     assert report["options_flow"]["options_bias"]["NO_OPTIONS_AVAILABLE"] == 1
     assert report["options_flow"]["options_error"]["no_options_listed"] == 1
+    assert report["options_flow"]["options_priority_selected"]["True"] == 1
+    assert report["options_flow"]["options_priority_reason"]["preliminary_watchlist"] == 1
 
 
 def test_daily_operator_index_renders_options_flow_summary():

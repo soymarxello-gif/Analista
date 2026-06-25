@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -17,9 +16,9 @@ if str(ROOT) not in sys.path:
 
 from tools.history_archive import archive_current_reports
 from tools.history_evolution import save_history_evolution_reports
-from tools.setup_persistence_score import save_setup_persistence_reports
 from tools.manual_review_persistence_enricher import save_enriched_manual_review_reports
 from tools.manual_review_top import save_manual_review_top_reports
+from tools.setup_persistence_score import save_setup_persistence_reports
 
 DEFAULT_STEPS = [
     {
@@ -118,6 +117,21 @@ DEFAULT_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "posttest_thesis_audit",
+        "cmd": [
+            sys.executable,
+            "tools/posttest_thesis_audit.py",
+            "--posttests",
+            "reports/posttests/**/*.csv",
+            "--json-out",
+            "reports/posttest_thesis_audit_latest.json",
+            "--markdown-out",
+            "reports/posttest_thesis_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "reports_cleanup",
         "cmd": [
             sys.executable,
@@ -149,6 +163,21 @@ POST_SUMMARY_STEPS = [
         ],
         "required": False,
         "timeout_seconds": 120,
+    },
+    {
+        "name": "scenario_engine_audit",
+        "cmd": [
+            sys.executable,
+            "tools/scenario_engine_audit.py",
+            "--input-csv",
+            "reports/latest_scan_audited.csv",
+            "--json-out",
+            "reports/scenario_engine_audit_latest.json",
+            "--markdown-out",
+            "reports/scenario_engine_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
     },
     {
         "name": "trade_decision_checklist",
@@ -234,6 +263,60 @@ POST_SUMMARY_STEPS = [
             "reports/paper_trading_cycle_audit_latest.json",
             "--markdown-out",
             "reports/paper_trading_cycle_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "webull_readonly_market_data_audit",
+        "cmd": [
+            sys.executable,
+            "tools/webull_readonly_market_data_audit.py",
+            "--json-out",
+            "reports/webull_readonly_market_data_latest.json",
+            "--markdown-out",
+            "reports/webull_readonly_market_data_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "cboe_market_statistics_audit",
+        "cmd": [
+            sys.executable,
+            "tools/cboe_market_statistics_audit.py",
+            "--json-out",
+            "reports/cboe_market_statistics_latest.json",
+            "--markdown-out",
+            "reports/cboe_market_statistics_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "google_sheets_data_source_audit",
+        "cmd": [
+            sys.executable,
+            "tools/google_sheets_data_source_audit.py",
+            "--json-out",
+            "reports/google_sheets_data_source_latest.json",
+            "--markdown-out",
+            "reports/google_sheets_data_source_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "macro_event_context",
+        "cmd": [
+            sys.executable,
+            "tools/macro_event_context.py",
+            "--calendar",
+            "data/economic_calendar.csv",
+            "--json-out",
+            "reports/macro_event_context_latest.json",
+            "--markdown-out",
+            "reports/macro_event_context_latest.md",
         ],
         "required": False,
         "timeout_seconds": 60,
@@ -421,6 +504,32 @@ POST_SUMMARY_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "gui_weekly_operational_review_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_weekly_operational_review_audit.py",
+            "--json-out",
+            "reports/gui_weekly_operational_review_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_weekly_operational_review_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
+        "name": "gui_evidence_collection_audit",
+        "cmd": [
+            sys.executable,
+            "tools/gui_evidence_collection_audit.py",
+            "--json-out",
+            "reports/gui_evidence_collection_audit_latest.json",
+            "--markdown-out",
+            "reports/gui_evidence_collection_audit_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 60,
+    },
+    {
         "name": "ui_data_contract_audit",
         "cmd": [
             sys.executable,
@@ -433,6 +542,17 @@ POST_SUMMARY_STEPS = [
         "required": False,
         "timeout_seconds": 60,
     },
+]
+
+FINAL_DERIVED_REFRESH_STEP_NAMES = [
+    "trade_decision_checklist",
+    "trade_candidate_cards",
+    "daily_run_manifest",
+    "encoding_audit",
+    "daily_quality_gate",
+    "release_readiness_audit",
+    "daily_operator_index",
+    "daily_run_manifest",
 ]
 
 
@@ -542,6 +662,7 @@ def _file_status(path: Path) -> dict:
 def collect_output_status() -> dict:
     files = [
         ROOT / "reports" / "project_preflight_latest.json",
+        ROOT / "reports" / "scan_performance_latest.json",
         ROOT / "reports" / "project_preflight_latest.md",
         ROOT / "reports" / "latest_scan_audited.csv",
         ROOT / "reports" / "latest_scan_audited.json",
@@ -570,6 +691,14 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "paper_trade_close_latest.md",
         ROOT / "reports" / "paper_trading_cycle_audit_latest.json",
         ROOT / "reports" / "paper_trading_cycle_audit_latest.md",
+        ROOT / "reports" / "webull_readonly_market_data_latest.json",
+        ROOT / "reports" / "webull_readonly_market_data_latest.md",
+        ROOT / "reports" / "cboe_market_statistics_latest.json",
+        ROOT / "reports" / "cboe_market_statistics_latest.md",
+        ROOT / "reports" / "google_sheets_data_source_latest.json",
+        ROOT / "reports" / "google_sheets_data_source_latest.md",
+        ROOT / "reports" / "macro_event_context_latest.json",
+        ROOT / "reports" / "macro_event_context_latest.md",
         ROOT / "reports" / "daily_run_manifest_latest.json",
         ROOT / "reports" / "daily_run_manifest_latest.md",
         ROOT / "reports" / "encoding_audit_latest.json",
@@ -609,20 +738,35 @@ def collect_output_status() -> dict:
         ROOT / "reports" / "gui_decision_quality_review_latest.csv",
         ROOT / "reports" / "gui_decision_quality_audit_latest.json",
         ROOT / "reports" / "gui_decision_quality_audit_latest.md",
+        ROOT / "reports" / "gui_weekly_operational_review_latest.json",
+        ROOT / "reports" / "gui_weekly_operational_review_latest.md",
+        ROOT / "reports" / "gui_weekly_operational_review_latest.csv",
+        ROOT / "reports" / "gui_weekly_operational_review_audit_latest.json",
+        ROOT / "reports" / "gui_weekly_operational_review_audit_latest.md",
+        ROOT / "reports" / "gui_evidence_collection_window_latest.json",
+        ROOT / "reports" / "gui_evidence_collection_window_latest.md",
+        ROOT / "reports" / "gui_evidence_collection_window_latest.csv",
+        ROOT / "reports" / "gui_evidence_collection_audit_latest.json",
+        ROOT / "reports" / "gui_evidence_collection_audit_latest.md",
         ROOT / "reports" / "reports_cleanup_latest.json",
         ROOT / "reports" / "reports_cleanup_latest.md",
         ROOT / "reports" / "source_coverage_latest.json",
+        ROOT / "reports" / "scenario_engine_audit_latest.json",
+        ROOT / "reports" / "scenario_engine_audit_latest.md",
         ROOT / "reports" / "history_evolution_latest.csv",
         ROOT / "reports" / "history_evolution_latest.md",
         ROOT / "reports" / "setup_persistence_latest.csv",
         ROOT / "reports" / "setup_persistence_latest.md",
         ROOT / "reports" / "trade_outcome_analytics_latest.csv",
+        ROOT / "reports" / "trade_outcome_analytics_latest.json",
         ROOT / "reports" / "trade_outcome_analytics_latest.md",
         ROOT / "reports" / "trade_score_calibration_latest.csv",
         ROOT / "reports" / "trade_score_calibration_latest.json",
         ROOT / "reports" / "trade_score_calibration_latest.md",
         ROOT / "reports" / "calibration_recommendations_latest.md",
         ROOT / "reports" / "calibration_recommendations_latest.json",
+        ROOT / "reports" / "posttest_thesis_audit_latest.json",
+        ROOT / "reports" / "posttest_thesis_audit_latest.md",
     ]
 
     return {
@@ -651,6 +795,10 @@ def collect_scan_snapshot() -> dict:
     gui_supervised_session_audit_path = ROOT / "reports" / "gui_supervised_session_audit_latest.json"
     gui_daily_checklist_path = ROOT / "reports" / "gui_daily_operating_checklist_latest.json"
     gui_daily_checklist_audit_path = ROOT / "reports" / "gui_daily_operating_checklist_audit_latest.json"
+    gui_weekly_review_path = ROOT / "reports" / "gui_weekly_operational_review_latest.json"
+    gui_weekly_review_audit_path = ROOT / "reports" / "gui_weekly_operational_review_audit_latest.json"
+    gui_evidence_window_path = ROOT / "reports" / "gui_evidence_collection_window_latest.json"
+    gui_evidence_audit_path = ROOT / "reports" / "gui_evidence_collection_audit_latest.json"
 
     snapshot: dict = {
         "scan_rows": None,
@@ -753,6 +901,34 @@ def collect_scan_snapshot() -> dict:
             "manual_review_only": False,
             "critical_failures": 0,
             "warnings": 0,
+        },
+        "gui_weekly_operational_review": {
+            "status": "MISSING",
+            "weekly_operational_score": "",
+            "weekly_operational_bucket": "MISSING",
+            "weekly_recommendation": "MISSING",
+            "sessions_count": 0,
+            "checklist_completion_rate": "",
+            "total_decisions": 0,
+            "paper_enter_decisions": 0,
+            "avg_decision_quality_score": "",
+            "guardrail_violations_count": 0,
+            "ready_for_calibration_review": False,
+            "audit_status": "MISSING",
+        },
+        "gui_evidence_collection_window": {
+            "status": "MISSING",
+            "readiness_status": "MISSING",
+            "calibration_readiness_score": "",
+            "readiness_bucket": "MISSING",
+            "sessions_count": 0,
+            "total_decisions": 0,
+            "paper_enter_decisions": 0,
+            "closed_paper_count": 0,
+            "checklist_completion_rate": "",
+            "avg_decision_quality_score": "",
+            "guardrail_violations_count": 0,
+            "audit_status": "MISSING",
         },
         "live_quote_recheck": {
             "status": "MISSING",
@@ -1157,6 +1333,56 @@ def collect_scan_snapshot() -> dict:
             "warnings": int(gui_daily_checklist_audit_data.get("warnings", 0) or 0),
         }
 
+    if gui_weekly_review_path.exists() or gui_weekly_review_audit_path.exists():
+        try:
+            gui_weekly_data = json.loads(gui_weekly_review_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_weekly_data = {}
+        try:
+            gui_weekly_audit_data = json.loads(gui_weekly_review_audit_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_weekly_audit_data = {}
+
+        snapshot["gui_weekly_operational_review"] = {
+            "status": str(gui_weekly_audit_data.get("status") or gui_weekly_data.get("status") or "UNKNOWN"),
+            "weekly_operational_score": gui_weekly_data.get("weekly_operational_score", ""),
+            "weekly_operational_bucket": str(gui_weekly_data.get("weekly_operational_bucket", "MISSING")),
+            "weekly_recommendation": str(gui_weekly_data.get("weekly_recommendation", "MISSING")),
+            "sessions_count": int(gui_weekly_data.get("sessions_count", 0) or 0),
+            "checklist_completion_rate": gui_weekly_data.get("checklist_completion_rate", ""),
+            "total_decisions": int(gui_weekly_data.get("total_decisions", 0) or 0),
+            "paper_enter_decisions": int(gui_weekly_data.get("paper_enter_decisions", 0) or 0),
+            "avg_decision_quality_score": gui_weekly_data.get("avg_decision_quality_score", ""),
+            "guardrail_violations_count": int(gui_weekly_data.get("guardrail_violations_count", 0) or 0),
+            "ready_for_calibration_review": bool(gui_weekly_data.get("ready_for_calibration_review", False)),
+            "audit_status": str(gui_weekly_audit_data.get("status", "MISSING")),
+        }
+
+    if gui_evidence_window_path.exists() or gui_evidence_audit_path.exists():
+        try:
+            gui_evidence_data = json.loads(gui_evidence_window_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_evidence_data = {}
+        try:
+            gui_evidence_audit_data = json.loads(gui_evidence_audit_path.read_text(encoding="utf-8"))
+        except Exception:
+            gui_evidence_audit_data = {}
+
+        snapshot["gui_evidence_collection_window"] = {
+            "status": str(gui_evidence_audit_data.get("status") or gui_evidence_data.get("status") or "UNKNOWN"),
+            "readiness_status": str(gui_evidence_data.get("readiness_status", "MISSING")),
+            "calibration_readiness_score": gui_evidence_data.get("calibration_readiness_score", ""),
+            "readiness_bucket": str(gui_evidence_data.get("readiness_bucket", "MISSING")),
+            "sessions_count": int(gui_evidence_data.get("sessions_count", 0) or 0),
+            "total_decisions": int(gui_evidence_data.get("total_decisions", 0) or 0),
+            "paper_enter_decisions": int(gui_evidence_data.get("paper_enter_decisions", 0) or 0),
+            "closed_paper_count": int(gui_evidence_data.get("closed_paper_count", 0) or 0),
+            "checklist_completion_rate": gui_evidence_data.get("checklist_completion_rate", ""),
+            "avg_decision_quality_score": gui_evidence_data.get("avg_decision_quality_score", ""),
+            "guardrail_violations_count": int(gui_evidence_data.get("guardrail_violations_count", 0) or 0),
+            "audit_status": str(gui_evidence_audit_data.get("status", "MISSING")),
+        }
+
     return snapshot
 
 
@@ -1318,6 +1544,7 @@ def build_summary_text(
 
     critical_reports = [
         "reports/project_preflight_latest.json",
+        "reports/scan_performance_latest.json",
         "reports/project_preflight_latest.md",
         "reports/latest_scan_audited.csv",
         "reports/latest_scan_audited.json",
@@ -1333,17 +1560,22 @@ def build_summary_text(
 
     secondary_reports = [
         "reports/source_coverage_latest.json",
+        "reports/scenario_engine_audit_latest.json",
+        "reports/scenario_engine_audit_latest.md",
         "reports/history_evolution_latest.csv",
         "reports/history_evolution_latest.md",
         "reports/setup_persistence_latest.csv",
         "reports/setup_persistence_latest.md",
         "reports/trade_outcome_analytics_latest.csv",
+        "reports/trade_outcome_analytics_latest.json",
         "reports/trade_outcome_analytics_latest.md",
         "reports/trade_score_calibration_latest.csv",
         "reports/trade_score_calibration_latest.json",
         "reports/trade_score_calibration_latest.md",
         "reports/calibration_recommendations_latest.md",
         "reports/calibration_recommendations_latest.json",
+        "reports/posttest_thesis_audit_latest.json",
+        "reports/posttest_thesis_audit_latest.md",
         "reports/live_quote_recheck_latest.csv",
         "reports/live_quote_recheck_latest.md",
         "reports/live_quote_recheck_latest.json",
@@ -1363,6 +1595,8 @@ def build_summary_text(
         "reports/paper_trade_close_latest.md",
         "reports/paper_trading_cycle_audit_latest.json",
         "reports/paper_trading_cycle_audit_latest.md",
+        "reports/macro_event_context_latest.json",
+        "reports/macro_event_context_latest.md",
         "reports/reports_cleanup_latest.json",
         "reports/reports_cleanup_latest.md",
         "reports/daily_run_manifest_latest.json",
@@ -1402,6 +1636,16 @@ def build_summary_text(
         "reports/gui_decision_quality_review_latest.csv",
         "reports/gui_decision_quality_audit_latest.json",
         "reports/gui_decision_quality_audit_latest.md",
+        "reports/gui_weekly_operational_review_latest.json",
+        "reports/gui_weekly_operational_review_latest.md",
+        "reports/gui_weekly_operational_review_latest.csv",
+        "reports/gui_weekly_operational_review_audit_latest.json",
+        "reports/gui_weekly_operational_review_audit_latest.md",
+        "reports/gui_evidence_collection_window_latest.json",
+        "reports/gui_evidence_collection_window_latest.md",
+        "reports/gui_evidence_collection_window_latest.csv",
+        "reports/gui_evidence_collection_audit_latest.json",
+        "reports/gui_evidence_collection_audit_latest.md",
     ]
 
     lines.append("=== ANALISTA DAILY VALIDATION SUMMARY ===")
@@ -1431,8 +1675,10 @@ def build_summary_text(
     gui_release = snapshot.get("gui_release_audit", {}) or {}
     gui_session = snapshot.get("gui_supervised_session", {}) or {}
     gui_session_audit = snapshot.get("gui_supervised_session_audit", {}) or {}
-    gui_daily_checklist = snapshot.get("gui_daily_operating_checklist", {}) or {}
-    gui_daily_checklist_audit = snapshot.get("gui_daily_operating_checklist_audit", {}) or {}
+    snapshot.get("gui_daily_operating_checklist", {}) or {}
+    snapshot.get("gui_daily_operating_checklist_audit", {}) or {}
+    gui_weekly = snapshot.get("gui_weekly_operational_review", {}) or {}
+    gui_evidence = snapshot.get("gui_evidence_collection_window", {}) or {}
     lines.append(f"- Live quote recheck rows: {live.get('rows')}")
     lines.append(f"- Trade decision checklist rows: {checklist.get('rows')}")
     lines.append(f"- Trade candidate cards rows: {cards.get('rows')}")
@@ -1454,6 +1700,10 @@ def build_summary_text(
     lines.append(f"- GUI release audit status: {gui_release.get('status')}")
     lines.append(f"- GUI supervised session status: {gui_session.get('latest_session_status')}")
     lines.append(f"- GUI supervised session audit status: {gui_session_audit.get('status')}")
+    lines.append(f"- GUI weekly operational review status: {gui_weekly.get('status')}")
+    lines.append(f"- GUI weekly operational score: {gui_weekly.get('weekly_operational_score')}")
+    lines.append(f"- GUI evidence readiness: {gui_evidence.get('readiness_status')}")
+    lines.append(f"- GUI evidence readiness score: {gui_evidence.get('calibration_readiness_score')}")
     lines.append("")
 
     lines.extend(_build_operational_next_steps(status, snapshot))
@@ -1693,6 +1943,38 @@ def build_summary_text(
     lines.append(f"- exported_count: {paper_cycle.get('exported_count')}")
     lines.append(f"- duplicate_outcome_ids: {paper_cycle.get('duplicate_outcome_ids')}")
 
+    gui_weekly = snapshot.get("gui_weekly_operational_review", {}) or {}
+    lines.append("")
+    lines.append("GUI weekly operational review:")
+    lines.append(f"- status: {gui_weekly.get('status')}")
+    lines.append(f"- weekly_operational_score: {gui_weekly.get('weekly_operational_score')}")
+    lines.append(f"- weekly_operational_bucket: {gui_weekly.get('weekly_operational_bucket')}")
+    lines.append(f"- weekly_recommendation: {gui_weekly.get('weekly_recommendation')}")
+    lines.append(f"- sessions_count: {gui_weekly.get('sessions_count')}")
+    lines.append(f"- checklist_completion_rate: {gui_weekly.get('checklist_completion_rate')}")
+    lines.append(f"- total_decisions: {gui_weekly.get('total_decisions')}")
+    lines.append(f"- paper_enter_decisions: {gui_weekly.get('paper_enter_decisions')}")
+    lines.append(f"- avg_decision_quality_score: {gui_weekly.get('avg_decision_quality_score')}")
+    lines.append(f"- guardrail_violations_count: {gui_weekly.get('guardrail_violations_count')}")
+    lines.append(f"- ready_for_calibration_review: {gui_weekly.get('ready_for_calibration_review')}")
+    lines.append(f"- audit_status: {gui_weekly.get('audit_status')}")
+
+    gui_evidence = snapshot.get("gui_evidence_collection_window", {}) or {}
+    lines.append("")
+    lines.append("GUI evidence collection window:")
+    lines.append(f"- status: {gui_evidence.get('status')}")
+    lines.append(f"- readiness_status: {gui_evidence.get('readiness_status')}")
+    lines.append(f"- calibration_readiness_score: {gui_evidence.get('calibration_readiness_score')}")
+    lines.append(f"- readiness_bucket: {gui_evidence.get('readiness_bucket')}")
+    lines.append(f"- sessions_count: {gui_evidence.get('sessions_count')}")
+    lines.append(f"- total_decisions: {gui_evidence.get('total_decisions')}")
+    lines.append(f"- paper_enter_decisions: {gui_evidence.get('paper_enter_decisions')}")
+    lines.append(f"- closed_paper_count: {gui_evidence.get('closed_paper_count')}")
+    lines.append(f"- checklist_completion_rate: {gui_evidence.get('checklist_completion_rate')}")
+    lines.append(f"- avg_decision_quality_score: {gui_evidence.get('avg_decision_quality_score')}")
+    lines.append(f"- guardrail_violations_count: {gui_evidence.get('guardrail_violations_count')}")
+    lines.append(f"- audit_status: {gui_evidence.get('audit_status')}")
+
     lines.append("")
     lines.append("[Manual operating reminder]")
     lines.append("- VETO y AVOID no son operables.")
@@ -1769,6 +2051,16 @@ def run_daily_validation(summary_out: Path) -> int:
         per_group_limit=20,
     )
 
+    post_steps_by_name = {step["name"]: step for step in POST_SUMMARY_STEPS}
+    final_refresh_results = []
+    for step_name in FINAL_DERIVED_REFRESH_STEP_NAMES:
+        step = post_steps_by_name.get(step_name)
+        if step is None:
+            continue
+        result = run_step(step)
+        final_refresh_results.append(result)
+    results.extend(final_refresh_results)
+
     # Refresh after history_evolution and setup_persistence are generated.
     output_status = collect_output_status()
     snapshot = collect_scan_snapshot()
@@ -1827,6 +2119,16 @@ def run_daily_validation(summary_out: Path) -> int:
             "manual_review_latest.md",
             "manual_review_top.csv",
             "manual_review_top.md",
+            "trade_decision_checklist_latest.csv",
+            "trade_decision_checklist_latest.md",
+            "trade_decision_checklist_latest.json",
+            "trade_candidate_cards_latest.md",
+            "trade_candidate_cards_latest.json",
+            "daily_quality_gate_latest.md",
+            "daily_quality_gate_latest.json",
+            "daily_operator_index.md",
+            "daily_run_manifest_latest.md",
+            "daily_run_manifest_latest.json",
         ]:
             src = ROOT / "reports" / filename
             dst = archive_dir / filename

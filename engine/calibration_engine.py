@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 import glob
 import json
 import math
+from pathlib import Path
 
 import pandas as pd
-
 
 COMPONENT_SCORE_COLUMNS = {
     "rs_score": "relative_strength",
@@ -136,6 +135,20 @@ def summarize_posttest(posttest_paths: list[str | Path], min_samples: int = 3) -
             "warning": "No encontré archivos post-test válidos.",
         }
 
+    no_entry_rows = 0
+    if "level_outcome" in df.columns:
+        no_entry_mask = df["level_outcome"].fillna("").astype(str).eq("NO_ENTRY_TRIGGER")
+        no_entry_rows = int(no_entry_mask.sum())
+        df = df[~no_entry_mask].copy()
+
+    if df.empty:
+        return {
+            "status": "NO_EXECUTED_ENTRIES",
+            "summary": {"no_entry_triggers": no_entry_rows},
+            "group_summaries": {},
+            "warning": "No proposed entry levels were executed.",
+        }
+
     numeric_cols = [
         "horizon_days",
         "return_close_pct",
@@ -158,6 +171,7 @@ def summarize_posttest(posttest_paths: list[str | Path], min_samples: int = 3) -
         "avg_return_close": float(df["return_close_pct"].mean()) if "return_close_pct" in df.columns else None,
         "median_return_close": float(df["return_close_pct"].median()) if "return_close_pct" in df.columns else None,
         "hit_rate": float((df["return_close_pct"] > 0).mean()) if "return_close_pct" in df.columns else None,
+        "no_entry_triggers": no_entry_rows,
     }
 
     group_summaries: dict[str, list[dict]] = {}
@@ -215,6 +229,9 @@ def calibrate_weights_from_posttest(
             "proposed_weights": _current_weights_from_config(config),
         }
 
+    if "level_outcome" in df.columns:
+        df = df[df["level_outcome"].fillna("").astype(str) != "NO_ENTRY_TRIGGER"].copy()
+
     df = _safe_numeric(df, ["horizon_days", "return_close_pct"] + list(COMPONENT_SCORE_COLUMNS.keys()))
 
     if "horizon_days" in df.columns:
@@ -244,8 +261,12 @@ def calibrate_weights_from_posttest(
             continue
 
         ranked = subset[[score_col, "return_close_pct"]].rank(method="average")
-        corr = ranked[score_col].corr(ranked["return_close_pct"])
-        
+
+        if ranked[score_col].nunique() <= 1 or ranked["return_close_pct"].nunique() <= 1:
+            corr = 0.0
+        else:
+            corr = ranked[score_col].corr(ranked["return_close_pct"])
+
         if pd.isna(corr):
             corr = 0.0
 

@@ -54,12 +54,23 @@ def test_price_filter_is_hard():
 def test_market_cap_filter_is_hard():
     cfg = load_config()
     row = deepcopy(base_row())
-    row["market_cap"] = 1_499_999_999
+    row["market_cap"] = 2_499_999_999
 
     signal, reasons = classify_signal(row, cfg)
 
     assert signal == "VETO"
     assert "market_cap_below_min" in reasons
+
+
+def test_market_cap_at_floor_is_allowed():
+    cfg = load_config()
+    row = deepcopy(base_row())
+    row["market_cap"] = 2_500_000_000
+
+    signal, reasons = classify_signal(row, cfg)
+
+    assert signal == "TRIGGER_CONFIRMED"
+    assert "market_cap_below_min" not in reasons
 
 
 def test_no_valid_setup_is_veto():

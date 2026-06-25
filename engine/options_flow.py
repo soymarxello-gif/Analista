@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 LEGACY_OPTIONS_COLUMNS = [
     "options_data_available",
     "options_source",

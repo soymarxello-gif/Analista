@@ -6,7 +6,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -14,7 +13,6 @@ if str(ROOT) not in sys.path:
 
 from tools.gui_operational_decision_log import NO_REAL_ORDER_NOTICE, save_summary
 from tools.gui_post_session_review import save_review
-
 
 DEFAULT_JSON_OUT = ROOT / "reports" / "gui_operational_decision_log_audit_latest.json"
 DEFAULT_MARKDOWN_OUT = ROOT / "reports" / "gui_operational_decision_log_audit_latest.md"

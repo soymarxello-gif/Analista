@@ -58,7 +58,7 @@ universe:
 
 filters:
   min_price: 10
-  min_market_cap_usd: 1500000000
+  min_market_cap_usd: 2500000000
 
 screener:
   max_results_per_query: 250
@@ -136,9 +136,8 @@ screener:
 
 liquidity:
   min_price: 10
-  min_avg_volume_20d: 300000
-  min_avg_volume_60d: 250000
-  min_dollar_volume_20d: 10000000
+  min_dollar_volume_20d: 20000000
+  min_dollar_volume_60d: 15000000
   min_median_to_mean_volume_ratio: 0.50
   max_bid_ask_spread_pct: 0.01
   max_quote_distance_pct: 0.10
@@ -150,6 +149,7 @@ benchmarks:
   small_caps: "IWM"
   volatility: "^VIX"
   us10y: "^TNX"
+  us30y: "^TYX"
   dollar: "DX-Y.NYB"
   crude_oil: "CL=F"
   bitcoin: "BTC-USD"
@@ -172,6 +172,21 @@ market_regime:
 price_data:
   daily_period: "1y"
   daily_interval: "1d"
+  batch_size: 150
+  retry_batch_size: 50
+  timeout_seconds: 15
+  max_individual_fallbacks: 10
+
+deep_analysis:
+  mode: "shadow"
+  candidate_funnel:
+    target_tickers: 50
+    min_tickers: 40
+    max_tickers: 60
+    max_sector_share: 0.20
+  scenario_engine:
+    promotion_enabled: false
+    target_success_primary: true
 
 indicators:
   moving_averages: [20, 50, 200]
@@ -244,8 +259,48 @@ risk_profile:
 
 data_sources:
   cache_ttl_minutes:
-    fundamentals: 1440
+    fundamentals: 10080
+    earnings: 720
     options: 30
+  analysis_quotes:
+    enabled: true
+    max_tickers_per_run: 75
+    timeout_seconds: 15
+    use_alpaca_iex: true
+    use_google_sheets_manual: true
+  providers:
+    yahoo:
+      enabled: true
+      priority: 1
+      mode: "primary"
+      data_freshness: "UNKNOWN"
+    alpaca_iex:
+      enabled: true
+      priority: 2
+      mode: "read_only"
+      data_freshness: "DELAYED_15_MIN"
+      data_base_url: "https://data.alpaca.markets"
+    webull:
+      enabled: false
+      priority: 3
+      mode: "read_only"
+      data_freshness: "UNKNOWN"
+      base_url: "https://api.webull.com"
+      test_symbol: "AAPL"
+    cboe:
+      enabled: true
+      mode: "read_only"
+      data_freshness: "EOD"
+      market_share_url: "https://www.cboe.com/us/options/market_share/market/csv/"
+      total_put_call_url: "https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv"
+      equities_market_volume_url: "https://cdn.cboe.com/resources/us/equities/market-statistics/historical-market-volume/market_history_2026.csv"
+    google_sheets_manual:
+      enabled: true
+      mode: "read_only"
+      data_freshness: "DELAYED_20_MIN"
+      published_csv_url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR3Wq27cyOLpoocdVjvtFCHTTR5hD_489zl4FIfk9S8JiPmTkNwHX8FbSsusF2XvQ/pub?gid=1907410928&single=true&output=csv"
+      timeout_seconds: 20
+      max_stale_minutes: 1440
 
 data_quality:
   critical_missing_penalty: 0.20
@@ -255,15 +310,18 @@ fundamentals:
   enabled: true
   metadata_enrichment:
     enabled: true
-    max_tickers: 300
+    max_tickers: 600
   earnings_risk:
     veto_if_days_to_earnings_lte: 3
     penalize_if_days_to_earnings_lte: 7
 
+performance:
+  scan_report_path: "reports/scan_performance_latest.json"
+
 options_flow:
   enabled: true
   use_as_confirmation_only: true
-  max_tickers_per_run: 30
+  max_tickers_per_run: 75
   max_expirations: 3
   min_days_to_expiration: 3
   max_days_to_expiration: 45

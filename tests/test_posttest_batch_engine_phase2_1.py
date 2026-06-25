@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
-from engine.posttest_batch_engine import discover_scan_csvs, eligible_scans, infer_scan_date, posttest_output_path
+from engine.posttest_batch_engine import eligible_scans, infer_scan_date, posttest_output_path
 
 
 def test_infer_scan_date_from_timestamp(tmp_path: Path):

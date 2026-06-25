@@ -6,14 +6,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tools.gui_daily_operating_checklist import checklist_status
-
 
 DEFAULT_JSON_OUT = ROOT / "reports" / "gui_daily_operating_checklist_audit_latest.json"
 DEFAULT_MARKDOWN_OUT = ROOT / "reports" / "gui_daily_operating_checklist_audit_latest.md"

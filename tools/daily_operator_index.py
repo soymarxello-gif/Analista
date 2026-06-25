@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -432,6 +431,106 @@ def _normalize_calibration_recommendations_status(data: dict) -> dict:
     }
 
 
+def _normalize_macro_event_context_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "next_critical_event": "",
+            "next_critical_event_date": "",
+            "days_to_critical_event": None,
+            "event_risk_status": "UNKNOWN",
+            "liquidity_context": "UNKNOWN",
+            "m2_change_4w_pct": None,
+            "reverse_repo_change_4w_pct": None,
+            "effective_fed_funds_rate": None,
+            "issues_count": 0,
+        }
+
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "next_critical_event": str(data.get("next_critical_event", "")),
+        "next_critical_event_date": str(data.get("next_critical_event_date", "")),
+        "days_to_critical_event": data.get("days_to_critical_event"),
+        "event_risk_status": str(data.get("event_risk_status", "UNKNOWN")).upper(),
+        "liquidity_context": str(data.get("liquidity_context", "UNKNOWN")).upper(),
+        "m2_change_4w_pct": data.get("m2_change_4w_pct"),
+        "reverse_repo_change_4w_pct": data.get("reverse_repo_change_4w_pct"),
+        "effective_fed_funds_rate": data.get("effective_fed_funds_rate"),
+        "issues_count": len(data.get("issues", []) or []),
+    }
+
+
+def _normalize_scenario_engine_audit_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "deep_analysis_rows": 0,
+            "within_target_band": False,
+            "valid_trigger": 0,
+            "wait_for_confirmation": 0,
+            "late_entry_overextended": 0,
+            "weak_momentum": 0,
+            "structure_invalid": 0,
+            "context_conflict": 0,
+            "data_insufficient": 0,
+            "blocked_or_not_operable": 0,
+        }
+    statuses = data.get("scenario_status", {}) or {}
+    blocked_or_not_operable = sum(
+        _safe_int(statuses.get(key), 0)
+        for key in {
+            "WAIT_FOR_CONFIRMATION",
+            "LATE_ENTRY_OVEREXTENDED",
+            "WEAK_MOMENTUM",
+            "STRUCTURE_INVALID",
+            "CONTEXT_CONFLICT",
+            "DATA_INSUFFICIENT",
+        }
+    )
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "deep_analysis_rows": _safe_int(data.get("deep_analysis_rows"), 0),
+        "within_target_band": bool(data.get("within_target_band", False)),
+        "valid_trigger": _safe_int(statuses.get("VALID_TRIGGER"), 0),
+        "wait_for_confirmation": _safe_int(statuses.get("WAIT_FOR_CONFIRMATION"), 0),
+        "late_entry_overextended": _safe_int(statuses.get("LATE_ENTRY_OVEREXTENDED"), 0),
+        "weak_momentum": _safe_int(statuses.get("WEAK_MOMENTUM"), 0),
+        "structure_invalid": _safe_int(statuses.get("STRUCTURE_INVALID"), 0),
+        "context_conflict": _safe_int(statuses.get("CONTEXT_CONFLICT"), 0),
+        "data_insufficient": _safe_int(statuses.get("DATA_INSUFFICIENT"), 0),
+        "blocked_or_not_operable": blocked_or_not_operable,
+    }
+
+
+def _normalize_posttest_thesis_audit_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "executed_entries": 0,
+            "no_entry_triggers": 0,
+            "win_rate": None,
+            "target_hit_rate": None,
+            "stop_hit_rate": None,
+            "sample_size_warning": "",
+        }
+    summary = data.get("summary", {}) or {}
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "executed_entries": _safe_int(summary.get("executed_entries"), 0),
+        "no_entry_triggers": _safe_int(summary.get("no_entry_triggers"), 0),
+        "win_rate": summary.get("win_rate"),
+        "target_hit_rate": summary.get("target_hit_rate"),
+        "stop_hit_rate": summary.get("stop_hit_rate"),
+        "sample_size_warning": str(data.get("sample_size_warning", "")),
+    }
+
+
 def _normalize_release_readiness_status(data: dict) -> dict:
     if not data:
         return {
@@ -703,6 +802,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     preflight_json_path = reports / "project_preflight_latest.json"
     encoding_audit_json_path = reports / "encoding_audit_latest.json"
     quality_gate_json_path = reports / "daily_quality_gate_latest.json"
+    scenario_engine_audit_json_path = reports / "scenario_engine_audit_latest.json"
     live_quote_recheck_json_path = reports / "live_quote_recheck_latest.json"
     trade_decision_checklist_json_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_json_path = reports / "trade_candidate_cards_latest.json"
@@ -712,6 +812,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     paper_trading_cycle_audit_json_path = reports / "paper_trading_cycle_audit_latest.json"
     trade_score_calibration_json_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_json_path = reports / "calibration_recommendations_latest.json"
+    posttest_thesis_audit_json_path = reports / "posttest_thesis_audit_latest.json"
     release_readiness_json_path = reports / "release_readiness_latest.json"
     ui_data_contract_json_path = reports / "ui_data_contract_audit_latest.json"
     streamlit_smoke_json_path = reports / "streamlit_smoke_test_latest.json"
@@ -723,11 +824,19 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_daily_checklist_json_path = reports / "gui_daily_operating_checklist_latest.json"
     gui_daily_checklist_audit_json_path = reports / "gui_daily_operating_checklist_audit_latest.json"
     alpaca_readonly_json_path = reports / "alpaca_readonly_connectivity_latest.json"
+    webull_readonly_json_path = reports / "webull_readonly_market_data_latest.json"
+    cboe_market_statistics_json_path = reports / "cboe_market_statistics_latest.json"
+    google_sheets_data_source_json_path = reports / "google_sheets_data_source_latest.json"
+    macro_event_context_json_path = reports / "macro_event_context_latest.json"
     gui_decision_log_json_path = reports / "gui_operational_decision_log_latest.json"
     gui_post_session_review_json_path = reports / "gui_post_session_review_latest.json"
     gui_decision_log_audit_json_path = reports / "gui_operational_decision_log_audit_latest.json"
     gui_decision_quality_json_path = reports / "gui_decision_quality_review_latest.json"
     gui_decision_quality_audit_json_path = reports / "gui_decision_quality_audit_latest.json"
+    gui_weekly_review_json_path = reports / "gui_weekly_operational_review_latest.json"
+    gui_weekly_review_audit_json_path = reports / "gui_weekly_operational_review_audit_latest.json"
+    gui_evidence_window_json_path = reports / "gui_evidence_collection_window_latest.json"
+    gui_evidence_audit_json_path = reports / "gui_evidence_collection_audit_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -740,6 +849,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     preflight_data = _normalize_preflight_status(_load_json(preflight_json_path))
     encoding_audit_data = _normalize_encoding_audit_status(_load_json(encoding_audit_json_path))
     quality_gate_data = _normalize_quality_gate_status(_load_json(quality_gate_json_path))
+    scenario_engine_audit_data = _normalize_scenario_engine_audit_status(
+        _load_json(scenario_engine_audit_json_path)
+    )
     live_quote_recheck_data = _normalize_live_quote_recheck_status(
         _load_json(live_quote_recheck_json_path)
     )
@@ -766,6 +878,9 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     calibration_recommendations_data = _normalize_calibration_recommendations_status(
         _load_json(calibration_recommendations_json_path)
+    )
+    posttest_thesis_audit_data = _normalize_posttest_thesis_audit_status(
+        _load_json(posttest_thesis_audit_json_path)
     )
     release_readiness_data = _normalize_release_readiness_status(
         _load_json(release_readiness_json_path)
@@ -796,6 +911,21 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     alpaca_readonly_data = _normalize_alpaca_readonly_connectivity_status(
         _load_json(alpaca_readonly_json_path),
     )
+    webull_readonly_data = _normalize_secondary_data_provider_status(
+        _load_json(webull_readonly_json_path),
+        rows_key="endpoint_checks",
+    )
+    cboe_market_statistics_data = _normalize_secondary_data_provider_status(
+        _load_json(cboe_market_statistics_json_path),
+        rows_key="datasets_available",
+    )
+    google_sheets_data_source_data = _normalize_secondary_data_provider_status(
+        _load_json(google_sheets_data_source_json_path),
+        rows_key="rows",
+    )
+    macro_event_context_data = _normalize_macro_event_context_status(
+        _load_json(macro_event_context_json_path),
+    )
     gui_decision_log_data = _normalize_gui_operational_decision_log_status(
         _load_json(gui_decision_log_json_path),
         _load_json(gui_post_session_review_json_path),
@@ -804,6 +934,14 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_decision_quality_data = _normalize_gui_decision_quality_status(
         _load_json(gui_decision_quality_json_path),
         _load_json(gui_decision_quality_audit_json_path),
+    )
+    gui_weekly_review_data = _normalize_gui_weekly_operational_review_status(
+        _load_json(gui_weekly_review_json_path),
+        _load_json(gui_weekly_review_audit_json_path),
+    )
+    gui_evidence_window_data = _normalize_gui_evidence_collection_window_status(
+        _load_json(gui_evidence_window_json_path),
+        _load_json(gui_evidence_audit_json_path),
     )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
@@ -834,6 +972,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "daily_operator_index.md",
         reports / "daily_quality_gate_latest.json",
         reports / "daily_quality_gate_latest.md",
+        reports / "scenario_engine_audit_latest.json",
+        reports / "scenario_engine_audit_latest.md",
         reports / "release_readiness_latest.json",
         reports / "release_readiness_latest.md",
         reports / "ui_data_contract_audit_latest.json",
@@ -856,6 +996,14 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "gui_daily_operating_checklist_audit_latest.md",
         reports / "alpaca_readonly_connectivity_latest.json",
         reports / "alpaca_readonly_connectivity_latest.md",
+        reports / "webull_readonly_market_data_latest.json",
+        reports / "webull_readonly_market_data_latest.md",
+        reports / "cboe_market_statistics_latest.json",
+        reports / "cboe_market_statistics_latest.md",
+        reports / "google_sheets_data_source_latest.json",
+        reports / "google_sheets_data_source_latest.md",
+        reports / "macro_event_context_latest.json",
+        reports / "macro_event_context_latest.md",
         reports / "gui_operational_decision_log_latest.json",
         reports / "gui_operational_decision_log_latest.md",
         reports / "gui_post_session_review_latest.json",
@@ -867,6 +1015,16 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "gui_decision_quality_review_latest.csv",
         reports / "gui_decision_quality_audit_latest.json",
         reports / "gui_decision_quality_audit_latest.md",
+        reports / "gui_weekly_operational_review_latest.json",
+        reports / "gui_weekly_operational_review_latest.md",
+        reports / "gui_weekly_operational_review_latest.csv",
+        reports / "gui_weekly_operational_review_audit_latest.json",
+        reports / "gui_weekly_operational_review_audit_latest.md",
+        reports / "gui_evidence_collection_window_latest.json",
+        reports / "gui_evidence_collection_window_latest.md",
+        reports / "gui_evidence_collection_window_latest.csv",
+        reports / "gui_evidence_collection_audit_latest.json",
+        reports / "gui_evidence_collection_audit_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -891,6 +1049,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "trade_score_calibration_latest.md",
         reports / "calibration_recommendations_latest.md",
         reports / "calibration_recommendations_latest.json",
+        reports / "posttest_thesis_audit_latest.md",
+        reports / "posttest_thesis_audit_latest.json",
         reports / "project_preflight_latest.json",
         reports / "project_preflight_latest.md",
         reports / "daily_run_manifest_latest.json",
@@ -936,6 +1096,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "preflight": preflight_data,
         "encoding_audit": encoding_audit_data,
         "quality_gate": quality_gate_data,
+        "scenario_engine_audit": scenario_engine_audit_data,
         "live_quote_recheck": live_quote_recheck_data,
         "trade_decision_checklist": trade_decision_checklist_data,
         "trade_candidate_cards": trade_candidate_cards_data,
@@ -945,6 +1106,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "paper_trading_cycle_audit": paper_trading_cycle_audit_data,
         "trade_score_calibration": trade_score_calibration_data,
         "calibration_recommendations": calibration_recommendations_data,
+        "posttest_thesis_audit": posttest_thesis_audit_data,
         "release_readiness": release_readiness_data,
         "ui_data_contract": ui_data_contract_data,
         "streamlit_smoke_test": streamlit_smoke_data,
@@ -954,8 +1116,14 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "gui_supervised_session": gui_supervised_session_data,
         "gui_daily_operating_checklist": gui_daily_checklist_data,
         "alpaca_readonly_connectivity": alpaca_readonly_data,
+        "webull_readonly_market_data": webull_readonly_data,
+        "cboe_market_statistics": cboe_market_statistics_data,
+        "google_sheets_data_source": google_sheets_data_source_data,
+        "macro_event_context": macro_event_context_data,
         "gui_operational_decision_log": gui_decision_log_data,
         "gui_decision_quality": gui_decision_quality_data,
+        "gui_weekly_operational_review": gui_weekly_review_data,
+        "gui_evidence_collection_window": gui_evidence_window_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -1054,7 +1222,32 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append(f"- open_trades_rows: {data.get('open_trades_rows')}")
     lines.append(f"- analytics_rows: {data.get('analytics_rows')}")
     lines.append("")
-    
+
+    scenario_audit = data.get("scenario_engine_audit", {}) or {}
+    lines.append("## Scenario engine")
+    lines.append("")
+    if not bool(scenario_audit.get("available", False)):
+        lines.append("- status: MISSING")
+        lines.append("- Ejecutar `python .\\tools\\scenario_engine_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {scenario_audit.get('status')}")
+        lines.append(f"- deep_analysis_rows: {scenario_audit.get('deep_analysis_rows')}")
+        lines.append(f"- within_target_band: {scenario_audit.get('within_target_band')}")
+        lines.append(f"- valid_trigger: {scenario_audit.get('valid_trigger')}")
+        lines.append(f"- wait_for_confirmation: {scenario_audit.get('wait_for_confirmation')}")
+        lines.append(f"- late_entry_overextended: {scenario_audit.get('late_entry_overextended')}")
+        lines.append(f"- weak_momentum: {scenario_audit.get('weak_momentum')}")
+        lines.append(f"- structure_invalid: {scenario_audit.get('structure_invalid')}")
+        lines.append(f"- context_conflict: {scenario_audit.get('context_conflict')}")
+        lines.append(f"- data_insufficient: {scenario_audit.get('data_insufficient')}")
+        lines.append(
+            f"- blocked_or_not_operable: {scenario_audit.get('blocked_or_not_operable')}"
+        )
+        lines.append("- markdown: reports/scenario_engine_audit_latest.md")
+        lines.append("- json: reports/scenario_engine_audit_latest.json")
+        lines.append("- Modo sombra; no modifica señales ni ejecución.")
+    lines.append("")
+
     quality_gate = data.get("quality_gate", {}) or {}
     quality_available = bool(quality_gate.get("available", False))
     quality_status = str(quality_gate.get("status", "UNKNOWN")).upper()
@@ -1135,6 +1328,25 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- json: reports/calibration_recommendations_latest.json")
         lines.append("- Recomendaciones observacionales; no cambian pesos ni thresholds.")
 
+    lines.append("")
+
+    thesis_audit = data.get("posttest_thesis_audit", {}) or {}
+    lines.append("## Four-day trading thesis audit")
+    lines.append("")
+    if not bool(thesis_audit.get("available", False)):
+        lines.append("- status: MISSING")
+        lines.append("- Ejecutar `python .\\tools\\posttest_thesis_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {thesis_audit.get('status', 'UNKNOWN')}")
+        lines.append(f"- executed_entries: {thesis_audit.get('executed_entries', 0)}")
+        lines.append(f"- no_entry_triggers: {thesis_audit.get('no_entry_triggers', 0)}")
+        lines.append(f"- win_rate: {thesis_audit.get('win_rate')}")
+        lines.append(f"- target_hit_rate: {thesis_audit.get('target_hit_rate')}")
+        lines.append(f"- stop_hit_rate: {thesis_audit.get('stop_hit_rate')}")
+        lines.append(f"- sample_size_warning: {thesis_audit.get('sample_size_warning', '')}")
+        lines.append("- markdown: reports/posttest_thesis_audit_latest.md")
+        lines.append("- json: reports/posttest_thesis_audit_latest.json")
+        lines.append("- Evidencia observacional; no cambia scoring, thresholds ni señales.")
     lines.append("")
 
     release_readiness = data.get("release_readiness", {}) or {}
@@ -1379,6 +1591,74 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- json: reports/alpaca_readonly_connectivity_latest.json")
     lines.append("")
 
+    macro_context = data.get("macro_event_context", {}) or {}
+    lines.append("## Macro event and liquidity context")
+    lines.append("")
+    if not bool(macro_context.get("available", False)):
+        lines.append("- status: MISSING")
+        lines.append("- Ejecutar `python .\\tools\\macro_event_context.py` para generarlo.")
+    else:
+        lines.append(f"- status: {macro_context.get('status', 'UNKNOWN')}")
+        lines.append(
+            f"- next_critical_event: {macro_context.get('next_critical_event', '') or 'UNKNOWN'}"
+        )
+        lines.append(
+            f"- next_critical_event_date: "
+            f"{macro_context.get('next_critical_event_date', '') or 'UNKNOWN'}"
+        )
+        lines.append(f"- days_to_critical_event: {macro_context.get('days_to_critical_event')}")
+        lines.append(f"- event_risk_status: {macro_context.get('event_risk_status', 'UNKNOWN')}")
+        lines.append(f"- liquidity_context: {macro_context.get('liquidity_context', 'UNKNOWN')}")
+        lines.append(f"- m2_change_4w_pct: {macro_context.get('m2_change_4w_pct')}")
+        lines.append(
+            f"- reverse_repo_change_4w_pct: "
+            f"{macro_context.get('reverse_repo_change_4w_pct')}"
+        )
+        lines.append(
+            f"- effective_fed_funds_rate: "
+            f"{macro_context.get('effective_fed_funds_rate')}"
+        )
+        lines.append(f"- issues_count: {macro_context.get('issues_count', 0)}")
+        lines.append("- markdown: reports/macro_event_context_latest.md")
+        lines.append("- json: reports/macro_event_context_latest.json")
+        lines.append("- Contexto read-only; no modifica scanner, scoring, señales ni ejecución.")
+    lines.append("")
+
+    secondary_providers = [
+        ("Webull market data", data.get("webull_readonly_market_data", {}) or {}, "reports/webull_readonly_market_data_latest"),
+        ("Cboe market statistics", data.get("cboe_market_statistics", {}) or {}, "reports/cboe_market_statistics_latest"),
+        ("Google Sheets manual data", data.get("google_sheets_data_source", {}) or {}, "reports/google_sheets_data_source_latest"),
+    ]
+    lines.append("## Secondary read-only data sources")
+    lines.append("")
+    for label, provider_data, output_prefix in secondary_providers:
+        lines.append(f"### {label}")
+        if not bool(provider_data.get("available", False)):
+            lines.append("- status: MISSING")
+            lines.append("- Ejecutar la auditoría correspondiente para generarlo.")
+        else:
+            lines.append(f"- status: {provider_data.get('status', 'UNKNOWN')}")
+            lines.append(f"- rows_or_checks: {provider_data.get('rows_or_checks', 0)}")
+            lines.append(f"- issues_count: {provider_data.get('issues_count', 0)}")
+            lines.append(f"- read_only: {provider_data.get('read_only', True)}")
+            lines.append(f"- execution_enabled: {provider_data.get('execution_enabled', False)}")
+            if provider_data.get("aggregate_options_status"):
+                lines.append(
+                    f"- aggregate_options_status: {provider_data.get('aggregate_options_status')}"
+                )
+                lines.append(
+                    f"- aggregate_options_bias: {provider_data.get('aggregate_options_bias')}"
+                )
+                lines.append(
+                    f"- aggregate_put_call_usable: {provider_data.get('aggregate_put_call_usable', False)}"
+                )
+                lines.append(
+                    f"- aggregate_contrarian_note: {provider_data.get('aggregate_contrarian_note', '')}"
+                )
+            lines.append(f"- markdown: {output_prefix}.md")
+            lines.append(f"- json: {output_prefix}.json")
+        lines.append("")
+
     gui_decision_log = data.get("gui_operational_decision_log", {}) or {}
     gui_decision_available = bool(gui_decision_log.get("available", False))
     lines.append("## GUI operational decision log")
@@ -1430,6 +1710,62 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- csv: reports/gui_decision_quality_review_latest.csv")
         lines.append("- audit_markdown: reports/gui_decision_quality_audit_latest.md")
         lines.append("- audit_json: reports/gui_decision_quality_audit_latest.json")
+    lines.append("")
+
+    gui_weekly = data.get("gui_weekly_operational_review", {}) or {}
+    gui_weekly_available = bool(gui_weekly.get("available", False))
+    lines.append("## GUI weekly operational review")
+    lines.append("")
+    if not gui_weekly_available:
+        lines.append("- No hay reporte de GUI weekly operational review disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_weekly_operational_review.py` para generarlo.")
+        lines.append("- Ejecutar `python .\\tools\\gui_weekly_operational_review_audit.py` para auditarlo.")
+    else:
+        lines.append(f"- status: {gui_weekly.get('status', 'UNKNOWN')}")
+        lines.append(f"- weekly_operational_score: {gui_weekly.get('weekly_operational_score', '')}")
+        lines.append(f"- weekly_operational_bucket: {gui_weekly.get('weekly_operational_bucket', 'MISSING')}")
+        lines.append(f"- weekly_recommendation: {gui_weekly.get('weekly_recommendation', 'MISSING')}")
+        lines.append(f"- sessions_count: {gui_weekly.get('sessions_count', 0)}")
+        lines.append(f"- checklist_completion_rate: {gui_weekly.get('checklist_completion_rate', '')}")
+        lines.append(f"- total_decisions: {gui_weekly.get('total_decisions', 0)}")
+        lines.append(f"- paper_enter_decisions: {gui_weekly.get('paper_enter_decisions', 0)}")
+        lines.append(f"- avg_decision_quality_score: {gui_weekly.get('avg_decision_quality_score', '')}")
+        lines.append(f"- guardrail_violations_count: {gui_weekly.get('guardrail_violations_count', 0)}")
+        lines.append(f"- ready_for_calibration_review: {gui_weekly.get('ready_for_calibration_review', False)}")
+        lines.append(f"- audit_status: {gui_weekly.get('audit_status', 'MISSING')}")
+        lines.append("- markdown: reports/gui_weekly_operational_review_latest.md")
+        lines.append("- json: reports/gui_weekly_operational_review_latest.json")
+        lines.append("- csv: reports/gui_weekly_operational_review_latest.csv")
+        lines.append("- audit_markdown: reports/gui_weekly_operational_review_audit_latest.md")
+        lines.append("- audit_json: reports/gui_weekly_operational_review_audit_latest.json")
+    lines.append("")
+
+    gui_evidence = data.get("gui_evidence_collection_window", {}) or {}
+    gui_evidence_available = bool(gui_evidence.get("available", False))
+    lines.append("## GUI evidence collection window")
+    lines.append("")
+    if not gui_evidence_available:
+        lines.append("- No hay reporte de GUI evidence collection window disponible.")
+        lines.append("- Ejecutar `python .\\tools\\gui_evidence_collection_window.py` para generarlo.")
+        lines.append("- Ejecutar `python .\\tools\\gui_evidence_collection_audit.py` para auditarlo.")
+    else:
+        lines.append(f"- status: {gui_evidence.get('status', 'UNKNOWN')}")
+        lines.append(f"- readiness_status: {gui_evidence.get('readiness_status', 'MISSING')}")
+        lines.append(f"- calibration_readiness_score: {gui_evidence.get('calibration_readiness_score', '')}")
+        lines.append(f"- readiness_bucket: {gui_evidence.get('readiness_bucket', 'MISSING')}")
+        lines.append(f"- sessions_count: {gui_evidence.get('sessions_count', 0)}")
+        lines.append(f"- total_decisions: {gui_evidence.get('total_decisions', 0)}")
+        lines.append(f"- paper_enter_decisions: {gui_evidence.get('paper_enter_decisions', 0)}")
+        lines.append(f"- closed_paper_count: {gui_evidence.get('closed_paper_count', 0)}")
+        lines.append(f"- checklist_completion_rate: {gui_evidence.get('checklist_completion_rate', '')}")
+        lines.append(f"- avg_decision_quality_score: {gui_evidence.get('avg_decision_quality_score', '')}")
+        lines.append(f"- guardrail_violations_count: {gui_evidence.get('guardrail_violations_count', 0)}")
+        lines.append(f"- audit_status: {gui_evidence.get('audit_status', 'MISSING')}")
+        lines.append("- markdown: reports/gui_evidence_collection_window_latest.md")
+        lines.append("- json: reports/gui_evidence_collection_window_latest.json")
+        lines.append("- csv: reports/gui_evidence_collection_window_latest.csv")
+        lines.append("- audit_markdown: reports/gui_evidence_collection_audit_latest.md")
+        lines.append("- audit_json: reports/gui_evidence_collection_audit_latest.json")
     lines.append("")
 
     cards = data.get("trade_candidate_cards", {}) or {}
@@ -1926,6 +2262,28 @@ def _normalize_alpaca_readonly_connectivity_status(data: dict) -> dict:
     }
 
 
+def _normalize_secondary_data_provider_status(data: dict, *, rows_key: str = "rows") -> dict:
+    value = data.get(rows_key, 0)
+    if isinstance(value, list):
+        rows_or_checks = len(value)
+    else:
+        rows_or_checks = _safe_int(value, 0)
+    issues = data.get("issues", []) or []
+    aggregate_context = data.get("aggregate_options_context", {}) or {}
+    return {
+        "available": bool(data),
+        "status": str(data.get("status", "MISSING")),
+        "rows_or_checks": rows_or_checks,
+        "issues_count": len(issues) if isinstance(issues, list) else 0,
+        "read_only": bool(data.get("read_only", True)),
+        "execution_enabled": bool(data.get("execution_enabled", False)),
+        "aggregate_options_status": str(aggregate_context.get("status", "")),
+        "aggregate_options_bias": str(aggregate_context.get("bias", "")),
+        "aggregate_put_call_usable": bool(aggregate_context.get("usable", False)),
+        "aggregate_contrarian_note": str(aggregate_context.get("contrarian_note", "")),
+    }
+
+
 def _normalize_gui_operational_decision_log_status(log_data: dict, review_data: dict, audit_data: dict) -> dict:
     return {
         "available": bool(log_data) or bool(review_data) or bool(audit_data),
@@ -1970,6 +2328,42 @@ def _normalize_gui_decision_quality_status(review_data: dict, audit_data: dict) 
         "decisions_without_post_review": _safe_int(review_data.get("decisions_without_post_review"), 0),
         "paper_enter_with_low_quote_quality": _safe_int(review_data.get("paper_enter_with_low_quote_quality"), 0),
         "quality_warnings_count": _safe_int(review_data.get("quality_warnings_count"), 0),
+        "audit_status": str(audit_data.get("status", "MISSING")),
+    }
+
+
+def _normalize_gui_weekly_operational_review_status(review_data: dict, audit_data: dict) -> dict:
+    return {
+        "available": bool(review_data) or bool(audit_data),
+        "status": str(audit_data.get("status") or review_data.get("status") or "MISSING"),
+        "weekly_operational_score": review_data.get("weekly_operational_score", ""),
+        "weekly_operational_bucket": str(review_data.get("weekly_operational_bucket", "MISSING")),
+        "weekly_recommendation": str(review_data.get("weekly_recommendation", "MISSING")),
+        "sessions_count": _safe_int(review_data.get("sessions_count"), 0),
+        "checklist_completion_rate": review_data.get("checklist_completion_rate", ""),
+        "total_decisions": _safe_int(review_data.get("total_decisions"), 0),
+        "paper_enter_decisions": _safe_int(review_data.get("paper_enter_decisions"), 0),
+        "avg_decision_quality_score": review_data.get("avg_decision_quality_score", ""),
+        "guardrail_violations_count": _safe_int(review_data.get("guardrail_violations_count"), 0),
+        "ready_for_calibration_review": bool(review_data.get("ready_for_calibration_review", False)),
+        "audit_status": str(audit_data.get("status", "MISSING")),
+    }
+
+
+def _normalize_gui_evidence_collection_window_status(window_data: dict, audit_data: dict) -> dict:
+    return {
+        "available": bool(window_data) or bool(audit_data),
+        "status": str(audit_data.get("status") or window_data.get("status") or "MISSING"),
+        "readiness_status": str(window_data.get("readiness_status", "MISSING")),
+        "calibration_readiness_score": window_data.get("calibration_readiness_score", ""),
+        "readiness_bucket": str(window_data.get("readiness_bucket", "MISSING")),
+        "sessions_count": _safe_int(window_data.get("sessions_count"), 0),
+        "total_decisions": _safe_int(window_data.get("total_decisions"), 0),
+        "paper_enter_decisions": _safe_int(window_data.get("paper_enter_decisions"), 0),
+        "closed_paper_count": _safe_int(window_data.get("closed_paper_count"), 0),
+        "checklist_completion_rate": window_data.get("checklist_completion_rate", ""),
+        "avg_decision_quality_score": window_data.get("avg_decision_quality_score", ""),
+        "guardrail_violations_count": _safe_int(window_data.get("guardrail_violations_count"), 0),
         "audit_status": str(audit_data.get("status", "MISSING")),
     }
 

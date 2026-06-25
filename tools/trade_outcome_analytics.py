@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -365,12 +365,15 @@ def save_trade_outcome_analytics_reports(
     outcomes_path: Path,
     csv_out: Path,
     markdown_out: Path,
+    json_out: Path | None = None,
 ) -> dict:
     outcomes_df = load_trade_outcomes(outcomes_path)
     analytics_df = build_trade_outcome_analytics_dataframe(outcomes_df)
 
     csv_out.parent.mkdir(parents=True, exist_ok=True)
     markdown_out.parent.mkdir(parents=True, exist_ok=True)
+    if json_out is not None:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
 
     analytics_df.to_csv(csv_out, index=False)
     markdown_out.write_text(
@@ -378,7 +381,7 @@ def save_trade_outcome_analytics_reports(
         encoding="utf-8",
     )
 
-    return {
+    payload = {
         "status": "PASS",
         "rows": int(len(analytics_df)),
         "closed_trades": int(
@@ -388,19 +391,25 @@ def save_trade_outcome_analytics_reports(
         ),
         "csv_out": str(csv_out),
         "markdown_out": str(markdown_out),
+        "json_out": str(json_out or ""),
     }
+    if json_out is not None:
+        json_out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return payload
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Analiza resultados cerrados de trade_outcomes.csv.")
     parser.add_argument("--outcomes-path", default="reports/trade_outcomes.csv")
     parser.add_argument("--csv-out", default="reports/trade_outcome_analytics_latest.csv")
+    parser.add_argument("--json-out", default="reports/trade_outcome_analytics_latest.json")
     parser.add_argument("--markdown-out", default="reports/trade_outcome_analytics_latest.md")
     args = parser.parse_args()
 
     result = save_trade_outcome_analytics_reports(
         outcomes_path=ROOT / args.outcomes_path,
         csv_out=ROOT / args.csv_out,
+        json_out=ROOT / args.json_out,
         markdown_out=ROOT / args.markdown_out,
     )
 
@@ -409,6 +418,7 @@ def main() -> int:
     print(f"Closed trades: {result['closed_trades']}")
     print(f"Rows: {result['rows']}")
     print(f"CSV: {result['csv_out']}")
+    print(f"JSON: {result['json_out']}")
     print(f"Markdown: {result['markdown_out']}")
 
     return 0

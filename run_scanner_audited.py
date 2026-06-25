@@ -14,10 +14,10 @@ from loguru import logger
 
 from config_loader import load_config
 from engine.report_engine import save_reports
-from engine.scanner_engine import run_scan
 from engine.scan_audit_engine import audit_scan_file, print_audit_report
-
+from engine.scanner_engine import run_scan
 from tools.manual_review_export import save_manual_review_reports
+
 
 def _print_scan_preview(df: pd.DataFrame, rows: int = 20) -> None:
     if df.empty:

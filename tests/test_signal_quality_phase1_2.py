@@ -1,5 +1,4 @@
-from scoring.signal_classifier import classify_signal, classify_base_signal
-
+from scoring.signal_classifier import classify_base_signal, classify_signal
 
 CONFIG = {
     "risk_reward": {"min_rr_absolute": 1.5},

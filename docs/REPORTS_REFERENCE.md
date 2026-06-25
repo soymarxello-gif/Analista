@@ -171,6 +171,22 @@ These are runtime artifacts. Keep durable source code, tests, configuration, and
 
 - `alpaca_readonly_connectivity_latest.*`: read-only connectivity audit for Alpaca credentials, account, clock, and IEX latest quote checks. It masks credentials, does not place orders, does not enable execution, and does not modify scanner, scoring, thresholds, config, journal, or outcomes.
 
+## Secondary Read-Only Data Source Reports
+
+- `webull_readonly_market_data_latest.*`: validates optional Webull OpenAPI
+  connectivity without orders or execution.
+- `cboe_market_statistics_latest.*`: validates public Cboe market statistics
+  used only for aggregate options context. It reports each dataset date and
+  age. Historical put/call data is marked stale and unusable rather than being
+  presented as current sentiment.
+- `google_sheets_data_source_latest.*`: validates the schema, timestamps,
+  freshness, and available fields of a published Google Sheets CSV. Stale or
+  malformed rows remain visible in the audit and are not used by scanner
+  fallbacks.
+- `source_coverage_latest.json`: includes distributions for
+  `analysis_quote_source`, `analysis_quote_freshness`,
+  `analysis_quote_confidence`, and `secondary_data_sources_used`.
+
 ## GUI Operational Decision Log Reports
 
 - `gui_operational_decision_log_latest.*`: daily bitacora of manual GUI operating decisions, including reason, context, perceived risk, follow-up plan, checklist alignment, post-session review status, and lessons.
@@ -178,3 +194,7 @@ These are runtime artifacts. Keep durable source code, tests, configuration, and
 - `gui_operational_decision_log_audit_latest.*`: audit that the operational decision log and post-session review are report-only and preserve paper-only/manual-review guardrails.
 - `gui_decision_quality_review_latest.*`: observational quality review of operating decisions, with per-decision quality scores, buckets, warnings, and recommendations.
 - `gui_decision_quality_audit_latest.*`: audit that decision quality review is read-only and does not change trading logic or execution state.
+- `gui_weekly_operational_review_latest.*`: weekly operational review of supervised GUI sessions, daily checklist completion, GUI decisions, paper actions, paper outcomes, decision quality, guardrails, and observational recommendations.
+- `gui_weekly_operational_review_audit_latest.*`: audit that the weekly operational review generates JSON/MD/CSV, creates only its own weekly history CSV, preserves protected data inputs, and remains manual review only with no real orders.
+- `gui_evidence_collection_window_latest.*`: multi-session evidence window before human calibration review. It summarizes sample size, discipline, paper outcomes, guardrails, readiness status, readiness score, bucket, and observational next steps.
+- `gui_evidence_collection_audit_latest.*`: audit that the evidence collection window generates reports, writes only its own history CSV, preserves decisions/journal/outcomes, and remains manual review only with no real orders.

@@ -9,7 +9,6 @@ from typing import Any
 
 import pandas as pd
 
-from ui import guards
 from tools.paper_trade_close import CLOSE_REASONS, save_paper_trade_close_reports
 from tools.paper_trade_followup import save_paper_trade_followup_reports
 from tools.paper_trading_journal import (
@@ -17,7 +16,7 @@ from tools.paper_trading_journal import (
     load_import_candidates,
     save_paper_trading_journal,
 )
-
+from ui import guards
 
 ROOT = Path(__file__).resolve().parents[1]
 NO_REAL_ORDER_NOTICE = guards.NO_REAL_ORDER_NOTICE

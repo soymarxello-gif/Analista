@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -27,6 +26,7 @@ KEY_SCRIPT_PATHS = [
     "tools/open_trade_snapshot.py",
     "tools/latest_scan_health.py",
     "tools/source_coverage_audit.py",
+    "tools/scenario_engine_audit.py",
     "tools/live_quote_recheck.py",
     "tools/trade_decision_checklist.py",
     "tools/trade_candidate_cards.py",
@@ -36,6 +36,7 @@ KEY_SCRIPT_PATHS = [
     "tools/paper_trading_cycle_audit.py",
     "tools/trade_score_calibration.py",
     "tools/calibration_recommendations.py",
+    "tools/posttest_thesis_audit.py",
     "tools/release_readiness_audit.py",
     "tools/ui_data_contract_audit.py",
     "tools/streamlit_smoke_test.py",
@@ -47,16 +48,25 @@ KEY_SCRIPT_PATHS = [
     "tools/gui_daily_operating_checklist.py",
     "tools/gui_daily_operating_checklist_audit.py",
     "tools/alpaca_readonly_connectivity_audit.py",
+    "tools/webull_readonly_market_data_audit.py",
+    "tools/cboe_market_statistics_audit.py",
+    "tools/google_sheets_data_source_audit.py",
+    "tools/macro_event_context.py",
     "tools/gui_operational_decision_log.py",
     "tools/gui_post_session_review.py",
     "tools/gui_operational_decision_log_audit.py",
     "tools/gui_decision_quality_review.py",
     "tools/gui_decision_quality_audit.py",
+    "tools/gui_weekly_operational_review.py",
+    "tools/gui_weekly_operational_review_audit.py",
+    "tools/gui_evidence_collection_window.py",
+    "tools/gui_evidence_collection_audit.py",
 ]
 
 
 KEY_REPORT_PATHS = [
     "reports/project_preflight_latest.json",
+    "reports/scan_performance_latest.json",
     "reports/project_preflight_latest.md",
     "reports/latest_scan_audited.csv",
     "reports/latest_scan_audited.json",
@@ -64,6 +74,8 @@ KEY_REPORT_PATHS = [
     "reports/manual_review_latest.md",
     "reports/manual_review_top.csv",
     "reports/manual_review_top.md",
+    "reports/scenario_engine_audit_latest.json",
+    "reports/scenario_engine_audit_latest.md",
     "reports/daily_validation_summary.txt",
     "reports/daily_operator_index.md",
     "reports/live_quote_recheck_latest.csv",
@@ -90,6 +102,8 @@ KEY_REPORT_PATHS = [
     "reports/trade_score_calibration_latest.md",
     "reports/calibration_recommendations_latest.md",
     "reports/calibration_recommendations_latest.json",
+    "reports/posttest_thesis_audit_latest.json",
+    "reports/posttest_thesis_audit_latest.md",
     "reports/release_readiness_latest.json",
     "reports/release_readiness_latest.md",
     "reports/ui_data_contract_audit_latest.json",
@@ -112,6 +126,14 @@ KEY_REPORT_PATHS = [
     "reports/gui_daily_operating_checklist_audit_latest.md",
     "reports/alpaca_readonly_connectivity_latest.json",
     "reports/alpaca_readonly_connectivity_latest.md",
+    "reports/webull_readonly_market_data_latest.json",
+    "reports/webull_readonly_market_data_latest.md",
+    "reports/cboe_market_statistics_latest.json",
+    "reports/cboe_market_statistics_latest.md",
+    "reports/google_sheets_data_source_latest.json",
+    "reports/google_sheets_data_source_latest.md",
+    "reports/macro_event_context_latest.json",
+    "reports/macro_event_context_latest.md",
     "reports/gui_operational_decision_log_latest.json",
     "reports/gui_operational_decision_log_latest.md",
     "reports/gui_post_session_review_latest.json",
@@ -123,11 +145,22 @@ KEY_REPORT_PATHS = [
     "reports/gui_decision_quality_review_latest.csv",
     "reports/gui_decision_quality_audit_latest.json",
     "reports/gui_decision_quality_audit_latest.md",
+    "reports/gui_weekly_operational_review_latest.json",
+    "reports/gui_weekly_operational_review_latest.md",
+    "reports/gui_weekly_operational_review_latest.csv",
+    "reports/gui_weekly_operational_review_audit_latest.json",
+    "reports/gui_weekly_operational_review_audit_latest.md",
+    "reports/gui_evidence_collection_window_latest.json",
+    "reports/gui_evidence_collection_window_latest.md",
+    "reports/gui_evidence_collection_window_latest.csv",
+    "reports/gui_evidence_collection_audit_latest.json",
+    "reports/gui_evidence_collection_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
     "reports/open_trades_snapshot_latest.md",
     "reports/trade_outcome_analytics_latest.csv",
+    "reports/trade_outcome_analytics_latest.json",
     "reports/trade_outcome_analytics_latest.md",
 ]
 
@@ -377,6 +410,7 @@ def collect_daily_run_manifest(
     cleanup_path = reports / "reports_cleanup_latest.json"
     latest_scan_path = reports / "latest_scan_audited.csv"
     manual_review_path = reports / "manual_review_latest.csv"
+    scenario_engine_audit_path = reports / "scenario_engine_audit_latest.json"
     live_quote_recheck_path = reports / "live_quote_recheck_latest.json"
     trade_decision_checklist_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_path = reports / "trade_candidate_cards_latest.json"
@@ -386,6 +420,7 @@ def collect_daily_run_manifest(
     paper_trading_cycle_audit_path = reports / "paper_trading_cycle_audit_latest.json"
     trade_score_calibration_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_path = reports / "calibration_recommendations_latest.json"
+    posttest_thesis_audit_path = reports / "posttest_thesis_audit_latest.json"
     release_readiness_path = reports / "release_readiness_latest.json"
     ui_data_contract_path = reports / "ui_data_contract_audit_latest.json"
     streamlit_smoke_path = reports / "streamlit_smoke_test_latest.json"
@@ -397,11 +432,19 @@ def collect_daily_run_manifest(
     gui_daily_checklist_path = reports / "gui_daily_operating_checklist_latest.json"
     gui_daily_checklist_audit_path = reports / "gui_daily_operating_checklist_audit_latest.json"
     alpaca_readonly_path = reports / "alpaca_readonly_connectivity_latest.json"
+    webull_readonly_path = reports / "webull_readonly_market_data_latest.json"
+    cboe_market_statistics_path = reports / "cboe_market_statistics_latest.json"
+    google_sheets_data_source_path = reports / "google_sheets_data_source_latest.json"
+    macro_event_context_path = reports / "macro_event_context_latest.json"
     gui_decision_log_path = reports / "gui_operational_decision_log_latest.json"
     gui_post_session_review_path = reports / "gui_post_session_review_latest.json"
     gui_decision_log_audit_path = reports / "gui_operational_decision_log_audit_latest.json"
     gui_decision_quality_path = reports / "gui_decision_quality_review_latest.json"
     gui_decision_quality_audit_path = reports / "gui_decision_quality_audit_latest.json"
+    gui_weekly_review_path = reports / "gui_weekly_operational_review_latest.json"
+    gui_weekly_review_audit_path = reports / "gui_weekly_operational_review_audit_latest.json"
+    gui_evidence_window_path = reports / "gui_evidence_collection_window_latest.json"
+    gui_evidence_audit_path = reports / "gui_evidence_collection_audit_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_status = _parse_status_from_summary(daily_summary_text)
@@ -458,6 +501,10 @@ def collect_daily_run_manifest(
             "options_available": _safe_value_counts(latest_scan_path, "options_available")
             or _safe_value_counts(latest_scan_path, "options_data_available"),
             "options_error": _safe_value_counts(latest_scan_path, "options_error"),
+            "scenario_status": _safe_value_counts(latest_scan_path, "scenario_status"),
+            "momentum_state": _safe_value_counts(latest_scan_path, "momentum_state"),
+            "extension_state": _safe_value_counts(latest_scan_path, "extension_state"),
+            "scenario_engine_audit": _load_json(scenario_engine_audit_path),
             "live_quote_recheck": _load_json(live_quote_recheck_path),
             "trade_decision_checklist": _load_json(trade_decision_checklist_path),
             "trade_candidate_cards": _load_json(trade_candidate_cards_path),
@@ -467,6 +514,7 @@ def collect_daily_run_manifest(
             "paper_trading_cycle_audit": _load_json(paper_trading_cycle_audit_path),
             "trade_score_calibration": _load_json(trade_score_calibration_path),
             "calibration_recommendations": _load_json(calibration_recommendations_path),
+            "posttest_thesis_audit": _load_json(posttest_thesis_audit_path),
             "release_readiness": _load_json(release_readiness_path),
             "ui_data_contract": _load_json(ui_data_contract_path),
             "streamlit_smoke_test": _load_json(streamlit_smoke_path),
@@ -478,11 +526,19 @@ def collect_daily_run_manifest(
             "gui_daily_operating_checklist": _load_json(gui_daily_checklist_path),
             "gui_daily_operating_checklist_audit": _load_json(gui_daily_checklist_audit_path),
             "alpaca_readonly_connectivity": _load_json(alpaca_readonly_path),
+            "webull_readonly_market_data": _load_json(webull_readonly_path),
+            "cboe_market_statistics": _load_json(cboe_market_statistics_path),
+            "google_sheets_data_source": _load_json(google_sheets_data_source_path),
+            "macro_event_context": _load_json(macro_event_context_path),
             "gui_operational_decision_log": _load_json(gui_decision_log_path),
             "gui_post_session_review": _load_json(gui_post_session_review_path),
             "gui_operational_decision_log_audit": _load_json(gui_decision_log_audit_path),
             "gui_decision_quality_review": _load_json(gui_decision_quality_path),
             "gui_decision_quality_audit": _load_json(gui_decision_quality_audit_path),
+            "gui_weekly_operational_review": _load_json(gui_weekly_review_path),
+            "gui_weekly_operational_review_audit": _load_json(gui_weekly_review_audit_path),
+            "gui_evidence_collection_window": _load_json(gui_evidence_window_path),
+            "gui_evidence_collection_audit": _load_json(gui_evidence_audit_path),
         },
         "script_files": script_files,
         "report_files": report_files,
@@ -611,6 +667,20 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.extend(_format_counts(scan.get("options_error", {})))
     lines.append("")
 
+    scenario_audit = scan.get("scenario_engine_audit", {}) or {}
+    lines.append("Scenario engine audit:")
+    lines.append(f"- status: {scenario_audit.get('status', 'MISSING')}")
+    lines.append(f"- deep_analysis_rows: {scenario_audit.get('deep_analysis_rows', 0)}")
+    lines.append(f"- within_target_band: {scenario_audit.get('within_target_band', False)}")
+    lines.append(f"- shadow_mode: {scenario_audit.get('shadow_mode', True)}")
+    lines.append("scenario_status:")
+    lines.extend(_format_counts(scan.get("scenario_status", {})))
+    lines.append("momentum_state:")
+    lines.extend(_format_counts(scan.get("momentum_state", {})))
+    lines.append("extension_state:")
+    lines.extend(_format_counts(scan.get("extension_state", {})))
+    lines.append("")
+
     live_recheck = scan.get("live_quote_recheck", {}) or {}
     lines.append("Live quote recheck:")
     lines.append(f"- status: {live_recheck.get('status', 'MISSING')}")
@@ -619,6 +689,41 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(f"- keep_recheck: {live_recheck.get('keep_recheck', 0)}")
     lines.append(f"- avoid_execution_risk: {live_recheck.get('avoid_execution_risk', 0)}")
     lines.append(f"- data_unavailable: {live_recheck.get('data_unavailable', 0)}")
+    lines.append("")
+
+    webull = scan.get("webull_readonly_market_data", {}) or {}
+    cboe = scan.get("cboe_market_statistics", {}) or {}
+    google_sheets = scan.get("google_sheets_data_source", {}) or {}
+    lines.append("Secondary read-only data sources:")
+    lines.append(f"- webull_status: {webull.get('status', 'MISSING')}")
+    lines.append(f"- webull_credentials_present: {webull.get('credentials_present', False)}")
+    lines.append(f"- cboe_status: {cboe.get('status', 'MISSING')}")
+    lines.append(f"- cboe_datasets_available: {cboe.get('datasets_available', 0)}")
+    cboe_context = cboe.get("aggregate_options_context", {}) or {}
+    lines.append(f"- cboe_aggregate_options_status: {cboe_context.get('status', 'UNKNOWN')}")
+    lines.append(f"- cboe_aggregate_options_bias: {cboe_context.get('bias', 'UNKNOWN_OPTIONS_CONTEXT')}")
+    lines.append(f"- cboe_aggregate_put_call_usable: {cboe_context.get('usable', False)}")
+    lines.append(f"- google_sheets_status: {google_sheets.get('status', 'MISSING')}")
+    lines.append(f"- google_sheets_rows: {google_sheets.get('rows', 0)}")
+    lines.append("")
+
+    macro_context = scan.get("macro_event_context", {}) or {}
+    lines.append("Macro event and liquidity context:")
+    lines.append(f"- status: {macro_context.get('status', 'MISSING')}")
+    lines.append(
+        f"- next_critical_event: {macro_context.get('next_critical_event', '') or 'UNKNOWN'}"
+    )
+    lines.append(
+        f"- next_critical_event_date: "
+        f"{macro_context.get('next_critical_event_date', '') or 'UNKNOWN'}"
+    )
+    lines.append(f"- days_to_critical_event: {macro_context.get('days_to_critical_event')}")
+    lines.append(f"- event_risk_status: {macro_context.get('event_risk_status', 'UNKNOWN')}")
+    lines.append(f"- liquidity_context: {macro_context.get('liquidity_context', 'UNKNOWN')}")
+    lines.append(f"- m2_change_4w_pct: {macro_context.get('m2_change_4w_pct')}")
+    lines.append(
+        f"- reverse_repo_change_4w_pct: {macro_context.get('reverse_repo_change_4w_pct')}"
+    )
     lines.append("")
 
     calibration = scan.get("trade_score_calibration", {}) or {}
@@ -640,6 +745,18 @@ def build_daily_run_manifest_markdown(data: dict) -> str:
     lines.append(
         f"- sample_size_warning: {calibration_recommendations.get('sample_size_warning', '')}"
     )
+    lines.append("")
+
+    thesis_audit = scan.get("posttest_thesis_audit", {}) or {}
+    thesis_summary = thesis_audit.get("summary", {}) or {}
+    lines.append("Four-day trading thesis audit:")
+    lines.append(f"- status: {thesis_audit.get('status', 'MISSING')}")
+    lines.append(f"- executed_entries: {thesis_summary.get('executed_entries', 0)}")
+    lines.append(f"- no_entry_triggers: {thesis_summary.get('no_entry_triggers', 0)}")
+    lines.append(f"- win_rate: {thesis_summary.get('win_rate')}")
+    lines.append(f"- target_hit_rate: {thesis_summary.get('target_hit_rate')}")
+    lines.append(f"- stop_hit_rate: {thesis_summary.get('stop_hit_rate')}")
+    lines.append(f"- sample_size_warning: {thesis_audit.get('sample_size_warning', '')}")
     lines.append("")
 
     release_readiness = scan.get("release_readiness", {}) or {}

@@ -9,13 +9,12 @@ from typing import Any
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.gui_operational_decision_log import DECISION_COLUMNS, NO_REAL_ORDER_NOTICE, ensure_decisions
+from tools.gui_operational_decision_log import NO_REAL_ORDER_NOTICE, ensure_decisions
 
 
 def _today() -> str:

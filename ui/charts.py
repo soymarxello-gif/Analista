@@ -4,7 +4,6 @@ from typing import Any
 
 import pandas as pd
 
-
 NO_CHART_DATA = "No data available for this chart."
 
 

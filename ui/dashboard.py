@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 from datetime import datetime
-import pandas as pd
-import streamlit as st
-import plotly.express as px
+from pathlib import Path
 
+import pandas as pd
+import plotly.express as px
+import streamlit as st
 
 st.set_page_config(
     page_title="Analista | Swing Scanner",

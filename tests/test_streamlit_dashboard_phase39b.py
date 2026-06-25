@@ -7,7 +7,6 @@ from pathlib import Path
 from tools.streamlit_smoke_test import collect_streamlit_smoke_test, save_streamlit_smoke_test
 from ui.report_loader import SOURCE_SPECS, load_all_ui_sources
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -48,20 +47,21 @@ def test_streamlit_app_has_expected_manual_review_tabs_and_warning():
     text = (ROOT / "app.py").read_text(encoding="utf-8")
 
     for label in [
-        "Overview",
-        "Candidates",
-        "Quality & guardrails",
+        "Resumen",
+        "Candidatos",
+        "Calidad y reglas",
         "Paper trading",
-        "Follow-up",
-        "Cycle audit",
-        "Calibration",
-        "Paper actions",
-        "Reports status",
+        "Seguimiento",
+        "Auditoría ciclo",
+        "Calibración",
+        "Acciones paper",
+        "Reportes",
     ]:
         assert label in text
 
     assert "Manual review only. No real orders." in text
     assert "No automatic trading" in text
+    assert "Watchlist seleccionable" in text
     assert "_".join(["BUY", "SETUP", "ACTIVE"]) not in text
     assert "_".join(["TRIGGER", "CONFIRMED"]) not in text
 
@@ -82,6 +82,10 @@ def test_report_loader_exposes_streamlit_smoke_source(tmp_path: Path):
     assert "gui_release_audit" in SOURCE_SPECS
     assert "gui_supervised_session" in SOURCE_SPECS
     assert "gui_supervised_session_audit" in SOURCE_SPECS
+    assert "gui_weekly_operational_review" in SOURCE_SPECS
+    assert "gui_weekly_operational_review_audit" in SOURCE_SPECS
+    assert "gui_evidence_collection_window" in SOURCE_SPECS
+    assert "gui_evidence_collection_audit" in SOURCE_SPECS
     assert streamlit_source["status"] == "AVAILABLE"
     assert streamlit_source["exists"] is True
     assert streamlit_source["data"]["read_only"] is True

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-import yaml
 
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config.yaml"
@@ -57,8 +57,31 @@ def test_options_weights_sum_to_1():
 def test_data_source_cache_has_fundamentals_and_options():
     cfg = load_config()
     ttl = cfg["data_sources"]["cache_ttl_minutes"]
-    assert "fundamentals" in ttl
+    assert ttl["fundamentals"] == 10080
+    assert ttl["earnings"] == 720
     assert "options" in ttl
+
+
+def test_price_download_has_bounded_retry_configuration():
+    cfg = load_config()
+    price_data = cfg["price_data"]
+
+    assert price_data["batch_size"] > 0
+    assert price_data["retry_batch_size"] > 0
+    assert price_data["timeout_seconds"] > 0
+    assert 0 <= price_data["max_individual_fallbacks"] <= 25
+
+
+def test_metadata_enrichment_limit_covers_current_full_universe():
+    cfg = load_config()
+
+    assert cfg["fundamentals"]["metadata_enrichment"]["max_tickers"] >= 500
+
+
+def test_options_budget_covers_priority_review_candidates():
+    cfg = load_config()
+
+    assert cfg["options_flow"]["max_tickers_per_run"] >= 75
 
 
 def test_operating_constraints_long_only_no_etfs():
@@ -66,3 +89,9 @@ def test_operating_constraints_long_only_no_etfs():
     assert cfg["trading_profile"]["direction"] == "long_only"
     assert cfg["trading_profile"]["allow_etfs_as_tradable_assets"] is False
     assert cfg["trading_profile"]["asset_class"] == "common_stocks"
+
+
+def test_market_cap_floor_is_two_point_five_billion():
+    cfg = load_config()
+
+    assert cfg["filters"]["min_market_cap_usd"] == 2_500_000_000

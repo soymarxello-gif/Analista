@@ -1,0 +1,33 @@
+event_date,event_time,timezone,event_type,event_name,importance,source_url,updated_at
+2026-01-09,08:30,America/New_York,NFP,Employment Situation for December 2025,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-01-13,08:30,America/New_York,CPI,Consumer Price Index for December 2025,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-01-28,14:00,America/New_York,FOMC,FOMC policy decision,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-02-11,08:30,America/New_York,NFP,Employment Situation for January 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-02-13,08:30,America/New_York,CPI,Consumer Price Index for January 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-03-06,08:30,America/New_York,NFP,Employment Situation for February 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-03-11,08:30,America/New_York,CPI,Consumer Price Index for February 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-03-18,14:00,America/New_York,FOMC,FOMC policy decision and projections,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-04-03,08:30,America/New_York,NFP,Employment Situation for March 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-04-10,08:30,America/New_York,CPI,Consumer Price Index for March 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-04-29,14:00,America/New_York,FOMC,FOMC policy decision,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-05-08,08:30,America/New_York,NFP,Employment Situation for April 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-05-12,08:30,America/New_York,CPI,Consumer Price Index for April 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-06-05,08:30,America/New_York,NFP,Employment Situation for May 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-06-10,08:30,America/New_York,CPI,Consumer Price Index for May 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-06-17,14:00,America/New_York,FOMC,FOMC policy decision and projections,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-07-02,08:30,America/New_York,NFP,Employment Situation for June 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-07-14,08:30,America/New_York,CPI,Consumer Price Index for June 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-07-29,14:00,America/New_York,FOMC,FOMC policy decision,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-08-07,08:30,America/New_York,NFP,Employment Situation for July 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-08-12,08:30,America/New_York,CPI,Consumer Price Index for July 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-09-04,08:30,America/New_York,NFP,Employment Situation for August 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-09-11,08:30,America/New_York,CPI,Consumer Price Index for August 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-09-16,14:00,America/New_York,FOMC,FOMC policy decision and projections,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-10-02,08:30,America/New_York,NFP,Employment Situation for September 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-10-14,08:30,America/New_York,CPI,Consumer Price Index for September 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-10-28,14:00,America/New_York,FOMC,FOMC policy decision,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-11-06,08:30,America/New_York,NFP,Employment Situation for October 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-11-10,08:30,America/New_York,CPI,Consumer Price Index for October 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23
+2026-12-04,08:30,America/New_York,NFP,Employment Situation for November 2026,HIGH,https://www.bls.gov/schedule/news_release/empsit.htm,2026-06-23
+2026-12-09,14:00,America/New_York,FOMC,FOMC policy decision and projections,HIGH,https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm,2026-06-23
+2026-12-10,08:30,America/New_York,CPI,Consumer Price Index for November 2026,HIGH,https://www.bls.gov/schedule/news_release/cpi.htm,2026-06-23

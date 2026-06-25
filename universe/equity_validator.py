@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import pandas as pd
@@ -63,9 +62,9 @@ def validate_universe(df: pd.DataFrame, config: dict, strict_metadata: bool = Fa
     if min_price is None:
         min_price = 10.0
 
-    min_market_cap_usd = _to_float(filters_cfg.get("min_market_cap_usd", 1_500_000_000))
+    min_market_cap_usd = _to_float(filters_cfg.get("min_market_cap_usd", 2_500_000_000))
     if min_market_cap_usd is None:
-        min_market_cap_usd = 1_500_000_000.0
+        min_market_cap_usd = 2_500_000_000.0
 
     strict_post = bool(universe_cfg.get("strict_post_enrichment", True))
     allow_missing_quote_type_strict = bool(universe_cfg.get("allow_missing_quote_type_after_enrichment", False))
@@ -123,8 +122,8 @@ def validate_universe(df: pd.DataFrame, config: dict, strict_metadata: bool = Fa
             warn.append("posible warrant/unit/right")
 
         # Dot share classes can be common stock (BRK.B), so do not blanket reject.
-        # Caret, equals and slash are usually benchmarks/futures/synthetic.
-        if any(x in ticker for x in ["^", "=", "/"]):
+        # Caret, equals, slash and crypto FX suffixes are benchmarks/futures/synthetic.
+        if any(x in ticker for x in ["^", "=", "/"]) or ticker.endswith("-USD"):
             status = "FAIL"
             _append_unique(reasons, "non_tradable_instrument")
             warn.append("ticker no compatible con acción común")

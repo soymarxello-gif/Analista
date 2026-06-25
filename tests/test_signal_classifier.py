@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from scoring.signal_classifier import classify_signal
 
-
 BASE_CONFIG = {
     "risk_reward": {"min_rr_absolute": 1.5},
     "veto_rules": {"thresholds": {"min_trend_score": 0.55}},

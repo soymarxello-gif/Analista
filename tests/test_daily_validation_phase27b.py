@@ -23,4 +23,5 @@ def test_daily_validation_tracks_trade_outcome_analytics_outputs():
     paths = {item["path"] for item in status["files"]}
 
     assert "reports/trade_outcome_analytics_latest.csv" in paths
+    assert "reports/trade_outcome_analytics_latest.json" in paths
     assert "reports/trade_outcome_analytics_latest.md" in paths

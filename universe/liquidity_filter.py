@@ -111,12 +111,12 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
     med20 = float(df["volume"].tail(20).median())
     mean20 = float(df["volume"].tail(20).mean())
     dollar20 = close * avg20
+    dollar60 = close * avg60
     ratio = med20 / mean20 if mean20 else 0
 
     min_price = config.get("filters", {}).get("min_price", cfg.get("min_price", 10))
-    min_avg20 = cfg.get("min_avg_volume_20d", 300000)
-    min_avg60 = cfg.get("min_avg_volume_60d", 250000)
-    min_dollar = cfg.get("min_dollar_volume_20d", 10000000)
+    min_dollar20 = cfg.get("min_dollar_volume_20d", 20000000)
+    min_dollar60 = cfg.get("min_dollar_volume_60d", 15000000)
     min_ratio = cfg.get("min_median_to_mean_volume_ratio", 0.5)
     max_spread = cfg.get("max_bid_ask_spread_pct", None)
 
@@ -125,9 +125,8 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
 
     core_checks = {
         "price": close >= min_price,
-        "avg_volume_20d": avg20 >= min_avg20,
-        "avg_volume_60d": avg60 >= min_avg60,
-        "dollar_volume_20d": dollar20 >= min_dollar,
+        "dollar_volume_20d": dollar20 >= min_dollar20,
+        "dollar_volume_60d": dollar60 >= min_dollar60,
         "volume_consistency": ratio >= min_ratio,
     }
 
@@ -139,9 +138,8 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
     liquidity_pass = bool(all(core_checks.values()) and spread_pass)
 
     price_score = _ratio_score(close, min_price)
-    avg20_score = _ratio_score(avg20, min_avg20)
-    avg60_score = _ratio_score(avg60, min_avg60)
-    dollar_score = _ratio_score(dollar20, min_dollar)
+    dollar20_score = _ratio_score(dollar20, min_dollar20)
+    dollar60_score = _ratio_score(dollar60, min_dollar60)
     consistency_score = _ratio_score(ratio, min_ratio)
 
     if bid_ask["bid_ask_valid"] and max_spread is not None and spread_validated_pct is not None:
@@ -153,12 +151,11 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
         spread_score = cfg.get("invalid_bid_ask_score", 0.50)
 
     liquidity_score = (
-        0.30 * dollar_score
-        + 0.20 * avg20_score
-        + 0.15 * avg60_score
+        0.35 * dollar20_score
+        + 0.25 * dollar60_score
         + 0.15 * consistency_score
         + 0.10 * price_score
-        + 0.10 * spread_score
+        + 0.15 * spread_score
     )
     liquidity_score = float(np.clip(liquidity_score, 0, 1))
 
@@ -179,6 +176,7 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
         "avg_volume_20d": avg20,
         "avg_volume_60d": avg60,
         "dollar_volume_20d": dollar20,
+        "dollar_volume_60d": dollar60,
         "median_volume_20d": med20,
         "mean_volume_20d": mean20,
         "median_to_mean_volume_ratio": ratio,

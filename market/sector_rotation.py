@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import numpy as np
 
 
 def calculate_sector_rotation(meta: pd.DataFrame, prices: dict[str, pd.DataFrame]) -> pd.DataFrame:

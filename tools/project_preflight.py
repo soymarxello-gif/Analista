@@ -7,7 +7,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -92,11 +91,22 @@ OPTIONAL_FILES = [
     "reports/gui_decision_quality_review_latest.csv",
     "reports/gui_decision_quality_audit_latest.json",
     "reports/gui_decision_quality_audit_latest.md",
+    "reports/gui_weekly_operational_review_latest.json",
+    "reports/gui_weekly_operational_review_latest.md",
+    "reports/gui_weekly_operational_review_latest.csv",
+    "reports/gui_weekly_operational_review_audit_latest.json",
+    "reports/gui_weekly_operational_review_audit_latest.md",
+    "reports/gui_evidence_collection_window_latest.json",
+    "reports/gui_evidence_collection_window_latest.md",
+    "reports/gui_evidence_collection_window_latest.csv",
+    "reports/gui_evidence_collection_audit_latest.json",
+    "reports/gui_evidence_collection_audit_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
     "reports/open_trades_snapshot_latest.csv",
     "reports/open_trades_snapshot_latest.md",
     "reports/trade_outcome_analytics_latest.csv",
+    "reports/trade_outcome_analytics_latest.json",
     "reports/trade_outcome_analytics_latest.md",
 ]
 

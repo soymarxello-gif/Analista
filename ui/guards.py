@@ -4,7 +4,6 @@ import math
 from pathlib import Path
 from typing import Any
 
-
 NO_REAL_ORDER_NOTICE = "paper trading only; no real order"
 
 ALLOWED_MANUAL_DECISIONS = {

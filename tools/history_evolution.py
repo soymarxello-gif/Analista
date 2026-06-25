@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -231,7 +230,6 @@ def summarize_ticker_history(history_df: pd.DataFrame) -> pd.DataFrame:
         latest_signal = _safe_text(latest.get("signal")).upper()
 
         signal_values = group["signal"].fillna("").astype(str).str.upper().tolist()
-        signal_scores = [SIGNAL_STRENGTH.get(s, -1) for s in signal_values]
 
         first_rank = _safe_int(first.get("rank"))
         latest_rank = _safe_int(latest.get("rank"))

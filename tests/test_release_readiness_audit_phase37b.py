@@ -13,7 +13,6 @@ from tools.release_readiness_audit import (
     save_release_readiness_audit,
 )
 
-
 DOCS = [
     "docs/OPERATING_MANUAL.md",
     "docs/DAILY_WORKFLOW.md",
@@ -53,6 +52,10 @@ TOOLS = [
     "tools/gui_operational_decision_log_audit.py",
     "tools/gui_decision_quality_review.py",
     "tools/gui_decision_quality_audit.py",
+    "tools/gui_weekly_operational_review.py",
+    "tools/gui_weekly_operational_review_audit.py",
+    "tools/gui_evidence_collection_window.py",
+    "tools/gui_evidence_collection_audit.py",
 ]
 
 TESTS = [
@@ -79,6 +82,8 @@ TESTS = [
     "tests/test_alpaca_readonly_connectivity_audit.py",
     "tests/test_gui_operational_decision_log_phase40c.py",
     "tests/test_gui_decision_quality_phase40d.py",
+    "tests/test_gui_weekly_operational_review_phase40e.py",
+    "tests/test_gui_evidence_collection_phase41a.py",
 ]
 
 
@@ -155,6 +160,8 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "alpaca_readonly_connectivity_audit",
                 "gui_operational_decision_log_audit",
                 "gui_decision_quality_audit",
+                "gui_weekly_operational_review_audit",
+                "gui_evidence_collection_audit",
             ]
         ),
     )
@@ -186,6 +193,10 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/gui_operational_decision_log_audit_latest.md",
                 "reports/gui_decision_quality_review_latest.md",
                 "reports/gui_decision_quality_audit_latest.md",
+                "reports/gui_weekly_operational_review_latest.md",
+                "reports/gui_weekly_operational_review_audit_latest.md",
+                "reports/gui_evidence_collection_window_latest.md",
+                "reports/gui_evidence_collection_audit_latest.md",
             ]
         ),
     )
@@ -217,6 +228,10 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "tools/gui_operational_decision_log_audit.py",
                 "tools/gui_decision_quality_review.py",
                 "tools/gui_decision_quality_audit.py",
+                "tools/gui_weekly_operational_review.py",
+                "tools/gui_weekly_operational_review_audit.py",
+                "tools/gui_evidence_collection_window.py",
+                "tools/gui_evidence_collection_audit.py",
                 "reports/live_quote_recheck_latest.json",
                 "reports/trade_decision_checklist_latest.json",
                 "reports/trade_candidate_cards_latest.json",
@@ -241,6 +256,10 @@ def _make_ready_project(tmp_path: Path) -> Path:
                 "reports/gui_operational_decision_log_audit_latest.json",
                 "reports/gui_decision_quality_review_latest.json",
                 "reports/gui_decision_quality_audit_latest.json",
+                "reports/gui_weekly_operational_review_latest.json",
+                "reports/gui_weekly_operational_review_audit_latest.json",
+                "reports/gui_evidence_collection_window_latest.json",
+                "reports/gui_evidence_collection_audit_latest.json",
             ]
         ),
     )
@@ -287,7 +306,14 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "gui_decision_quality_review_latest.md",
         "gui_decision_quality_review_latest.csv",
         "gui_decision_quality_audit_latest.md",
+        "gui_weekly_operational_review_latest.md",
+        "gui_weekly_operational_review_latest.csv",
+        "gui_weekly_operational_review_audit_latest.md",
+        "gui_evidence_collection_window_latest.md",
+        "gui_evidence_collection_window_latest.csv",
+        "gui_evidence_collection_audit_latest.md",
         "trade_outcome_analytics_latest.csv",
+        "trade_outcome_analytics_latest.json",
         "trade_outcome_analytics_latest.md",
         "reports_cleanup_latest.md",
     ]:
@@ -323,6 +349,10 @@ def _make_ready_project(tmp_path: Path) -> Path:
         "gui_operational_decision_log_audit_latest.json",
         "gui_decision_quality_review_latest.json",
         "gui_decision_quality_audit_latest.json",
+        "gui_weekly_operational_review_latest.json",
+        "gui_weekly_operational_review_audit_latest.json",
+        "gui_evidence_collection_window_latest.json",
+        "gui_evidence_collection_audit_latest.json",
         "reports_cleanup_latest.json",
         "report_consistency_latest.json",
     ]:

@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -47,6 +46,24 @@ OUTPUT_COLUMNS = [
     "industry",
     "metadata_source",
     "quote_source",
+    "deep_analysis_selected",
+    "scenario_status",
+    "scenario_confidence",
+    "scenario_operability",
+    "scenario_eligible_for_backtest",
+    "scenario_guardrail_applied",
+    "scenario_guardrail_reason",
+    "momentum_state",
+    "extension_state",
+    "entry_timing_status",
+    "required_confirmation",
+    "engine_recommendation",
+    "shadow_entry",
+    "shadow_stop",
+    "shadow_target",
+    "shadow_rr",
+    "shadow_stop_atr_multiple",
+    "shadow_level_status",
     "checklist_status",
     "checklist_score",
     "checklist_required_actions",
@@ -170,7 +187,7 @@ def evaluate_checklist_row(
     row: dict,
     *,
     min_price: float = 10.0,
-    min_market_cap: float = 1_500_000_000,
+    min_market_cap: float = 2_500_000_000,
     min_rr: float = 1.5,
     high_quality_score: float = 85.0,
 ) -> dict:
@@ -186,6 +203,9 @@ def evaluate_checklist_row(
     stop_atr_status = _safe_text(row.get("stop_atr_status")).upper()
     options_bias = _safe_text(row.get("options_bias")).upper()
     options_confidence = _safe_text(row.get("options_confidence")).upper()
+    scenario_status = _safe_text(row.get("scenario_status")).upper()
+    scenario_eligible_text = _safe_text(row.get("scenario_eligible_for_backtest"))
+    shadow_level_status = _safe_text(row.get("shadow_level_status")).upper()
 
     entry = _safe_float(_first_value(row, ["actionable_entry", "entry"]))
     stop = _safe_float(_first_value(row, ["actionable_stop", "stop"]))
@@ -200,6 +220,22 @@ def evaluate_checklist_row(
         _append_unique(blockers, "signal_avoid")
     if setup_type in {"", "NO_VALID_SETUP"}:
         _append_unique(blockers, "no_valid_setup")
+
+    if scenario_status and scenario_status != "VALID_TRIGGER":
+        _append_unique(blockers, f"scenario_not_operable_{scenario_status.lower()}")
+    if scenario_eligible_text and not _bool(row.get("scenario_eligible_for_backtest")):
+        _append_unique(blockers, "scenario_not_eligible_for_backtest")
+
+    required_confirmation = _safe_text(row.get("required_confirmation"))
+    if required_confirmation:
+        _append_unique(required_actions, required_confirmation)
+
+    if shadow_level_status and shadow_level_status not in {
+        "VALID",
+        "NOT_AVAILABLE",
+        "NOT_ELIGIBLE",
+    }:
+        _append_unique(warnings, f"shadow_level_status_{shadow_level_status.lower()}")
 
     if price is not None and price < min_price:
         _append_unique(blockers, "price_below_minimum")
@@ -284,6 +320,9 @@ def evaluate_checklist_row(
         status = "NEEDS_LIVE_QUOTE_RECHECK"
     elif (
         signal in {"WATCHLIST", "TRIGGER_CONFIRMED"}
+        and (not scenario_status or scenario_status == "VALID_TRIGGER")
+        and (not scenario_eligible_text or _bool(row.get("scenario_eligible_for_backtest")))
+        and shadow_level_status in {"", "VALID", "NOT_AVAILABLE", "NOT_ELIGIBLE"}
         and checklist_score >= high_quality_score
     ):
         status = "HIGH_QUALITY_REVIEW"
@@ -311,7 +350,7 @@ def build_trade_decision_checklist_dataframe(
     *,
     root: Path = ROOT,
     min_price: float = 10.0,
-    min_market_cap: float = 1_500_000_000,
+    min_market_cap: float = 2_500_000_000,
     min_rr: float = 1.5,
     high_quality_score: float = 85.0,
 ) -> pd.DataFrame:

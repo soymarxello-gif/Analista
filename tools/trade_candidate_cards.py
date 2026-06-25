@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -58,6 +57,23 @@ CARD_FIELDS = [
     "checklist_warnings",
     "checklist_required_actions",
     "manual_decision_note",
+    "scenario_status",
+    "scenario_confidence",
+    "scenario_operability",
+    "scenario_eligible_for_backtest",
+    "scenario_guardrail_applied",
+    "scenario_guardrail_reason",
+    "momentum_state",
+    "extension_state",
+    "entry_timing_status",
+    "required_confirmation",
+    "engine_recommendation",
+    "shadow_entry",
+    "shadow_stop",
+    "shadow_target",
+    "shadow_rr",
+    "shadow_stop_atr_multiple",
+    "shadow_level_status",
 ]
 
 
@@ -217,6 +233,24 @@ def _render_card(row: dict) -> list[str]:
     lines.append(f"- setup_type: {_display(row.get('setup_type'))}")
     lines.append(f"- stop_atr_status: {_display(row.get('stop_atr_status'))}")
     lines.append(f"- warnings tecnicos: {_display(row.get('checklist_warnings'), 'NONE')}")
+    lines.append("")
+    lines.append("### Diagnostico de escenario")
+    lines.append(f"- scenario_status: {_display(row.get('scenario_status'))}")
+    lines.append(f"- scenario_confidence: {_display(row.get('scenario_confidence'))}")
+    lines.append(f"- scenario_operability: {_display(row.get('scenario_operability'))}")
+    lines.append(f"- momentum_state: {_display(row.get('momentum_state'))}")
+    lines.append(f"- extension_state: {_display(row.get('extension_state'))}")
+    lines.append(f"- entry_timing_status: {_display(row.get('entry_timing_status'))}")
+    lines.append(f"- confirmacion requerida: {_display(row.get('required_confirmation'), 'NONE')}")
+    lines.append(f"- recomendacion del motor: {_display(row.get('engine_recommendation'))}")
+    lines.append(
+        "- niveles shadow: "
+        f"entry={_display(row.get('shadow_entry'))}; "
+        f"stop={_display(row.get('shadow_stop'))}; "
+        f"target={_display(row.get('shadow_target'))}; "
+        f"R/R={_display(row.get('shadow_rr'))}; "
+        f"status={_display(row.get('shadow_level_status'))}"
+    )
     lines.append("")
     lines.append("### Opciones / flujo institucional")
     lines.append(f"- options_bias: {_display(row.get('options_bias'))}")

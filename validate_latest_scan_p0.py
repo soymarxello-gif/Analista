@@ -5,11 +5,14 @@ from pathlib import Path
 
 import pandas as pd
 
-
 REPORTS_DIR = Path("reports")
 
 
 def latest_csv() -> Path:
+    audited = REPORTS_DIR / "latest_scan_audited.csv"
+    if audited.exists():
+        return audited
+
     csvs = sorted(REPORTS_DIR.glob("*.csv"), key=lambda p: p.stat().st_mtime, reverse=True)
     if not csvs:
         raise FileNotFoundError("No se encontraron CSV en ./reports")
@@ -71,9 +74,9 @@ def main() -> None:
         & pd.to_numeric(df["price"], errors="coerce").lt(10)
     ).sum()
 
-    checks["WATCHLIST_or_better + market_cap<1.5B"] = (
+    checks["WATCHLIST_or_better + market_cap<2.5B"] = (
         signal.isin(actionable_signals)
-        & pd.to_numeric(df["market_cap"], errors="coerce").lt(1_500_000_000)
+        & pd.to_numeric(df["market_cap"], errors="coerce").lt(2_500_000_000)
     ).sum()
 
     checks["NO_VALID_SETUP fuera de VETO"] = (

@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from pathlib import Path
 import json
+from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 from loguru import logger
 
 from engine.posttest_engine import run_posttest
 
-
 DEFAULT_SCAN_PATTERNS = [
-    "reports/*.csv",
-    "reports/history/*.csv",
+    "reports/latest_scan_audited.csv",
+    "reports/history/scan_*.csv",
 ]
 
 EXCLUDE_PATTERNS = [
@@ -109,8 +108,9 @@ def run_posttest_batch(
     min_age_days: int | None = None,
     output_dir: str | Path = "reports/posttests",
     overwrite: bool = False,
+    top_n_candidates: int = 5,
 ) -> dict:
-    horizons = horizons or [4, 7, 10, 15, 21]
+    horizons = horizons or [4]
     min_age_days = min_age_days if min_age_days is not None else min(horizons)
 
     scan_files = discover_scan_csvs(patterns)
@@ -134,7 +134,12 @@ def run_posttest_batch(
             continue
 
         try:
-            df = run_posttest(scan_csv, horizons=horizons, output_csv=out_path)
+            df = run_posttest(
+                scan_csv,
+                horizons=horizons,
+                output_csv=out_path,
+                top_n_candidates=top_n_candidates,
+            )
             results.append(
                 {
                     "scan_csv": scan_csv.as_posix(),
@@ -142,6 +147,11 @@ def run_posttest_batch(
                     "age_days": item["age_days"],
                     "output_csv": out_path.as_posix(),
                     "rows": int(len(df)),
+                    "input_rows": int(df.attrs.get("input_rows", 0)),
+                    "eligible_rows": int(df.attrs.get("eligible_rows", 0)),
+                    "selected_rows": int(df.attrs.get("selected_rows", 0)),
+                    "top_n_candidates": int(df.attrs.get("top_n_candidates", top_n_candidates)),
+                    "eligibility_counts": df.attrs.get("eligibility_counts", {}),
                     "status": "OK" if len(df) else "EMPTY",
                 }
             )
@@ -166,6 +176,7 @@ def run_posttest_batch(
         "posttests_created": len([r for r in results if r.get("status") == "OK"]),
         "posttests_empty": len([r for r in results if r.get("status") == "EMPTY"]),
         "posttests_error": len([r for r in results if r.get("status") == "ERROR"]),
+        "top_n_candidates": int(top_n_candidates),
         "skipped": skipped,
         "results": results,
     }

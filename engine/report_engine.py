@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-from datetime import datetime
 import html
+from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 from loguru import logger

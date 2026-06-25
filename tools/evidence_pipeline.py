@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
-import json
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -22,11 +22,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Analista - pipeline evidencia: posttest batch + resumen + calibración.")
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--patterns", nargs="+", default=None)
-    parser.add_argument("--horizons", nargs="+", type=int, default=[4, 7, 10, 15, 21])
+    parser.add_argument("--horizons", nargs="+", type=int, default=[4])
     parser.add_argument("--min-age-days", type=int, default=None)
     parser.add_argument("--posttest-dir", default="reports/posttests")
     parser.add_argument("--overwrite-posttests", action="store_true")
-    parser.add_argument("--calibration-horizon", type=int, default=10)
+    parser.add_argument("--calibration-horizon", type=int, default=4)
     parser.add_argument("--min-samples", type=int, default=20)
     parser.add_argument("--max-delta-pct", type=float, default=0.20)
     args = parser.parse_args()

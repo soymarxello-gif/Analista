@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -48,6 +47,7 @@ def build_source_coverage_report(df: pd.DataFrame, top_n: int = 30) -> dict:
         "missing_rates": {},
         "cross_tabs": {},
         "options_flow": {},
+        "analysis_quotes": {},
         "top_missing_metadata": [],
         "top_quote_low": [],
         "operable_missing_metadata": [],
@@ -65,9 +65,22 @@ def build_source_coverage_report(df: pd.DataFrame, top_n: int = 30) -> dict:
         "options_available",
         "options_data_available",
         "options_error",
+        "options_coverage_status",
         "options_bias",
         "options_confidence",
+        "options_priority_selected",
+        "options_priority_reason",
+        "options_preliminary_signal",
         "data_quality_confidence",
+        "analysis_quote_source",
+        "analysis_quote_freshness",
+        "analysis_quote_confidence",
+        "secondary_data_sources_used",
+        "metadata_source",
+        "sector_source",
+        "industry_source",
+        "market_cap_source",
+        "earnings_source",
     ]:
         report["counts"][col] = _safe_counts(df, col)
 
@@ -79,9 +92,13 @@ def build_source_coverage_report(df: pd.DataFrame, top_n: int = 30) -> dict:
         "market_cap",
         "avg_volume_20d",
         "dollar_volume_20d",
+        "dollar_volume_60d",
         "rr",
         "atr",
         "setup_type",
+        "analysis_price",
+        "analysis_bid",
+        "analysis_ask",
     ]
 
     for col in missing_fields:
@@ -172,10 +189,26 @@ def build_source_coverage_report(df: pd.DataFrame, top_n: int = 30) -> dict:
         "options_available",
         "options_data_available",
         "options_error",
+        "options_coverage_status",
+        "options_priority_selected",
+        "options_priority_reason",
+        "options_preliminary_signal",
     ]
     report["options_flow"] = {
         col: _safe_counts(df, col)
         for col in option_summary_cols
+        if col in df.columns
+    }
+
+    analysis_quote_cols = [
+        "analysis_quote_source",
+        "analysis_quote_freshness",
+        "analysis_quote_confidence",
+        "secondary_data_sources_used",
+    ]
+    report["analysis_quotes"] = {
+        col: _safe_counts(df, col)
+        for col in analysis_quote_cols
         if col in df.columns
     }
 
@@ -199,6 +232,13 @@ def print_report(report: dict) -> None:
 
     print("\n[Options / institutional flow]")
     for col, counts in report.get("options_flow", {}).items():
+        if counts:
+            print(f"\n{col}:")
+            for key, value in counts.items():
+                print(f"  {key}: {value}")
+
+    print("\n[Analysis quotes / delayed sources]")
+    for col, counts in report.get("analysis_quotes", {}).items():
         if counts:
             print(f"\n{col}:")
             for key, value in counts.items():

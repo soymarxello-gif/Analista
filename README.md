@@ -194,3 +194,41 @@ Outputs:
 - `reports/gui_decision_quality_review_latest.csv`
 - `reports/gui_decision_quality_audit_latest.json`
 - `reports/gui_decision_quality_audit_latest.md`
+
+## Weekly GUI operational review
+
+`tools/gui_weekly_operational_review.py` summarizes several supervised GUI/paper-trading days into a weekly operating score, bucket, and observational recommendation. It is manual review only: no automatic trading changes, no scoring changes, no threshold changes, paper trading only, and no real orders.
+
+Run:
+
+- `python .\tools\gui_weekly_operational_review.py`
+- `python .\tools\gui_weekly_operational_review.py --days 5`
+- `python .\tools\gui_weekly_operational_review_audit.py`
+
+Outputs:
+
+- `data/gui_weekly_operational_reviews.csv`
+- `reports/gui_weekly_operational_review_latest.json`
+- `reports/gui_weekly_operational_review_latest.md`
+- `reports/gui_weekly_operational_review_latest.csv`
+- `reports/gui_weekly_operational_review_audit_latest.json`
+- `reports/gui_weekly_operational_review_audit_latest.md`
+
+## Evidence collection window
+
+`tools/gui_evidence_collection_window.py` consolidates multi-session evidence before any human calibration review. It reports readiness status and a calibration readiness score, but does not change scanner logic, scoring, thresholds, ranking, journal rows, outcomes, or signals.
+
+Run:
+
+- `python .\tools\gui_evidence_collection_window.py`
+- `python .\tools\gui_evidence_collection_window.py --days 20`
+- `python .\tools\gui_evidence_collection_audit.py`
+
+Outputs:
+
+- `data/gui_evidence_collection_windows.csv`
+- `reports/gui_evidence_collection_window_latest.json`
+- `reports/gui_evidence_collection_window_latest.md`
+- `reports/gui_evidence_collection_window_latest.csv`
+- `reports/gui_evidence_collection_audit_latest.json`
+- `reports/gui_evidence_collection_audit_latest.md`

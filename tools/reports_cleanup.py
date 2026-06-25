@@ -3,10 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,6 +34,7 @@ PROTECTED_REPORT_NAMES = {
     "open_trades_snapshot_latest.csv",
     "open_trades_snapshot_latest.md",
     "trade_outcome_analytics_latest.csv",
+    "trade_outcome_analytics_latest.json",
     "trade_outcome_analytics_latest.md",
     "source_coverage_latest.json",
     "history_evolution_latest.csv",

@@ -105,6 +105,20 @@ def test_watchlist_with_valid_quote_is_review_or_high_quality():
     assert result["checklist_status"] != "BLOCKED"
 
 
+def test_market_cap_below_two_point_five_billion_is_blocked():
+    result = evaluate_checklist_row(_candidate(market_cap=2_499_999_999))
+
+    assert result["checklist_status"] == "BLOCKED"
+    assert "market_cap_below_minimum" in result["checklist_blockers"]
+
+
+def test_market_cap_at_two_point_five_billion_is_allowed():
+    result = evaluate_checklist_row(_candidate(market_cap=2_500_000_000))
+
+    assert result["checklist_status"] != "BLOCKED"
+    assert "market_cap_below_minimum" not in result["checklist_blockers"]
+
+
 def test_crowded_bullish_adds_contrarian_warning():
     result = evaluate_checklist_row(_candidate(options_bias="CROWDED_BULLISH"))
 

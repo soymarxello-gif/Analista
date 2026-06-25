@@ -7,13 +7,12 @@ from pathlib import Path
 import pandas as pd
 
 from tools.gui_supervised_session import (
+    add_note,
     close_session,
     session_status,
     start_session,
-    add_note,
 )
 from tools.gui_supervised_session_audit import save_gui_supervised_session_audit
-
 
 ROOT = Path(__file__).resolve().parents[1]
 

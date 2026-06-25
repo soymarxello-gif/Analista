@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -125,6 +126,7 @@ def test_save_trade_outcome_analytics_reports_writes_files(tmp_path: Path):
 
     outcomes_path = reports / "trade_outcomes.csv"
     csv_out = reports / "trade_outcome_analytics_latest.csv"
+    json_out = reports / "trade_outcome_analytics_latest.json"
     markdown_out = reports / "trade_outcome_analytics_latest.md"
 
     pd.DataFrame(
@@ -147,13 +149,18 @@ def test_save_trade_outcome_analytics_reports_writes_files(tmp_path: Path):
     result = save_trade_outcome_analytics_reports(
         outcomes_path=outcomes_path,
         csv_out=csv_out,
+        json_out=json_out,
         markdown_out=markdown_out,
     )
 
     assert result["status"] == "PASS"
     assert result["closed_trades"] == 1
     assert csv_out.exists()
+    assert json_out.exists()
     assert markdown_out.exists()
+    payload = json.loads(json_out.read_text(encoding="utf-8"))
+    assert payload["status"] == "PASS"
+    assert payload["closed_trades"] == 1
 
     markdown = markdown_out.read_text(encoding="utf-8")
     assert "trade outcome analytics" in markdown

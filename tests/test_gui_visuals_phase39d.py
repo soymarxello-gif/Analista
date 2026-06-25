@@ -8,7 +8,6 @@ import pandas as pd
 from tools.gui_visuals_audit import collect_gui_visuals_audit, save_gui_visuals_audit
 from ui import charts
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

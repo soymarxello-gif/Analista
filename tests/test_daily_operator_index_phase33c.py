@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from pydoc import text
 
 import pandas as pd
 

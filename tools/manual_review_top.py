@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -35,6 +34,24 @@ TOP_COLUMNS = [
     "rank_delta",
     "persistence_bonus_reason",
     "persistence_penalty_reason",
+    "deep_analysis_selected",
+    "scenario_status",
+    "scenario_confidence",
+    "scenario_operability",
+    "scenario_eligible_for_backtest",
+    "scenario_guardrail_applied",
+    "scenario_guardrail_reason",
+    "momentum_state",
+    "extension_state",
+    "entry_timing_status",
+    "required_confirmation",
+    "engine_recommendation",
+    "shadow_entry",
+    "shadow_stop",
+    "shadow_target",
+    "shadow_rr",
+    "shadow_stop_atr_multiple",
+    "shadow_level_status",
     "reason_summary",
 ]
 
@@ -93,13 +110,38 @@ def _is_deteriorated(row: dict) -> bool:
     signal = _safe_text(row.get("signal")).upper()
     bucket = _safe_text(row.get("setup_persistence_bucket")).upper()
     penalty = _safe_text(row.get("persistence_penalty_reason")).lower()
+    scenario_status = _safe_text(row.get("scenario_status")).upper()
 
     return (
         signal in {"AVOID", "VETO"}
         or bucket == "D_WEAK_OR_DETERIORATED"
         or "signal_deteriorated" in penalty
         or "disappeared_from_manual_review" in penalty
+        or scenario_status
+        in {
+            "LATE_ENTRY_OVEREXTENDED",
+            "WEAK_MOMENTUM",
+            "STRUCTURE_INVALID",
+            "CONTEXT_CONFLICT",
+            "DATA_INSUFFICIENT",
+        }
     )
+
+
+def _scenario_allows_high_quality(row: dict) -> bool:
+    scenario_status = _safe_text(row.get("scenario_status")).upper()
+    if scenario_status and scenario_status != "VALID_TRIGGER":
+        return False
+
+    if _safe_text(row.get("scenario_eligible_for_backtest")):
+        if not _bool(row.get("scenario_eligible_for_backtest")):
+            return False
+
+    shadow_status = _safe_text(row.get("shadow_level_status")).upper()
+    if shadow_status and shadow_status not in {"VALID", "NOT_AVAILABLE", "NOT_ELIGIBLE"}:
+        return False
+
+    return True
 
 
 def _is_high_quality(row: dict) -> bool:
@@ -128,6 +170,7 @@ def _is_high_quality(row: dict) -> bool:
     return (
         valid_signal
         and valid_operational_quote
+        and _scenario_allows_high_quality(row)
         and final_trade_score >= 70
         and setup_quality_score >= 65
         and rr >= 1.7
@@ -262,6 +305,12 @@ def build_manual_review_top_markdown(top_df: pd.DataFrame) -> str:
             "quote_status",
             "execution_quote_quality",
             "quote_recheck_priority",
+            "scenario_status",
+            "scenario_operability",
+            "momentum_state",
+            "extension_state",
+            "entry_timing_status",
+            "shadow_level_status",
             "signal_path",
             "persistence_penalty_reason",
         ]

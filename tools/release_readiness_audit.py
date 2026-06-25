@@ -6,7 +6,6 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -49,6 +48,10 @@ CRITICAL_TOOLS = [
     "tools/gui_operational_decision_log_audit.py",
     "tools/gui_decision_quality_review.py",
     "tools/gui_decision_quality_audit.py",
+    "tools/gui_weekly_operational_review.py",
+    "tools/gui_weekly_operational_review_audit.py",
+    "tools/gui_evidence_collection_window.py",
+    "tools/gui_evidence_collection_audit.py",
 ]
 
 CRITICAL_TESTS = [
@@ -75,6 +78,8 @@ CRITICAL_TESTS = [
     "tests/test_alpaca_readonly_connectivity_audit.py",
     "tests/test_gui_operational_decision_log_phase40c.py",
     "tests/test_gui_decision_quality_phase40d.py",
+    "tests/test_gui_weekly_operational_review_phase40e.py",
+    "tests/test_gui_evidence_collection_phase41a.py",
 ]
 
 OPTIONAL_REPORTS = [
@@ -119,6 +124,7 @@ OPTIONAL_REPORTS = [
     "reports/calibration_recommendations_latest.md",
     "reports/calibration_recommendations_latest.json",
     "reports/trade_outcome_analytics_latest.csv",
+    "reports/trade_outcome_analytics_latest.json",
     "reports/trade_outcome_analytics_latest.md",
     "reports/reports_cleanup_latest.json",
     "reports/reports_cleanup_latest.md",
@@ -153,6 +159,16 @@ OPTIONAL_REPORTS = [
     "reports/gui_decision_quality_review_latest.csv",
     "reports/gui_decision_quality_audit_latest.json",
     "reports/gui_decision_quality_audit_latest.md",
+    "reports/gui_weekly_operational_review_latest.json",
+    "reports/gui_weekly_operational_review_latest.md",
+    "reports/gui_weekly_operational_review_latest.csv",
+    "reports/gui_weekly_operational_review_audit_latest.json",
+    "reports/gui_weekly_operational_review_audit_latest.md",
+    "reports/gui_evidence_collection_window_latest.json",
+    "reports/gui_evidence_collection_window_latest.md",
+    "reports/gui_evidence_collection_window_latest.csv",
+    "reports/gui_evidence_collection_audit_latest.json",
+    "reports/gui_evidence_collection_audit_latest.md",
 ]
 
 RECENT_DAILY_VALIDATION_STEPS = [
@@ -175,6 +191,8 @@ RECENT_DAILY_VALIDATION_STEPS = [
     "alpaca_readonly_connectivity_audit",
     "gui_operational_decision_log_audit",
     "gui_decision_quality_audit",
+    "gui_weekly_operational_review_audit",
+    "gui_evidence_collection_audit",
 ]
 
 OPERATOR_INDEX_REPORT_REFERENCES = [
@@ -194,6 +212,10 @@ OPERATOR_INDEX_REPORT_REFERENCES = [
     "reports/gui_release_audit_latest.md",
     "reports/gui_supervised_session_latest.md",
     "reports/gui_supervised_session_audit_latest.md",
+    "reports/gui_weekly_operational_review_latest.md",
+    "reports/gui_weekly_operational_review_audit_latest.md",
+    "reports/gui_evidence_collection_window_latest.md",
+    "reports/gui_evidence_collection_audit_latest.md",
 ]
 
 MANIFEST_REFERENCES = [
@@ -213,6 +235,10 @@ MANIFEST_REFERENCES = [
     "tools/gui_release_audit.py",
     "tools/gui_supervised_session.py",
     "tools/gui_supervised_session_audit.py",
+    "tools/gui_weekly_operational_review.py",
+    "tools/gui_weekly_operational_review_audit.py",
+    "tools/gui_evidence_collection_window.py",
+    "tools/gui_evidence_collection_audit.py",
     "reports/live_quote_recheck_latest.json",
     "reports/trade_decision_checklist_latest.json",
     "reports/trade_candidate_cards_latest.json",
@@ -229,6 +255,10 @@ MANIFEST_REFERENCES = [
     "reports/gui_release_audit_latest.json",
     "reports/gui_supervised_session_latest.json",
     "reports/gui_supervised_session_audit_latest.json",
+    "reports/gui_weekly_operational_review_latest.json",
+    "reports/gui_weekly_operational_review_audit_latest.json",
+    "reports/gui_evidence_collection_window_latest.json",
+    "reports/gui_evidence_collection_audit_latest.json",
 ]
 
 ALLOWED_DISABLED_SIGNAL_PATHS = {

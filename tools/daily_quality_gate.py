@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -168,16 +167,33 @@ def _collect_scan_snapshot(scan_df: pd.DataFrame, manual_df: pd.DataFrame) -> di
         "latest_scan_rows": int(len(scan_df)),
         "manual_review_rows": int(len(manual_df)),
         "signals": _value_counts(scan_df, "signal"),
-        "recommendations": _value_counts(
-            manual_df if not manual_df.empty else scan_df,
-            "recommendation",
-        ),
+        "recommendations": _value_counts(scan_df, "recommendation"),
         "quote_status": _value_counts(scan_df, "quote_status"),
         "execution_quote_quality": _value_counts(scan_df, "execution_quote_quality"),
         "manual_quote_recheck_priority": _value_counts(manual_df, "quote_recheck_priority"),
+        "scenario_status": _value_counts(scan_df, "scenario_status"),
     }
 
     return snapshot
+
+
+def _collect_artifact_freshness(scan_path: Path, manual_path: Path) -> dict:
+    scan_modified = scan_path.stat().st_mtime if scan_path.exists() else None
+    manual_modified = manual_path.stat().st_mtime if manual_path.exists() else None
+    manual_is_stale = bool(
+        scan_modified is not None
+        and manual_modified is not None
+        and manual_modified + 1.0 < scan_modified
+    )
+    return {
+        "scan_modified": datetime.fromtimestamp(scan_modified).isoformat(timespec="seconds")
+        if scan_modified is not None
+        else "",
+        "manual_review_modified": datetime.fromtimestamp(manual_modified).isoformat(timespec="seconds")
+        if manual_modified is not None
+        else "",
+        "manual_review_is_stale": manual_is_stale,
+    }
 
 
 def _scan_logic_checks(scan_df: pd.DataFrame, issues: list[dict]) -> dict:
@@ -464,6 +480,14 @@ def collect_daily_quality_gate(root: Path = ROOT) -> dict:
 
     logic_checks = _scan_logic_checks(scan_df, issues)
     snapshot = _collect_scan_snapshot(scan_df, manual_df)
+    artifact_freshness = _collect_artifact_freshness(scan_path, manual_path)
+    if artifact_freshness["manual_review_is_stale"]:
+        _add_issue(
+            issues,
+            "WARN",
+            "manual_review_latest.csv",
+            "manual_review_latest.csv es anterior al scan actual; regenerar reportes derivados.",
+        )
 
     status = _derive_status(issues)
 
@@ -509,6 +533,7 @@ def collect_daily_quality_gate(root: Path = ROOT) -> dict:
             },
         },
         "scan_snapshot": snapshot,
+        "artifact_freshness": artifact_freshness,
         "logic_checks": logic_checks,
         "issues": issues,
         "files": files,
@@ -543,6 +568,7 @@ def _format_counts(counts: dict) -> list[str]:
 def build_daily_quality_gate_markdown(data: dict) -> str:
     components = data.get("components", {})
     snapshot = data.get("scan_snapshot", {})
+    freshness = data.get("artifact_freshness", {})
     logic_checks = data.get("logic_checks", {})
     issues = data.get("issues", [])
 
@@ -590,6 +616,16 @@ def build_daily_quality_gate_markdown(data: dict) -> str:
     lines.append("")
     lines.append("Execution quote quality:")
     lines.extend(_format_counts(snapshot.get("execution_quote_quality", {})))
+    lines.append("")
+    lines.append("Scenario status:")
+    lines.extend(_format_counts(snapshot.get("scenario_status", {})))
+    lines.append("")
+
+    lines.append("## Artifact freshness")
+    lines.append("")
+    lines.append(f"- scan_modified: {freshness.get('scan_modified', '')}")
+    lines.append(f"- manual_review_modified: {freshness.get('manual_review_modified', '')}")
+    lines.append(f"- manual_review_is_stale: {freshness.get('manual_review_is_stale', False)}")
     lines.append("")
 
     lines.append("## Logical checks")

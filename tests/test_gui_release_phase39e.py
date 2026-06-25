@@ -9,7 +9,6 @@ import pytest
 from tools.gui_release_audit import collect_gui_release_audit, save_gui_release_audit
 from ui import formatters, guards
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

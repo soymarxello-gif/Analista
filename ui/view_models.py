@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-
 VIEW_STATUSES = {"PASS", "WARN", "FAIL", "MISSING", "EMPTY", "UNKNOWN"}
 
 CANDIDATE_COLUMNS = [
     "ticker",
+    "company",
+    "sector",
+    "industry",
     "signal",
     "recommendation",
     "checklist_status",
@@ -19,6 +21,44 @@ CANDIDATE_COLUMNS = [
     "actionable_stop",
     "actionable_target",
     "rr",
+    "scenario_status",
+    "scenario_confidence",
+    "momentum_state",
+    "extension_state",
+    "entry_timing_status",
+    "engine_recommendation",
+    "scenario_thesis",
+    "scenario_evidence",
+    "scenario_contradictions",
+    "required_confirmation",
+    "technical_rsi",
+    "technical_macd_hist",
+    "technical_distance_sma20_atr",
+    "technical_trigger_distance_atr",
+    "technical_relative_volume",
+    "scenario_entry",
+    "scenario_stop",
+    "scenario_target",
+    "stop_atr_status",
+    "options_bias",
+    "options_confidence",
+    "options_notes",
+    "earnings_date",
+    "days_to_earnings",
+    "revenue_growth",
+    "earnings_growth",
+    "operating_margins",
+    "profit_margins",
+    "debt_to_equity",
+    "return_on_equity",
+    "macro_risk_flag",
+    "macro_notes",
+    "metadata_source",
+    "quote_source",
+    "options_source",
+    "warnings",
+    "penalty_reasons",
+    "reason_summary",
 ]
 
 
@@ -74,7 +114,11 @@ def build_status_overview(sources) -> dict:
     summary = (sources or {}).get("summary", {})
     source_map = _sources(sources)
     invalid = [name for name, source in source_map.items() if source.get("status") == "INVALID"]
-    missing = [name for name, source in source_map.items() if source.get("status") == "MISSING"]
+    missing = [
+        name
+        for name, source in source_map.items()
+        if source.get("status") == "MISSING" and not source.get("optional", False)
+    ]
     status = "FAIL" if invalid else "WARN" if missing else "PASS"
     return _model(
         "Status overview",
@@ -82,6 +126,7 @@ def build_status_overview(sources) -> dict:
         summary={
             "available_sources": summary.get("available_sources", 0),
             "missing_sources": summary.get("missing_sources", len(missing)),
+            "optional_missing_sources": summary.get("optional_missing_sources", 0),
             "invalid_sources": summary.get("invalid_sources", len(invalid)),
             "empty_sources": summary.get("empty_sources", 0),
         },
@@ -106,6 +151,14 @@ def build_candidate_table_model(sources) -> dict:
             data={"columns": CANDIDATE_COLUMNS, "rows": []},
         )
 
+    scan_df = _df(sources, "latest_scan_audited")
+    if not scan_df.empty and "ticker" in df.columns and "ticker" in scan_df.columns:
+        enrichment_columns = [
+            col for col in CANDIDATE_COLUMNS if col in scan_df.columns and col not in df.columns
+        ]
+        if enrichment_columns:
+            scan_subset = scan_df[["ticker", *enrichment_columns]].drop_duplicates("ticker")
+            df = df.merge(scan_subset, on="ticker", how="left")
     columns = [col for col in CANDIDATE_COLUMNS if col in df.columns]
     table = df[columns].copy() if columns else pd.DataFrame()
     return _model(

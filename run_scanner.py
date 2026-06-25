@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+
 from loguru import logger
 
 from config_loader import load_config
+from engine.report_engine import format_numeric_columns, save_reports
 from engine.scanner_engine import run_scan
-from engine.report_engine import save_reports, format_numeric_columns
 
 
 def setup_logger(config: dict, verbose: bool = False):

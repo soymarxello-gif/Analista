@@ -7,7 +7,6 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -24,7 +23,6 @@ from ui.view_models import (
     build_quality_gate_model,
     build_status_overview,
 )
-
 
 NO_REAL_ORDER_NOTICE = "paper trading only; no real order"
 

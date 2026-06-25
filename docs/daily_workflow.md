@@ -29,15 +29,17 @@ This runs the audited scanner, P0 validation, quality gates, optional report bui
 7. `reports/paper_trade_followup_latest.md`
 8. `reports/paper_trade_close_latest.md`
 9. `reports/paper_trading_cycle_audit_latest.md`
-10. `reports/manual_review_top.md`
-11. `reports/daily_run_manifest_latest.md`
-12. `reports/release_readiness_latest.md`
-13. `reports/ui_data_contract_audit_latest.md`
-14. `reports/streamlit_smoke_test_latest.md`
-15. `reports/gui_actions_audit_latest.md`
-16. `reports/daily_validation_summary.txt`
-17. `reports/project_preflight_latest.md`
-18. `reports/encoding_audit_latest.md`
+10. `reports/gui_weekly_operational_review_latest.md`
+11. `reports/gui_evidence_collection_window_latest.md`
+12. `reports/manual_review_top.md`
+13. `reports/daily_run_manifest_latest.md`
+14. `reports/release_readiness_latest.md`
+15. `reports/ui_data_contract_audit_latest.md`
+16. `reports/streamlit_smoke_test_latest.md`
+17. `reports/gui_actions_audit_latest.md`
+18. `reports/daily_validation_summary.txt`
+19. `reports/project_preflight_latest.md`
+20. `reports/encoding_audit_latest.md`
 
 Stop immediately if a required step is `FAIL`.
 
@@ -413,4 +415,37 @@ Review:
 - `reports/gui_decision_quality_review_latest.md`
 - `reports/gui_decision_quality_review_latest.csv`
 - `reports/gui_decision_quality_audit_latest.md`
+
+## Weekly GUI Operational Review
+
+Use `tools/gui_weekly_operational_review.py` after several supervised GUI sessions to summarize weekly paper-only operating discipline. It reads sessions, daily checklists, operational decisions, UI action logs, paper journal, outcomes, decision quality, paper cycle audit, calibration, and calibration recommendations. It is observational only: no automatic trading changes, no scoring changes, no threshold changes, manual review only, paper trading only, and no real orders.
+
+Commands:
+
+- `python .\tools\gui_weekly_operational_review.py`
+- `python .\tools\gui_weekly_operational_review.py --days 5`
+- `python .\tools\gui_weekly_operational_review_audit.py`
+
+Review:
+
+- `reports/gui_weekly_operational_review_latest.md`
+- `reports/gui_weekly_operational_review_latest.csv`
+- `reports/gui_weekly_operational_review_audit_latest.md`
+
+## Evidence Collection Window
+
+Use `tools/gui_evidence_collection_window.py` to consolidate multi-session evidence before any human calibration review. It reads supervised sessions, daily checklists, GUI decisions, weekly reviews, UI action logs, paper journal, outcomes, and calibration reports. It only declares observational readiness and does not change scoring, thresholds, ranking, scanner logic, journal rows, outcomes, or signals.
+
+Commands:
+
+- `python .\tools\gui_evidence_collection_window.py`
+- `python .\tools\gui_evidence_collection_window.py --days 20`
+- `python .\tools\gui_evidence_collection_window.py --min-sessions 10 --min-decisions 40 --min-paper-enters 10 --min-closed-trades 5`
+- `python .\tools\gui_evidence_collection_audit.py`
+
+Review:
+
+- `reports/gui_evidence_collection_window_latest.md`
+- `reports/gui_evidence_collection_window_latest.csv`
+- `reports/gui_evidence_collection_audit_latest.md`
  

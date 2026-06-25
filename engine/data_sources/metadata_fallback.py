@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
-import math
 from typing import Any, Callable
 
 import pandas as pd
 
 from .source_priority import (
     FINVIZ,
+    GOOGLE_SHEETS_MANUAL,
     MARKETWATCH,
     MISSING,
     TRADINGVIEW_MANUAL,
@@ -28,7 +29,7 @@ FIELD_SOURCE_COLUMNS = {
 }
 
 ESSENTIAL_FIELDS = ("sector", "industry", "market_cap")
-SECONDARY_SOURCE_ORDER = (FINVIZ, MARKETWATCH, TRADINGVIEW_MANUAL)
+SECONDARY_SOURCE_ORDER = (FINVIZ, MARKETWATCH, TRADINGVIEW_MANUAL, GOOGLE_SHEETS_MANUAL)
 
 
 def _is_missing(value: Any) -> bool:
@@ -150,6 +151,19 @@ def build_metadata_providers(config: dict | None = None) -> list[MetadataProvide
     for source, path in source_paths:
         if path:
             providers.append(ManualMetadataProvider(source, path))
+
+    sheets_cfg = config.get("data_sources", {}).get("providers", {}).get("google_sheets_manual", {}) or {}
+    if sheets_cfg.get("enabled", False):
+        from .google_sheets_manual import load_google_sheets_records
+
+        result = load_google_sheets_records(
+            str(sheets_cfg.get("published_csv_url") or ""),
+            timeout_seconds=int(sheets_cfg.get("timeout_seconds", 20) or 20),
+            max_stale_minutes=int(sheets_cfg.get("max_stale_minutes", 1440) or 1440),
+        )
+        records = result.get("records", {}) if isinstance(result, dict) else {}
+        if records:
+            providers.append(StaticMetadataProvider(GOOGLE_SHEETS_MANUAL, records))
     return providers
 
 

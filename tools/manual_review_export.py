@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 if str(ROOT) not in sys.path:
@@ -43,6 +42,24 @@ MANUAL_REVIEW_COLUMNS = [
     "penalty_reasons",
     "all_veto_reasons",
     "reason_summary",
+    "deep_analysis_selected",
+    "scenario_status",
+    "scenario_confidence",
+    "scenario_operability",
+    "scenario_eligible_for_backtest",
+    "scenario_guardrail_applied",
+    "scenario_guardrail_reason",
+    "momentum_state",
+    "extension_state",
+    "entry_timing_status",
+    "required_confirmation",
+    "engine_recommendation",
+    "shadow_entry",
+    "shadow_stop",
+    "shadow_target",
+    "shadow_rr",
+    "shadow_stop_atr_multiple",
+    "shadow_level_status",
 ]
 
 

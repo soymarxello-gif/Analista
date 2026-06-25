@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sys
-import yaml
-import pandas as pd
 
+import pandas as pd
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -167,8 +166,8 @@ def audit_config() -> list[str]:
         issues.append("filters.min_price debe ser 10")
 
     min_market_cap = _get_nested(config, ("filters", "min_market_cap_usd"))
-    if min_market_cap != 1_500_000_000:
-        issues.append("filters.min_market_cap_usd debe ser 1500000000")
+    if min_market_cap != 2_500_000_000:
+        issues.append("filters.min_market_cap_usd debe ser 2500000000")
 
     return issues
 
