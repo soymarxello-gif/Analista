@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import sys
 import types
+from pathlib import Path
 
 import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from engine.early_filter_runtime import (
     append_early_veto_rows,
