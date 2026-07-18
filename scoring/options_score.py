@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pandas as pd
 
 
@@ -20,13 +21,13 @@ def _score_put_call_volume_ratio(pc: float | None) -> float:
         return 0.5
     if pc < 0.35:
         return 0.35
-    if 0.35 <= pc <= 0.70:
+    if pc <= 0.70:
         return 1.0
-    if 0.70 < pc <= 1.00:
+    if pc <= 1.00:
         return 0.75
-    if 1.00 < pc <= 1.30:
+    if pc <= 1.30:
         return 0.50
-    if 1.30 < pc <= 1.80:
+    if pc <= 1.80:
         return 0.30
     return 0.15
 
@@ -49,11 +50,11 @@ def _score_call_wall_position(max_call_oi_strike: float | None, spot: float | No
     dist = (max_call_oi_strike - spot) / spot
     if dist < -0.02:
         return 0.25
-    if -0.02 <= dist <= 0.015:
+    if dist <= 0.015:
         return 0.45
-    if 0.015 < dist <= 0.10:
+    if dist <= 0.10:
         return 0.80
-    if 0.10 < dist <= 0.25:
+    if dist <= 0.25:
         return 0.65
     return 0.50
 
@@ -73,9 +74,9 @@ def _score_iv(atm_iv: float | None) -> float:
 
 
 def _score_options_liquidity(total_volume: float | None, total_oi: float | None, config: dict) -> float:
-    cfg = config.get('options_flow', {})
-    min_volume = cfg.get('min_total_option_volume', 100)
-    min_oi = cfg.get('min_total_option_open_interest', 1000)
+    cfg = config.get("options_flow", {})
+    min_volume = cfg.get("min_total_option_volume", 100)
+    min_oi = cfg.get("min_total_option_open_interest", 1000)
     total_volume = total_volume or 0
     total_oi = total_oi or 0
     volume_score = _clip01(total_volume / min_volume) if min_volume else 0.5
@@ -84,18 +85,32 @@ def _score_options_liquidity(total_volume: float | None, total_oi: float | None,
 
 
 def score_options_flow(metrics: dict, spot: float | None, config: dict) -> dict:
-    if not config.get('options_flow', {}).get('enabled', False):
-        return {'options_score': 0.5, 'options_bias': 'NEUTRAL_DISABLED', 'options_confidence': 'LOW', 'options_warning': 'options_flow desactivado'}
-    if not metrics or not metrics.get('options_data_available', False):
-        return {'options_score': 0.5, 'options_bias': 'NEUTRAL_NO_DATA', 'options_confidence': 'LOW', 'options_warning': metrics.get('options_warning', 'sin datos de opciones') if metrics else 'sin datos de opciones'}
+    if not config.get("options_flow", {}).get("enabled", False):
+        return {
+            "options_score": 0.5,
+            "options_bias": "UNKNOWN_OPTIONS_FLOW",
+            "options_confidence": "UNKNOWN",
+            "options_data_available": False,
+            "options_warning": "options_flow desactivado",
+        }
 
-    pc_volume = _num(metrics.get('put_call_volume_ratio'))
-    call_volume_share = _num(metrics.get('call_volume_share'))
-    near_call_oi_share = _num(metrics.get('near_call_oi_share'))
-    max_call_oi_strike = _num(metrics.get('max_call_oi_strike'))
-    atm_iv = _num(metrics.get('atm_implied_volatility'))
-    total_volume = _num(metrics.get('total_option_volume'), 0)
-    total_oi = _num(metrics.get('total_option_open_interest'), 0)
+    if not metrics or not metrics.get("options_data_available", False):
+        warning = metrics.get("options_warning", "sin datos de opciones") if metrics else "sin datos de opciones"
+        return {
+            "options_score": 0.5,
+            "options_bias": "UNKNOWN_OPTIONS_FLOW",
+            "options_confidence": "UNKNOWN",
+            "options_data_available": False,
+            "options_warning": warning,
+        }
+
+    pc_volume = _num(metrics.get("put_call_volume_ratio"))
+    call_volume_share = _num(metrics.get("call_volume_share"))
+    near_call_oi_share = _num(metrics.get("near_call_oi_share"))
+    max_call_oi_strike = _num(metrics.get("max_call_oi_strike"))
+    atm_iv = _num(metrics.get("atm_implied_volatility"))
+    total_volume = _num(metrics.get("total_option_volume"), 0)
+    total_oi = _num(metrics.get("total_option_open_interest"), 0)
 
     pc_score = _score_put_call_volume_ratio(pc_volume)
     call_share_score = _score_call_share(call_volume_share)
@@ -104,21 +119,43 @@ def score_options_flow(metrics: dict, spot: float | None, config: dict) -> dict:
     iv_score = _score_iv(atm_iv)
     liquidity_score = _score_options_liquidity(total_volume, total_oi, config)
 
-    weights = config.get('options_flow', {}).get('weights', {})
+    weights = config.get("options_flow", {}).get("weights", {})
     score = (
-        weights.get('put_call_volume_ratio', 0.25) * pc_score +
-        weights.get('call_volume_share', 0.20) * call_share_score +
-        weights.get('near_call_oi_share', 0.20) * near_oi_score +
-        weights.get('call_wall_position', 0.15) * call_wall_score +
-        weights.get('iv_risk', 0.10) * iv_score +
-        weights.get('options_liquidity', 0.10) * liquidity_score
+        weights.get("put_call_volume_ratio", 0.25) * pc_score
+        + weights.get("call_volume_share", 0.20) * call_share_score
+        + weights.get("near_call_oi_share", 0.20) * near_oi_score
+        + weights.get("call_wall_position", 0.15) * call_wall_score
+        + weights.get("iv_risk", 0.10) * iv_score
+        + weights.get("options_liquidity", 0.10) * liquidity_score
     )
     score = _clip01(score)
-    bias = 'BULLISH' if score >= 0.65 else 'BEARISH' if score <= 0.40 else 'NEUTRAL'
-    confidence = 'HIGH' if liquidity_score >= 0.80 else 'MEDIUM' if liquidity_score >= 0.45 else 'LOW'
-    warning = metrics.get('options_warning') or ''
-    crowded = False
-    if pc_volume is not None and pc_volume < config.get('options_flow', {}).get('extreme_bullish_put_call_below', 0.35):
-        crowded = True
-        warning = (warning + '; ' if warning else '') + 'put/call extremadamente bajo: posible crowded trade'
-    return {'options_score': round(score, 4), 'options_bias': bias, 'options_confidence': confidence, 'options_crowded_bullish': crowded, 'options_warning': warning}
+
+    crowded_bullish = bool(
+        pc_volume is not None
+        and pc_volume < config.get("options_flow", {}).get("extreme_bullish_put_call_below", 0.35)
+        and call_volume_share is not None
+        and call_volume_share >= 0.80
+    )
+
+    if crowded_bullish:
+        bias = "CROWDED_BULLISH"
+    elif score >= 0.65:
+        bias = "BULLISH_WITH_DATA"
+    elif score <= 0.40:
+        bias = "BEARISH_WITH_DATA"
+    else:
+        bias = "NEUTRAL_WITH_DATA"
+
+    confidence = "HIGH" if liquidity_score >= 0.80 else "MEDIUM" if liquidity_score >= 0.45 else "LOW"
+    warning = metrics.get("options_warning") or ""
+    if crowded_bullish:
+        warning = (warning + "; " if warning else "") + "put/call extremadamente bajo: posible crowded trade"
+
+    return {
+        "options_score": round(score, 4),
+        "options_bias": bias,
+        "options_confidence": confidence,
+        "options_data_available": True,
+        "options_crowded_bullish": crowded_bullish,
+        "options_warning": warning,
+    }
