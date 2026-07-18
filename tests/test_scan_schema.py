@@ -29,6 +29,10 @@ def valid_scan() -> pd.DataFrame:
                 "rank_delta": 0,
                 "trigger_confirmed": True,
                 "rr": 3.0,
+                "run_trust_status": "TRUSTED",
+                "run_trust_reasons": "",
+                "critical_essential_sources": "",
+                "run_manual_review_required": False,
             }
         ]
     )
@@ -40,27 +44,23 @@ def test_valid_scan_passes_contract():
 
 
 def test_missing_required_column_fails():
-    df = valid_scan().drop(columns=["quote_status"])
     with pytest.raises(ValueError, match="missing_columns"):
-        assert_scan_schema(df)
+        assert_scan_schema(valid_scan().drop(columns=["quote_status"]))
 
 
 def test_veto_cannot_expose_actionable_levels():
     df = valid_scan()
     df.loc[0, "signal"] = "VETO"
-    violations = validate_scan_schema(df)
-    assert any(item.code == "veto_actionable_level" for item in violations)
+    assert any(item.code == "veto_actionable_level" for item in validate_scan_schema(df))
 
 
 def test_trigger_cannot_use_low_quote():
     df = valid_scan()
     df.loc[0, "execution_quote_quality"] = "LOW"
-    violations = validate_scan_schema(df)
-    assert any(item.code == "trigger_with_low_quote" for item in violations)
+    assert any(item.code == "trigger_with_low_quote" for item in validate_scan_schema(df))
 
 
 def test_ready_wait_trigger_cannot_be_confirmed():
     df = valid_scan()
     df.loc[0, "signal"] = "READY_WAIT_TRIGGER"
-    violations = validate_scan_schema(df)
-    assert any(item.code == "ready_with_confirmed_trigger" for item in violations)
+    assert any(item.code == "ready_with_confirmed_trigger" for item in validate_scan_schema(df))
