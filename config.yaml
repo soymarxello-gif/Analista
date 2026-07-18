@@ -1,7 +1,10 @@
 project:
   name: "Analista"
-  version: "0.1.1"
-  description: "Scanner para detectar setups long-only de swing trading en acciones comunes estadounidenses."
+  version: "0.2.0"
+  description: "Scanner para descubrir setups long-only de swing trading en acciones comunes cotizadas en Estados Unidos."
+  objective: "discover_long_swing_setups"
+  execution_mode: "manual_review"
+  portfolio_construction: false
 
 trading_profile:
   market: "US"
@@ -13,10 +16,23 @@ trading_profile:
   allow_etfs_as_benchmarks: true
 
 universe:
+  mode: "us_listed_common_equities"
   allowed_exchanges: ["NMS", "NYQ", "ASE", "NAS", "NYE"]
   allowed_quote_types: ["EQUITY"]
   allow_adrs: true
+  allow_liquid_foreign_issuers: true
   min_history_days: 252
+  excluded_security_types:
+    - ETF
+    - ETN
+    - CLOSED_END_FUND
+    - PREFERRED_SHARE
+    - WARRANT
+    - RIGHT
+    - UNIT
+    - MUTUAL_FUND
+    - SPAC_PRE_DEAL
+    - ILLIQUID_ADR
   exclude_name_contains:
     - "ETF"
     - "ETN"
@@ -26,6 +42,10 @@ universe:
     - "Warrant"
     - "Unit"
     - "Right"
+
+filters:
+  min_price: 10
+  min_market_cap_usd: 1500000000
 
 screener:
   max_results_per_query: 250
@@ -62,11 +82,13 @@ screener:
       enabled: true
 
 liquidity:
-  min_price: 5
+  min_price: 10
   min_avg_volume_20d: 300000
   min_avg_volume_60d: 250000
   min_dollar_volume_20d: 10000000
   min_median_to_mean_volume_ratio: 0.50
+  max_spread_pct: 0.03
+  max_quote_distance_pct: 0.15
 
 benchmarks:
   broad_market: "SPY"
@@ -74,6 +96,7 @@ benchmarks:
   small_caps: "IWM"
   volatility: "^VIX"
   us10y: "^TNX"
+  us30y: "^TYX"
   dollar: "DX-Y.NYB"
   crude_oil: "CL=F"
   bitcoin: "BTC-USD"
@@ -100,6 +123,7 @@ price_data:
 indicators:
   moving_averages: [20, 50, 200]
   rsi:
+    periods: [6, 14]
     period: 14
     healthy_min: 55
     healthy_max: 70
@@ -108,6 +132,9 @@ indicators:
     fast: 12
     slow: 26
     signal: 9
+  stochastic:
+    k_period: 14
+    d_period: 3
   atr:
     period: 14
   volume:
@@ -148,13 +175,31 @@ setups:
   volatility_contraction:
     min_compression_ratio: 0.75
 
+risk_profile:
+  name: "aggressive"
+  stop_atr_multiple:
+    hard_min: 0.60
+    preferred_min: 1.00
+    preferred_max: 2.50
+
 risk_reward:
   atr_stop_multiplier: 1.5
   min_rr_absolute: 1.5
   min_rr_acceptable: 1.7
   min_rr_ideal: 2.0
+  trigger_confirmed_min_rr: 2.0
+
+quote_quality:
+  allowed_statuses: ["VALID", "INVALID", "STALE_POSSIBLE", "MISSING", "WIDE_OR_INCOHERENT"]
+  allowed_execution_quality: ["HIGH", "MEDIUM", "LOW"]
+
+signals:
+  buy_setup_active_enabled: false
+  allowed_states: ["VETO", "AVOID", "WATCHLIST", "READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED"]
 
 data_sources:
+  primary: "Yahoo Finance"
+  secondary: ["Finviz", "MarketWatch", "TradingView"]
   cache_ttl_minutes:
     fundamentals: 1440
     options: 30
@@ -180,6 +225,7 @@ options_flow:
   min_total_option_open_interest: 1000
   extreme_bullish_put_call_below: 0.35
   cache_ttl_minutes: 30
+  unknown_data_weight: 0
   weights:
     put_call_volume_ratio: 0.25
     call_volume_share: 0.20
@@ -202,10 +248,15 @@ scoring_weights:
   fundamentals: 5.1
   sentiment: 4.0
 
+trade_score_weights:
+  asset_quality: 0.25
+  setup_quality: 0.40
+  context: 0.25
+  institutional: 0.10
+
 signal_thresholds:
-  buy_setup_active:
-    min_score: 85
-    require_trigger: true
+  trigger_confirmed:
+    min_score: 80
     min_rr: 2.0
   ready_wait_trigger:
     min_score: 80
@@ -217,6 +268,12 @@ veto_rules:
   thresholds:
     min_trend_score: 0.55
     min_rr: 1.5
+
+ranking_audit:
+  enabled: true
+  change_production_ranking: false
+  legacy_basis: "final_score"
+  trade_basis: "final_trade_score"
 
 outputs:
   files:

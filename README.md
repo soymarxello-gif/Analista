@@ -1,46 +1,183 @@
 # Analista
 
-Scanner MVP avanzado para detectar setups **long-only** de swing trading en acciones comunes estadounidenses.
+Scanner avanzado para detectar setups **long-only** de swing trading en acciones comunes cotizadas en Estados Unidos.
+
+## Estado funcional
+
+Versión auditada `0.2.0`. La salida del motor se normaliza antes de generar reportes para garantizar filtros duros, semántica de señales, calidad de cotización, niveles accionables y auditoría de ranking.
 
 ## Reglas operativas
 
-- Solo acciones comunes USA.
 - Solo posiciones largas.
-- Horizonte operativo: 4 a 21 días.
-- ETFs excluidos como activos operables.
-- ETFs/índices solo como benchmarks de mercado.
-- Yahoo/yfinance como fuente principal.
-- Opciones se usan solo como confirmación de flujo, no como activo operable.
+- Horizonte: 4 a 21 sesiones.
+- Revisión y ejecución manual.
+- Sin construcción automática de cartera.
+- Fuente principal: Yahoo Finance/yfinance.
+- Fuentes secundarias previstas: Finviz, MarketWatch y TradingView.
 
-## Arquitectura lógica
+## Universo
+
+Permitidos: acciones comunes listadas en Estados Unidos, ADRs líquidos y emisores extranjeros líquidos cotizados en Estados Unidos.
+
+Excluidos: ETF, ETN, closed-end funds, preferred shares, warrants, rights, units, mutual funds, SPACs pre-deal y ADRs ilíquidos.
+
+Filtros duros:
+
+```yaml
+min_price: 10
+min_market_cap_usd: 1500000000
+```
+
+Toda violación fuerza `VETO` y se acumula en `all_veto_reasons`.
+
+## Pipeline
 
 ```text
-Yahoo/yfinance screener
+screener
 → validación de universo
 → metadata/fundamentales
-→ revalidación post-metadata
-→ precios OHLCV
-→ indicadores técnicos
+→ revalidación
+→ OHLCV e indicadores
 → liquidez
-→ régimen de mercado
-→ rotación sectorial
+→ régimen y sector
 → fuerza relativa
-→ setups
-→ riesgo/beneficio ATR
-→ opciones put/call
-→ scoring final
-→ clasificación de señal
+→ setups y R:R
+→ opciones
+→ scoring legacy
+→ normalización auditada
+→ scoring operativo y auditoría de ranking
 → CSV/JSON/dashboard
+```
+
+La normalización auditada vive en `engine/audit_postprocessor.py`.
+
+## Señales habilitadas
+
+| Señal | Lectura | Operable |
+|---|---|---:|
+| `VETO` | Falla crítica, filtro duro o setup inválido | No |
+| `AVOID` | Riesgo o estructura débil | No |
+| `WATCHLIST` | Interesante, pero incompleto | No |
+| `READY_WAIT_TRIGGER` | Setup válido sin trigger confirmado | No |
+| `TRIGGER_CONFIRMED` | Trigger confirmado, quote aceptable y R:R suficiente | Revisión manual |
+
+`BUY_SETUP_ACTIVE` está deshabilitado y no puede emitirse.
+
+Reglas:
+
+```text
+READY_WAIT_TRIGGER => trigger_confirmed == false
+TRIGGER_CONFIRMED  => trigger_confirmed == true
+TRIGGER_CONFIRMED  => execution_quote_quality != LOW
+TRIGGER_CONFIRMED  => rr >= 2.0
+NO_VALID_SETUP     => VETO
+```
+
+## Calidad de cotización
+
+`quote_status`:
+
+```text
+VALID
+INVALID
+STALE_POSSIBLE
+MISSING
+WIDE_OR_INCOHERENT
+```
+
+`execution_quote_quality`:
+
+```text
+HIGH
+MEDIUM
+LOW
+```
+
+Quotes faltantes, inválidos, incoherentes, demasiado amplios o alejados del último precio quedan en calidad `LOW`. No pueden sostener `TRIGGER_CONFIRMED`.
+
+## Niveles operativos
+
+Para `VETO`:
+
+```text
+actionable_entry  = null
+actionable_stop   = null
+actionable_target = null
+```
+
+Los niveles de investigación se conservan como:
+
+```text
+theoretical_entry
+theoretical_stop
+theoretical_target
+```
+
+## Scores
+
+```text
+asset_quality_score
+setup_quality_score
+context_score
+institutional_score
+final_trade_score
+score_breakdown
+```
+
+`NO_VALID_SETUP` limita `final_trade_score` a 49.
+
+Cuando no hay datos de opciones, `institutional_score` queda sin valor y su peso se redistribuye entre los componentes disponibles; no se interpreta la ausencia como neutralidad confirmada.
+
+## Opciones
+
+Estados:
+
+```text
+BULLISH_WITH_DATA
+BEARISH_WITH_DATA
+NEUTRAL_WITH_DATA
+CROWDED_BULLISH
+CROWDED_BEARISH
+UNKNOWN_OPTIONS_FLOW
+```
+
+Las opciones funcionan como confirmación. La ausencia de datos se reporta como `UNKNOWN_OPTIONS_FLOW` con confianza `UNKNOWN`.
+
+## Auditoría de ranking
+
+Campos:
+
+```text
+legacy_rank
+trade_rank
+rank_delta
+legacy_rank_basis = final_score
+trade_rank_basis  = final_trade_score
+```
+
+Por seguridad, `ranking_audit.change_production_ranking` permanece en `false`. El orden productivo conserva prioridad por señal y `final_score`, mientras se compara el ranking alternativo.
+
+Consulta `docs/PHASE_9_RANKING_AUDIT.md`.
+
+## Perfil de riesgo
+
+Perfil agresivo:
+
+```text
+< 0.60 ATR     => AVOID salvo override manual
+0.60–1.00 ATR  => permitido con penalización y setup fuerte
+1.00–2.50 ATR  => preferido
+> 2.50 ATR     => penalización por stop amplio
 ```
 
 ## Instalación
 
 ```powershell
-cd "C:\Users\El otro Yo\Projects\ChatGPT\Analista"
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ## Ejecución
@@ -49,96 +186,37 @@ pip install -r requirements.txt
 python run_scanner.py --verbose
 ```
 
-Con límite de candidatos:
+Con límite:
 
 ```powershell
 python run_scanner.py --max-candidates 300 --verbose
 ```
 
-Reporte específico con opciones:
-
-```powershell
-python run_scanner.py --max-candidates 30 --verbose --csv-out reports/latest_scan_options.csv --json-out reports/latest_scan_options.json
-```
-
-## Dashboard
+Dashboard:
 
 ```powershell
 streamlit run ui/dashboard.py
 ```
 
-El dashboard permite seleccionar CSVs desde:
-
-```text
-reports/*.csv
-reports/history/*.csv
-```
-
-## Señales
-
-| Señal | Lectura |
-|---|---|
-| `BUY_SETUP_ACTIVE` | Setup confirmado, score alto y R:R suficiente |
-| `READY_WAIT_TRIGGER` | Buen candidato, falta confirmación |
-| `WATCHLIST` | Interesante, pero incompleto |
-| `AVOID` | Score o estructura débil |
-| `VETO` | Falla crítica de liquidez, tendencia, R:R, setup o earnings cercano |
-
-## Opciones / Put-Call Flow
-
-Columnas principales:
-
-| Columna | Descripción |
-|---|---|
-| `options_score` | Score 0–1 de confirmación por opciones |
-| `options_bias` | `BULLISH`, `NEUTRAL`, `BEARISH`, `NEUTRAL_NO_DATA` |
-| `options_confidence` | Confianza según liquidez de opciones |
-| `put_call_volume_ratio` | Volumen puts / calls |
-| `put_call_oi_ratio` | Open interest puts / calls |
-| `call_volume_share` | Participación de calls en volumen total |
-| `near_call_oi_share` | Dominancia de calls cerca del precio |
-| `max_call_oi_strike` | Strike con mayor OI de calls |
-| `max_put_oi_strike` | Strike con mayor OI de puts |
-| `max_pain_approx` | Max pain aproximado |
-
-Regla operativa:
-
-```text
-Técnico fuerte + RS fuerte + volumen fuerte + opciones bullish = mayor confianza.
-Técnico fuerte + opciones bearish = baja prioridad o watchlist.
-Opciones bullish + técnico débil = no compra.
-Put/call extremadamente bajo + precio extendido = posible crowded trade.
-```
-
-## Validación local
+## Validación
 
 ```powershell
-python -m compileall .
 python tools/validate_project.py
+python -m compileall .
+pytest
+ruff check .
 ```
 
-## Limpieza recomendada
+Los tests P0 cubren filtros duros, quotes inválidos, semántica de señales, `NO_VALID_SETUP`, niveles accionables, desactivación de `BUY_SETUP_ACTIVE`, opciones desconocidas y ranking auditado.
 
-No subir al repositorio:
+## Limitaciones
 
-```text
-.venv/
-cache/
-logs/
-reports/
-__pycache__/
-```
-
-Estos paths están cubiertos por `.gitignore`.
-
-## Limitaciones actuales
-
-- El screener usa canales predefinidos de yfinance; todavía no usa filtros Yahoo custom avanzados.
-- Las métricas de opciones son heurísticas, no cálculo real de gamma exposure.
-- El R:R usa ATR y máximos recientes; todavía no modela resistencias por pivotes/volumen.
-- El sentimiento contrarian sigue como placeholder neutral.
-- No ejecuta órdenes ni reemplaza validación manual.
+- Las cotizaciones bid/ask de Yahoo pueden ser incompletas o stale.
+- Las métricas de opciones son heurísticas; no representan gamma exposure real.
+- La capa auditada no sustituye revisión manual.
+- El ranking productivo no cambia hasta validar varias corridas.
+- No ejecuta órdenes.
 
 ## Advertencia
 
-Este software es una herramienta analítica. No ejecuta órdenes, no constituye asesoría financiera y requiere validación manual.
+Herramienta analítica para revisión manual. No constituye asesoría financiera.

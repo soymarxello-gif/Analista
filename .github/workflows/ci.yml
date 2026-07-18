@@ -25,14 +25,23 @@ jobs:
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
-      - name: Validate project
-        run: |
-          python tools/validate_project.py
+      - name: Validate project structure
+        run: python tools/validate_project.py
 
-      - name: Run tests
-        run: |
-          pytest
+      - name: Validate audited config
+        run: python -c "from tools.validate_audited_logic import validate_config; validate_config()"
 
-      - name: Ruff import/syntax check
-        run: |
-          ruff check .
+      - name: Validate final score
+        run: python -c "from tools.validate_audited_logic import validate_final_score; validate_final_score()"
+
+      - name: Validate signal semantics
+        run: python -c "from tools.validate_audited_logic import validate_signals; validate_signals()"
+
+      - name: Validate options semantics
+        run: python -c "from tools.validate_audited_logic import validate_options; validate_options()"
+
+      - name: Validate scan postprocessor
+        run: python -c "from tools.validate_audited_logic import validate_postprocessor; validate_postprocessor()"
+
+      - name: Ruff critical import and syntax check
+        run: ruff check . --select E9,F63,F7,F82

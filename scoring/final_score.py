@@ -1,18 +1,35 @@
-\
+from __future__ import annotations
+
+from math import fsum
+
+
+COMPONENT_KEYS = {
+    "relative_strength": "rs_score",
+    "trend": "trend_score",
+    "market_regime": "market_regime_score",
+    "volume_accumulation": "volume_score",
+    "sector_rotation": "sector_score",
+    "structure_trigger": "structure_score",
+    "risk_reward_atr": "rr_score",
+    "liquidity": "liquidity_score",
+    "momentum": "momentum_score",
+    "options_flow": "options_score",
+    "fundamentals": "fundamental_score",
+    "sentiment": "sentiment_score",
+}
+
+
+def _clip01(value) -> float:
+    return max(0.0, min(float(value), 1.0))
+
+
 def calculate_final_score(scores: dict, config: dict) -> float:
-    w = config.get("scoring_weights", {})
-    components = {
-        "relative_strength": scores.get("rs_score", 0.5),
-        "trend": scores.get("trend_score", 0.5),
-        "market_regime": scores.get("market_regime_score", 0.5),
-        "volume_accumulation": scores.get("volume_score", 0.5),
-        "sector_rotation": scores.get("sector_score", 0.5),
-        "structure_trigger": scores.get("structure_score", 0.5),
-        "risk_reward_atr": scores.get("rr_score", 0.5),
-        "liquidity": scores.get("liquidity_score", 0.5),
-        "momentum": scores.get("momentum_score", 0.5),
-        "options_flow": scores.get("options_score", 0.5),
-        "fundamentals": scores.get("fundamental_score", 0.5),
-        "sentiment": scores.get("sentiment_score", 0.5),
-    }
-    return float(sum(w.get(k, 0) * max(0, min(float(v), 1)) for k, v in components.items()))
+    weights = config.get("scoring_weights", {})
+    terms = []
+
+    for weight_key, score_key in COMPONENT_KEYS.items():
+        weight = float(weights.get(weight_key, 0.0))
+        component = _clip01(scores.get(score_key, 0.5))
+        terms.append(weight * component)
+
+    return round(float(fsum(terms)), 10)
