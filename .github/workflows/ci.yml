@@ -9,69 +9,51 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
       - name: Validate project structure
         run: python tools/validate_project.py
-
       - name: Validate audited config
         run: python -c "from tools.validate_audited_logic import validate_config; validate_config()"
-
       - name: Validate final score
         run: python -c "from tools.validate_audited_logic import validate_final_score; validate_final_score()"
-
       - name: Validate signal semantics
         run: python -c "from tools.validate_audited_logic import validate_signals; validate_signals()"
-
       - name: Validate options semantics
         run: python -c "from tools.validate_audited_logic import validate_options; validate_options()"
-
       - name: Validate scan postprocessor
         run: python -c "from tools.validate_audited_logic import validate_postprocessor; validate_postprocessor()"
-
       - name: Validate scan schema contract
         run: python tools/validate_scan_schema_contract.py
-
       - name: Validate temporal quote quality
         run: python tools/validate_quote_context.py
-
       - name: Validate fundamentals cache and Yahoo quote context
         run: python tools/validate_fundamentals_cache.py
-
       - name: Validate liquidity traceability
         run: python tools/validate_liquidity_traceability.py
-
       - name: Validate early hard filters and history traceability
         run: python tools/validate_early_filters.py
-
       - name: Validate options prioritization
         run: python tools/validate_options_priority.py
-
       - name: Validate structured data telemetry
         run: python tools/validate_data_telemetry.py
-
       - name: Validate transient retries and backoff
         run: python tools/validate_retry_policy.py
-
       - name: Validate per-source circuit breakers
         run: python tools/validate_circuit_breaker.py
-
       - name: Validate per-source health summary
         run: python tools/validate_source_health.py
-
+      - name: Validate execution trust contract
+        run: python tools/validate_run_trust.py
       - name: Ruff critical import and syntax check
         run: ruff check . --select E9,F63,F7,F82
