@@ -53,23 +53,59 @@ jobs:
           assert calculate_final_score({"rs_score": -1}, {"scoring_weights": {"relative_strength": 100}}) == 0.0
           PY
 
-      - name: Signal tests
-        run: pytest tests/test_signal_classifier.py -q
+      - name: Signal liquidity veto
+        run: pytest tests/test_signal_classifier.py::test_veto_liquidity_fail -q
+
+      - name: Signal no valid setup veto
+        run: pytest tests/test_signal_classifier.py::test_veto_no_valid_setup -q
+
+      - name: Signal trigger confirmed
+        run: pytest tests/test_signal_classifier.py::test_trigger_confirmed_requires_valid_quote -q
+
+      - name: Signal low quote blocked
+        run: pytest tests/test_signal_classifier.py::test_low_quote_cannot_trigger_confirmed -q
+
+      - name: Signal ready wait trigger
+        run: pytest tests/test_signal_classifier.py::test_ready_wait_trigger_without_trigger -q
+
+      - name: Signal hard filters
+        run: pytest tests/test_signal_classifier.py::test_price_and_market_cap_are_hard_filters -q
+
+      - name: Signal buy active disabled
+        run: pytest tests/test_signal_classifier.py::test_buy_setup_active_is_never_emitted -q
 
       - name: Options unknown data
-        continue-on-error: true
         run: pytest tests/test_options_score.py::test_options_no_data_is_unknown -q
 
       - name: Options bullish data
-        continue-on-error: true
         run: pytest tests/test_options_score.py::test_options_bullish_case -q
 
       - name: Options crowded bullish
-        continue-on-error: true
         run: pytest tests/test_options_score.py::test_extremely_low_put_call_sets_crowded_warning -q
 
-      - name: Audit postprocessor tests
-        run: pytest tests/test_audit_postprocessor.py -q
+      - name: Audit invalid bid ask
+        run: pytest tests/test_audit_postprocessor.py::test_invalid_bidask_cannot_be_trigger_confirmed -q
+
+      - name: Audit price filter
+        run: pytest tests/test_audit_postprocessor.py::test_price_filter_is_hard -q
+
+      - name: Audit market cap filter
+        run: pytest tests/test_audit_postprocessor.py::test_market_cap_filter_is_hard -q
+
+      - name: Audit trigger semantics
+        run: |
+          pytest tests/test_audit_postprocessor.py::test_ready_wait_trigger_semantics -q
+          pytest tests/test_audit_postprocessor.py::test_trigger_confirmed_semantics -q
+
+      - name: Audit veto semantics
+        run: |
+          pytest tests/test_audit_postprocessor.py::test_no_valid_setup_is_veto -q
+          pytest tests/test_audit_postprocessor.py::test_veto_has_no_actionable_levels -q
+
+      - name: Audit disabled signal and ranking
+        run: |
+          pytest tests/test_audit_postprocessor.py::test_buy_setup_active_disabled -q
+          pytest tests/test_audit_postprocessor.py::test_ranking_audit_preserves_rows_and_signals -q
 
       - name: Ruff import/syntax check
         run: ruff check .
