@@ -98,3 +98,47 @@ def temporal_quote_penalty(row: dict, config: dict) -> tuple[str | None, str | N
     if float(age) > limit:
         return "STALE_POSSIBLE", "LOW"
     return None, None
+
+
+def _append_reason(value: Any, reason: str) -> str:
+    existing = [part.strip() for part in str(value or "").split(",") if part.strip()]
+    if reason not in existing:
+        existing.append(reason)
+    return ", ".join(existing)
+
+
+def normalize_scan_with_quote_context(
+    df: pd.DataFrame,
+    config: dict,
+    *,
+    now: datetime | None = None,
+) -> pd.DataFrame:
+    """Normalize a scan and enforce temporal quote quality without breaking legacy rows."""
+    if df.empty:
+        return df.copy()
+
+    from engine.audit_postprocessor import normalize_scan
+
+    contextual = pd.DataFrame(
+        [add_quote_temporal_context(row, now=now) for row in df.to_dict(orient="records")]
+    )
+    out = normalize_scan(contextual, config)
+
+    for idx, row in out.iterrows():
+        status, quality = temporal_quote_penalty(row.to_dict(), config)
+        if status is None:
+            continue
+
+        out.at[idx, "quote_status"] = status
+        out.at[idx, "execution_quote_quality"] = quality
+        out.at[idx, "penalty_reasons"] = _append_reason(
+            row.get("penalty_reasons"), "stale_quote_timestamp"
+        )
+
+        if row.get("signal") == "TRIGGER_CONFIRMED":
+            out.at[idx, "signal"] = "WATCHLIST"
+            out.at[idx, "actionable_entry"] = None
+            out.at[idx, "actionable_stop"] = None
+            out.at[idx, "actionable_target"] = None
+
+    return out
