@@ -8,16 +8,16 @@ from loguru import logger
 from config_loader import load_config
 from contracts.scan_schema import SCHEMA_VERSION, assert_scan_schema
 from data.quote_context import normalize_scan_with_quote_context
-from engine.backtest_registry import register_scan_for_backtest
 from engine.data_telemetry import save_telemetry
 from engine.data_telemetry_runtime import install_data_telemetry
+from engine.backtest_registry import register_scan_for_backtest
 from engine.circuit_breaker_runtime import install_circuit_breakers
 from engine.early_filter_runtime import append_early_veto_rows, install_early_filters
 from engine.options_priority_runtime import install_options_priority
 from engine.report_engine import format_numeric_columns, save_reports
 from engine.retry_runtime import install_retries
-from engine.run_trust import assess_run_trust, attach_run_trust
 from engine.source_health import format_health_log
+from engine.run_trust import assess_run_trust, attach_run_trust
 import engine.scanner_engine as scanner_engine
 
 
@@ -65,6 +65,10 @@ def main():
         )
 
     if raw_df.empty:
+        registry = register_scan_for_backtest(
+            raw_df, telemetry_snapshot=telemetry_snapshot, run_trust=run_trust, config=config
+        )
+        logger.info(f"Registro backtesting vacío: {registry['run_dir']}")
         logger.warning("Scanner terminó sin candidatos ni vetos auditables.")
         return
 
@@ -73,10 +77,7 @@ def main():
     df["schema_version"] = SCHEMA_VERSION
     assert_scan_schema(df)
     registry = register_scan_for_backtest(
-        df,
-        telemetry_snapshot=telemetry_snapshot,
-        run_trust=run_trust,
-        config=config,
+        df, telemetry_snapshot=telemetry_snapshot, run_trust=run_trust, config=config
     )
     logger.info(f"Registro backtesting: {registry['run_dir']}")
     save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
@@ -84,9 +85,9 @@ def main():
 
     display_cols = [
         "rank", "ticker", "signal", "scanner_stage", "setup_type", "final_score",
-        "final_trade_score", "run_trust_status", "quote_status", "execution_quote_quality",
-        "quote_age_seconds", "market_session", "actionable_entry", "actionable_stop",
-        "actionable_target", "rr", "reason_summary",
+        "final_trade_score", "quote_status", "execution_quote_quality", "quote_age_seconds",
+        "market_session", "actionable_entry", "actionable_stop", "actionable_target", "rr",
+        "reason_summary",
     ]
     available = [column for column in display_cols if column in df.columns]
     print(format_numeric_columns(df[available].head(30), decimals=2).to_string(index=False))
