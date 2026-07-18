@@ -1,6 +1,8 @@
-\
+from __future__ import annotations
+
+
 def calculate_final_score(scores: dict, config: dict) -> float:
-    w = config.get("scoring_weights", {})
+    weights = config.get("scoring_weights", {})
     components = {
         "relative_strength": scores.get("rs_score", 0.5),
         "trend": scores.get("trend_score", 0.5),
@@ -15,4 +17,9 @@ def calculate_final_score(scores: dict, config: dict) -> float:
         "fundamentals": scores.get("fundamental_score", 0.5),
         "sentiment": scores.get("sentiment_score", 0.5),
     }
-    return float(sum(w.get(k, 0) * max(0, min(float(v), 1)) for k, v in components.items()))
+    return float(
+        sum(
+            weights.get(key, 0) * max(0.0, min(float(value), 1.0))
+            for key, value in components.items()
+        )
+    )
