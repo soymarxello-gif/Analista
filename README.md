@@ -2,116 +2,102 @@
 
 Scanner avanzado para detectar setups **long-only** de swing trading en acciones comunes cotizadas en Estados Unidos.
 
-## Objetivo operativo
+## Estado funcional
+
+Versión auditada `0.2.0`. La salida del motor se normaliza antes de generar reportes para garantizar filtros duros, semántica de señales, calidad de cotización, niveles accionables y auditoría de ranking.
+
+## Reglas operativas
 
 - Solo posiciones largas.
-- Horizonte operativo: 4 a 21 sesiones.
+- Horizonte: 4 a 21 sesiones.
 - Revisión y ejecución manual.
 - Sin construcción automática de cartera.
-- Yahoo/yfinance como fuente principal.
-- Finviz, MarketWatch y TradingView como fuentes secundarias cuando corresponda.
+- Fuente principal: Yahoo Finance/yfinance.
+- Fuentes secundarias previstas: Finviz, MarketWatch y TradingView.
 
 ## Universo
 
-Se permiten:
+Permitidos: acciones comunes listadas en Estados Unidos, ADRs líquidos y emisores extranjeros líquidos cotizados en Estados Unidos.
 
-- Acciones comunes listadas en bolsas estadounidenses.
-- ADRs líquidos.
-- Emisores extranjeros líquidos cotizados en Estados Unidos.
+Excluidos: ETF, ETN, closed-end funds, preferred shares, warrants, rights, units, mutual funds, SPACs pre-deal y ADRs ilíquidos.
 
-Se excluyen:
-
-- ETF y ETN.
-- Closed-end funds.
-- Preferred shares.
-- Warrants, rights y units.
-- Mutual funds.
-- SPACs pre-deal.
-- ADRs ilíquidos.
-
-Filtros duros actuales:
+Filtros duros:
 
 ```yaml
 min_price: 10
 min_market_cap_usd: 1500000000
 ```
 
-Toda violación de filtro duro fuerza `signal = VETO` y debe quedar registrada en `all_veto_reasons`.
+Toda violación fuerza `VETO` y se acumula en `all_veto_reasons`.
 
-## Arquitectura lógica
+## Pipeline
 
 ```text
-Yahoo/yfinance screener
+screener
 → validación de universo
 → metadata/fundamentales
-→ revalidación post-metadata
-→ precios OHLCV
-→ indicadores técnicos
+→ revalidación
+→ OHLCV e indicadores
 → liquidez
-→ régimen de mercado
-→ rotación sectorial
+→ régimen y sector
 → fuerza relativa
-→ setups
-→ riesgo/beneficio ATR
-→ opciones put/call
-→ scoring
-→ clasificación de señal
-→ CSV/JSON/Markdown/HTML
-→ auditoría de salud del scan
+→ setups y R:R
+→ opciones
+→ scoring legacy
+→ normalización auditada
+→ scoring operativo y auditoría de ranking
+→ CSV/JSON/dashboard
 ```
+
+La normalización auditada vive en `engine/audit_postprocessor.py`.
 
 ## Señales habilitadas
 
 | Señal | Lectura | Operable |
 |---|---|---:|
-| `VETO` | Falla filtro duro o setup inválido | No |
-| `AVOID` | Activo elegible, pero riesgo o setup débil | No |
+| `VETO` | Falla crítica, filtro duro o setup inválido | No |
+| `AVOID` | Riesgo o estructura débil | No |
 | `WATCHLIST` | Interesante, pero incompleto | No |
-| `READY_WAIT_TRIGGER` | Setup válido, esperando confirmación | No |
-| `TRIGGER_CONFIRMED` | Trigger confirmado y sujeto a revisión manual | Revisión manual |
+| `READY_WAIT_TRIGGER` | Setup válido sin trigger confirmado | No |
+| `TRIGGER_CONFIRMED` | Trigger confirmado, quote aceptable y R:R suficiente | Revisión manual |
 
-`BUY_SETUP_ACTIVE` permanece deshabilitado hasta completar validaciones adicionales.
+`BUY_SETUP_ACTIVE` está deshabilitado y no puede emitirse.
 
-Reglas semánticas:
+Reglas:
 
 ```text
-READY_WAIT_TRIGGER  => trigger_confirmed == false
-TRIGGER_CONFIRMED   => trigger_confirmed == true
-TRIGGER_CONFIRMED   => execution_quote_quality != LOW
-TRIGGER_CONFIRMED   => rr >= 2.0
-NO_VALID_SETUP      => signal = VETO
+READY_WAIT_TRIGGER => trigger_confirmed == false
+TRIGGER_CONFIRMED  => trigger_confirmed == true
+TRIGGER_CONFIRMED  => execution_quote_quality != LOW
+TRIGGER_CONFIRMED  => rr >= 2.0
+NO_VALID_SETUP     => VETO
 ```
 
 ## Calidad de cotización
 
-Campos obligatorios:
+`quote_status`:
 
 ```text
-quote_status
-execution_quote_quality
+VALID
+INVALID
+STALE_POSSIBLE
+MISSING
+WIDE_OR_INCOHERENT
 ```
 
-Valores permitidos:
+`execution_quote_quality`:
 
 ```text
-quote_status:
-- VALID
-- INVALID
-- STALE_POSSIBLE
-- MISSING
-- WIDE_OR_INCOHERENT
-
-execution_quote_quality:
-- HIGH
-- MEDIUM
-- LOW
+HIGH
+MEDIUM
+LOW
 ```
 
-Una cotización con calidad `LOW` no puede producir `TRIGGER_CONFIRMED`. Si el trigger técnico existe, la señal se degrada a `WATCHLIST` y se registra `execution_quote_unconfirmed`.
+Quotes faltantes, inválidos, incoherentes, demasiado amplios o alejados del último precio quedan en calidad `LOW`. No pueden sostener `TRIGGER_CONFIRMED`.
 
-## Niveles operativos y teóricos
+## Niveles operativos
 
-Para filas `VETO`:
+Para `VETO`:
 
 ```text
 actionable_entry  = null
@@ -119,7 +105,7 @@ actionable_stop   = null
 actionable_target = null
 ```
 
-Los niveles de investigación deben almacenarse en:
+Los niveles de investigación se conservan como:
 
 ```text
 theoretical_entry
@@ -129,25 +115,22 @@ theoretical_target
 
 ## Scores
 
-El modelo separa:
-
 ```text
 asset_quality_score
 setup_quality_score
 context_score
 institutional_score
 final_trade_score
+score_breakdown
 ```
 
-El principio operativo es que un activo puede ser de alta calidad sin ofrecer una entrada válida. `NO_VALID_SETUP` fuerza `VETO` y limita `final_trade_score`.
+`NO_VALID_SETUP` limita `final_trade_score` a 49.
 
-El ranking principal todavía no se ha migrado de forma definitiva. La Fase 9 compara el ranking legacy por `final_score` contra el ranking operativo por `final_trade_score` antes de cambiar el orden productivo.
+Cuando no hay datos de opciones, `institutional_score` queda sin valor y su peso se redistribuye entre los componentes disponibles; no se interpreta la ausencia como neutralidad confirmada.
 
-## Opciones / flujo institucional
+## Opciones
 
-Las opciones son un factor confirmatorio, no un filtro duro salvo condiciones extremas de crowded trade.
-
-Clasificación actual:
+Estados:
 
 ```text
 BULLISH_WITH_DATA
@@ -158,91 +141,43 @@ CROWDED_BEARISH
 UNKNOWN_OPTIONS_FLOW
 ```
 
-La ausencia de datos se expresa como `UNKNOWN_OPTIONS_FLOW`; no se interpreta como neutralidad confirmada.
+Las opciones funcionan como confirmación. La ausencia de datos se reporta como `UNKNOWN_OPTIONS_FLOW` con confianza `UNKNOWN`.
+
+## Auditoría de ranking
+
+Campos:
+
+```text
+legacy_rank
+trade_rank
+rank_delta
+legacy_rank_basis = final_score
+trade_rank_basis  = final_trade_score
+```
+
+Por seguridad, `ranking_audit.change_production_ranking` permanece en `false`. El orden productivo conserva prioridad por señal y `final_score`, mientras se compara el ranking alternativo.
+
+Consulta `docs/PHASE_9_RANKING_AUDIT.md`.
 
 ## Perfil de riesgo
 
-Perfil actual: agresivo.
+Perfil agresivo:
 
 ```text
 < 0.60 ATR     => AVOID salvo override manual
-0.60–1.00 ATR  => permitido con setup fuerte y penalización
-1.00–2.50 ATR  => rango preferido
+0.60–1.00 ATR  => permitido con penalización y setup fuerte
+1.00–2.50 ATR  => preferido
 > 2.50 ATR     => penalización por stop amplio
 ```
-
-## Reportes
-
-```text
-CSV completo        auditoría y debugging
-JSON completo       integración
-Markdown/HTML       revisión manual diaria
-```
-
-Campos de auditoría relevantes:
-
-```text
-all_veto_reasons
-penalty_reasons
-score_breakdown
-quote_status
-execution_quote_quality
-missing_critical_fields
-missing_important_fields
-recommendation
-```
-
-## Estado de validación
-
-La Fase 8 quedó aceptada con estado `WARN`, no por falla lógica sino por calidad de datos:
-
-```text
-Rows: 355
-VETO: 293
-WATCHLIST: 37
-AVOID: 23
-TRIGGER_CONFIRMED: 2
-Veto rate: 82.54%
-```
-
-Warnings observados:
-
-```text
-data_quality LOW elevado: 54.37%
-campos críticos faltantes: 54.37%
-bid/ask inválido o stale: 83.38%
-```
-
-No debe relajarse la validación de cotizaciones para reducir estos warnings, porque eso reintroduciría señales operativas basadas en quotes defectuosos.
-
-## Fase actual
-
-La siguiente etapa es **Fase 9 — auditoría de ranking**:
-
-```text
-legacy_rank_basis = final_score
-trade_rank_basis  = final_trade_score
-rank_delta        = diferencia entre ambos
-```
-
-El ranking principal solo debe cambiar si:
-
-1. Los tests P0 siguen limpios.
-2. `final_trade_score` prioriza mejor setups válidos.
-3. `NO_VALID_SETUP` no asciende al top.
-4. Los `VETO` no suben por calidad general del activo.
-5. `TRIGGER_CONFIRMED` y `WATCHLIST` con setup válido mejoran su prioridad.
-
-Consulta `docs/PHASE_9_RANKING_AUDIT.md` para el procedimiento de implementación y aceptación.
 
 ## Instalación
 
 ```powershell
-cd "C:\Users\El otro Yo\Projects\ChatGPT\Analista"
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ## Ejecución
@@ -251,19 +186,19 @@ pip install -r requirements.txt
 python run_scanner.py --verbose
 ```
 
-Con límite de candidatos:
+Con límite:
 
 ```powershell
 python run_scanner.py --max-candidates 300 --verbose
 ```
 
-## Dashboard
+Dashboard:
 
 ```powershell
 streamlit run ui/dashboard.py
 ```
 
-## Validación local
+## Validación
 
 ```powershell
 python tools/validate_project.py
@@ -272,26 +207,16 @@ pytest
 ruff check .
 ```
 
-## Limpieza
-
-No subir:
-
-```text
-.venv/
-cache/
-logs/
-reports/
-__pycache__/
-```
+Los tests P0 cubren filtros duros, quotes inválidos, semántica de señales, `NO_VALID_SETUP`, niveles accionables, desactivación de `BUY_SETUP_ACTIVE`, opciones desconocidas y ranking auditado.
 
 ## Limitaciones
 
-- El screener usa canales predefinidos de yfinance.
-- Las métricas de opciones son heurísticas y no representan gamma exposure real.
-- El R:R todavía no modela resistencias mediante perfil de volumen completo.
-- La calidad de bid/ask de Yahoo puede ser insuficiente para una parte importante del universo.
-- No ejecuta órdenes ni reemplaza la validación manual.
+- Las cotizaciones bid/ask de Yahoo pueden ser incompletas o stale.
+- Las métricas de opciones son heurísticas; no representan gamma exposure real.
+- La capa auditada no sustituye revisión manual.
+- El ranking productivo no cambia hasta validar varias corridas.
+- No ejecuta órdenes.
 
 ## Advertencia
 
-Este software es una herramienta analítica. No ejecuta órdenes, no constituye asesoría financiera y requiere revisión manual.
+Herramienta analítica para revisión manual. No constituye asesoría financiera.
