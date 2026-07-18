@@ -43,5 +43,8 @@ jobs:
       - name: Validate scan postprocessor
         run: python -c "from tools.validate_audited_logic import validate_postprocessor; validate_postprocessor()"
 
+      - name: Validate scan schema contract
+        run: pytest tests/test_scan_schema.py -q
+
       - name: Ruff critical import and syntax check
         run: ruff check . --select E9,F63,F7,F82
