@@ -1,90 +1,83 @@
 # Fase 9 — Auditoría de ranking
 
-## Objetivo
+## Estado
 
-Comparar el ranking legacy basado en `final_score` con el ranking operativo basado en `final_trade_score` sin modificar todavía el orden productivo.
+Implementada en modo no destructivo mediante `engine/audit_postprocessor.py`.
 
-## Campos nuevos de auditoría
+```yaml
+ranking_audit:
+  enabled: true
+  change_production_ranking: false
+  legacy_basis: final_score
+  trade_basis: final_trade_score
+```
+
+El ranking productivo todavía no migra. La salida conserva prioridad por señal y `final_score`, pero incluye la comparación completa contra `final_trade_score`.
+
+## Campos
 
 ```text
 legacy_rank
 trade_rank
 rank_delta
-legacy_rank_basis = final_score
-trade_rank_basis  = final_trade_score
+legacy_rank_basis
+trade_rank_basis
 ```
 
-Definición recomendada:
+Definición:
 
 ```python
 rank_delta = legacy_rank - trade_rank
 ```
 
-Interpretación:
+- Positivo: mejora con el ranking operativo.
+- Negativo: pierde prioridad.
+- Cero: no cambia.
 
-- `rank_delta > 0`: el ticker mejora con el ranking operativo.
-- `rank_delta < 0`: el ticker pierde prioridad.
-- `rank_delta == 0`: no cambia.
-
-## Restricciones
-
-Durante esta fase:
+## Componentes operativos
 
 ```text
-- No cambiar el ranking principal.
-- No habilitar BUY_SETUP_ACTIVE.
-- No relajar quote_status ni execution_quote_quality.
-- No permitir que VETO ascienda por asset_quality_score.
-- No modificar pesos de scoring junto con la auditoría.
+asset_quality_score
+setup_quality_score
+context_score
+institutional_score
+final_trade_score
+score_breakdown
 ```
 
-## Implementación sugerida
+Pesos actuales:
 
-```python
-from __future__ import annotations
-
-import pandas as pd
-
-
-def add_ranking_audit(df: pd.DataFrame) -> pd.DataFrame:
-    required = {"final_score", "final_trade_score", "signal", "setup_type"}
-    missing = required.difference(df.columns)
-    if missing:
-        raise ValueError(f"Missing ranking audit columns: {sorted(missing)}")
-
-    out = df.copy()
-
-    out["legacy_rank"] = (
-        out["final_score"]
-        .rank(method="first", ascending=False, na_option="bottom")
-        .astype("Int64")
-    )
-
-    out["trade_rank"] = (
-        out["final_trade_score"]
-        .rank(method="first", ascending=False, na_option="bottom")
-        .astype("Int64")
-    )
-
-    out["rank_delta"] = out["legacy_rank"] - out["trade_rank"]
-    out["legacy_rank_basis"] = "final_score"
-    out["trade_rank_basis"] = "final_trade_score"
-
-    return out
+```yaml
+asset_quality: 0.25
+setup_quality: 0.40
+context: 0.25
+institutional: 0.10
 ```
 
-El cálculo anterior es exclusivamente de auditoría. El orden productivo existente debe permanecer intacto.
+Cuando no existen datos de opciones, `institutional_score` queda vacío y su peso no participa; los pesos disponibles se normalizan. Esto evita convertir ausencia de información en neutralidad confirmada.
 
-## Tablas de comparación
+`NO_VALID_SETUP` limita `final_trade_score` a 49 y fuerza `VETO`.
 
-Generar en Markdown/HTML:
+## Controles preservados
+
+- `BUY_SETUP_ACTIVE` no puede emitirse.
+- Quotes `LOW` no pueden ser `TRIGGER_CONFIRMED`.
+- `READY_WAIT_TRIGGER` requiere trigger falso.
+- `TRIGGER_CONFIRMED` requiere trigger verdadero, quote aceptable y R:R mínimo 2.0.
+- Precio inferior a USD 10 fuerza `VETO`.
+- Capitalización inferior a USD 1.5B fuerza `VETO`.
+- Instrumentos no elegibles fuerzan `VETO`.
+- Filas `VETO` no exponen niveles accionables.
+- Los motivos se acumulan en `all_veto_reasons`.
+
+## Tablas de comparación recomendadas
 
 1. Top 20 por `final_score`.
 2. Top 20 por `final_trade_score`.
 3. Mayores mejoras por `rank_delta`.
 4. Mayores deterioros por `rank_delta`.
-5. Tickers que aparecen solo en uno de los dos Top 20.
-6. Distribución por señal dentro de cada Top 20.
+5. Tickers exclusivos de cada Top 20.
+6. Distribución de señales en ambos rankings.
 
 Columnas mínimas:
 
@@ -94,7 +87,6 @@ trade_rank
 rank_delta
 ticker
 signal
-recommendation
 setup_type
 final_score
 final_trade_score
@@ -103,72 +95,37 @@ setup_quality_score
 quote_status
 execution_quote_quality
 rr
-stop_atr_status
 penalty_reasons
-```
-
-## Tests obligatorios
-
-```python
-def test_ranking_audit_preserves_rows(result, source):
-    assert len(result) == len(source)
-
-
-def test_ranking_audit_does_not_change_signal(result, source):
-    assert result["signal"].tolist() == source["signal"].tolist()
-
-
-def test_veto_cannot_be_promoted_to_actionable(result):
-    veto = result[result["signal"] == "VETO"]
-    assert veto["actionable_entry"].isna().all()
-    assert veto["actionable_stop"].isna().all()
-    assert veto["actionable_target"].isna().all()
-
-
-def test_no_valid_setup_not_in_trade_top20(result):
-    top20 = result.nsmallest(20, "trade_rank")
-    assert not (top20["setup_type"] == "NO_VALID_SETUP").any()
-
-
-def test_low_quote_not_trigger_confirmed(result):
-    invalid = result[
-        (result["execution_quote_quality"] == "LOW")
-        & (result["signal"] == "TRIGGER_CONFIRMED")
-    ]
-    assert invalid.empty
-
-
-def test_buy_setup_active_remains_disabled(result):
-    assert not (result["signal"] == "BUY_SETUP_ACTIVE").any()
 ```
 
 ## Diagnóstico manual
 
 ```powershell
-python -c "import pandas as pd; df=pd.read_csv('reports/latest_scan_audited.csv'); cols=['rank','ticker','signal','recommendation','setup_type','final_score','final_trade_score','asset_quality_score','setup_quality_score','quote_status','execution_quote_quality','rr','stop_atr_status','penalty_reasons']; print('TOP final_score'); print(df.sort_values('final_score', ascending=False)[cols].head(20).to_string(index=False)); print('\nTOP final_trade_score'); print(df.sort_values('final_trade_score', ascending=False)[cols].head(20).to_string(index=False))"
+python -c "import pandas as pd; df=pd.read_csv('reports/latest_scan.csv'); cols=['legacy_rank','trade_rank','rank_delta','ticker','signal','setup_type','final_score','final_trade_score','asset_quality_score','setup_quality_score','quote_status','execution_quote_quality','rr','penalty_reasons']; print('TOP LEGACY'); print(df.sort_values('legacy_rank')[cols].head(20).to_string(index=False)); print('\nTOP TRADE'); print(df.sort_values('trade_rank')[cols].head(20).to_string(index=False))"
 ```
 
-## Criterios de aceptación
+## Tests
 
-La migración del ranking principal solo puede aprobarse cuando:
+`tests/test_audit_postprocessor.py` valida:
 
-1. Todos los tests P0 pasan.
-2. La auditoría no cambia señales ni niveles operativos.
+- quote inválido no puede confirmar trigger;
+- filtros duros de precio y capitalización;
+- semántica de señales;
+- `NO_VALID_SETUP` como `VETO`;
+- niveles accionables nulos para `VETO`;
+- ausencia de `BUY_SETUP_ACTIVE`;
+- preservación de filas y columnas de ranking.
+
+## Criterios para migrar el ranking productivo
+
+El cambio `change_production_ranking: true` solo debe aprobarse cuando:
+
+1. CI y tests P0 pasan.
+2. Varias corridas muestran resultados consistentes.
 3. Ningún `NO_VALID_SETUP` aparece en el Top 20 operativo.
-4. Ningún `VETO` asciende por `asset_quality_score`.
+4. Ningún `VETO` asciende por calidad general del activo.
 5. Ningún quote `LOW` aparece como `TRIGGER_CONFIRMED`.
-6. Los setups válidos muestran una mejora interpretable de prioridad.
-7. La comparación se valida en varias corridas, no en un único scan.
+6. Los setups válidos mejoran prioridad de forma interpretable.
+7. No aumenta materialmente la concentración sectorial sin justificación.
 
-## Decisión posterior
-
-Si se cumplen los criterios, cambiar el orden operativo a:
-
-```text
-_signal_order
-operational_priority_score
-final_trade_score
-final_score
-```
-
-El cambio debe realizarse en un commit separado para permitir rollback directo.
+La migración final debe realizarse en un commit separado para permitir rollback directo.
