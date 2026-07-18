@@ -12,19 +12,8 @@ from engine.data_telemetry import SourceMetrics, TelemetryState
 
 def main() -> int:
     metrics = SourceMetrics()
-    metrics.record(
-        latency_ms=20,
-        success=True,
-        requested=4,
-        covered=3,
-        cache_hits=1,
-    )
-    metrics.record(
-        latency_ms=10,
-        success=False,
-        requested=1,
-        error="timeout",
-    )
+    metrics.record(latency_ms=20, success=True, requested=4, covered=3, cache_hits=1)
+    metrics.record(latency_ms=10, success=False, requested=1, error="timeout")
     summary = metrics.summary()
     assert summary["calls"] == 2
     assert summary["successes"] == 1
@@ -37,7 +26,8 @@ def main() -> int:
     state = TelemetryState()
     state.sources["prices"] = metrics
     snapshot = state.snapshot()
-    assert snapshot["telemetry_schema_version"] == "1.0"
+    assert snapshot["telemetry_schema_version"] == "1.1"
+    assert snapshot["health"]["overall_status"] in {"HEALTHY", "DEGRADED", "CRITICAL", "NO_DATA"}
     assert "prices" in snapshot["sources"]
     print("OK: structured data-source telemetry validated")
     return 0

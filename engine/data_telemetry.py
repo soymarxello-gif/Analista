@@ -7,6 +7,8 @@ from time import perf_counter
 from typing import Any
 import json
 
+from engine.source_health import build_health_summary
+
 
 @dataclass
 class SourceMetrics:
@@ -23,16 +25,7 @@ class SourceMetrics:
     cache_hits: int = 0
     last_error: str | None = None
 
-    def record(
-        self,
-        *,
-        latency_ms: float,
-        success: bool,
-        requested: int = 0,
-        covered: int = 0,
-        cache_hits: int = 0,
-        error: str | None = None,
-    ) -> None:
+    def record(self, *, latency_ms: float, success: bool, requested: int = 0, covered: int = 0, cache_hits: int = 0, error: str | None = None) -> None:
         self.calls += 1
         self.successes += int(success)
         self.failures += int(not success)
@@ -48,72 +41,43 @@ class SourceMetrics:
         data = asdict(self)
         data["latency_ms_total"] = round(self.latency_ms_total, 2)
         data["latency_ms_max"] = round(self.latency_ms_max, 2)
-        data["latency_ms_avg"] = (
-            round(self.latency_ms_total / self.calls, 2) if self.calls else 0.0
-        )
-        data["coverage_pct"] = (
-            round(100 * self.covered_items / self.requested_items, 2)
-            if self.requested_items
-            else None
-        )
-        data["cache_hit_pct"] = (
-            round(100 * self.cache_hits / self.covered_items, 2)
-            if self.covered_items
-            else None
-        )
+        data["latency_ms_avg"] = round(self.latency_ms_total / self.calls, 2) if self.calls else 0.0
+        data["coverage_pct"] = round(100 * self.covered_items / self.requested_items, 2) if self.requested_items else None
+        data["cache_hit_pct"] = round(100 * self.cache_hits / self.covered_items, 2) if self.covered_items else None
         return data
 
 
 @dataclass
 class TelemetryState:
-    started_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    started_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     sources: dict[str, SourceMetrics] = field(default_factory=dict)
 
     def source(self, name: str) -> SourceMetrics:
         return self.sources.setdefault(name, SourceMetrics())
 
-    def snapshot(self) -> dict[str, Any]:
-        return {
-            "telemetry_schema_version": "1.0",
+    def snapshot(self, config: dict | None = None) -> dict[str, Any]:
+        source_summaries = {name: metrics.summary() for name, metrics in sorted(self.sources.items())}
+        payload = {
+            "telemetry_schema_version": "1.1",
             "started_at": self.started_at,
             "finished_at": datetime.now(timezone.utc).isoformat(),
-            "sources": {
-                name: metrics.summary()
-                for name, metrics in sorted(self.sources.items())
-            },
+            "sources": source_summaries,
         }
+        payload["health"] = build_health_summary(source_summaries, config or {})
+        return payload
 
 
-def save_telemetry(
-    state: TelemetryState,
-    config: dict,
-    path: str | None = None,
-) -> Path:
-    configured = config.get("telemetry", {}).get(
-        "output_file", "logs/data_telemetry_latest.json"
-    )
+def save_telemetry(state: TelemetryState, config: dict, path: str | None = None) -> Path:
+    configured = config.get("telemetry", {}).get("output_file", "logs/data_telemetry_latest.json")
     target = Path(path or configured)
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_suffix(target.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(state.snapshot(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    temporary.write_text(json.dumps(state.snapshot(config), ensure_ascii=False, indent=2), encoding="utf-8")
     temporary.replace(target)
     return target
 
 
-def timed_call(
-    metrics: SourceMetrics,
-    func,
-    *args,
-    requested: int = 0,
-    coverage_fn=None,
-    cache_hits_fn=None,
-    **kwargs,
-):
+def timed_call(metrics: SourceMetrics, func, *args, requested: int = 0, coverage_fn=None, cache_hits_fn=None, **kwargs):
     started = perf_counter()
     try:
         result = func(*args, **kwargs)
