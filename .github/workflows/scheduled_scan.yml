@@ -1,0 +1,28 @@
+name: Scheduled NYSE Premarket Scan
+
+on:
+  schedule:
+    - cron: "20 13 * * 1-5"
+    - cron: "20 14 * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: analista-nyse-premarket-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SCHEDULED_SLOT: ${{ github.event.schedule }}
+      FORCE_ARG: ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Execute only at 09:20 New York on XNYS sessions
+        run: python tools/scheduled_scan.py --scheduled-slot "$SCHEDULED_SLOT" $FORCE_ARG
