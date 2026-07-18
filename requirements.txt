@@ -7,3 +7,4 @@ plotly>=5.20
 loguru>=0.7
 python-dateutil>=2.9
 pytz>=2024.1
+exchange-calendars>=4.5
