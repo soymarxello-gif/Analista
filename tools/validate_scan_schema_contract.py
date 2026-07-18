@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sys
+
 import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from contracts.scan_schema import assert_scan_schema, validate_scan_schema
 
