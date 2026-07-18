@@ -7,7 +7,7 @@ from loguru import logger
 
 from config_loader import load_config
 from contracts.scan_schema import SCHEMA_VERSION, assert_scan_schema
-from engine.audit_postprocessor import normalize_scan
+from data.quote_context import normalize_scan_with_quote_context
 from engine.report_engine import format_numeric_columns, save_reports
 from engine.scanner_engine import run_scan
 
@@ -43,7 +43,7 @@ def main():
         logger.warning("Scanner terminó sin candidatos.")
         return
 
-    df = normalize_scan(raw_df, config)
+    df = normalize_scan_with_quote_context(raw_df, config)
     df["schema_version"] = SCHEMA_VERSION
     assert_scan_schema(df)
     save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
@@ -58,6 +58,8 @@ def main():
         "final_trade_score",
         "quote_status",
         "execution_quote_quality",
+        "quote_age_seconds",
+        "market_session",
         "actionable_entry",
         "actionable_stop",
         "actionable_target",
