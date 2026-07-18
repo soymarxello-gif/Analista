@@ -10,6 +10,7 @@ from contracts.scan_schema import SCHEMA_VERSION, assert_scan_schema
 from data.quote_context import normalize_scan_with_quote_context
 from engine.data_telemetry import save_telemetry
 from engine.data_telemetry_runtime import install_data_telemetry
+from engine.circuit_breaker_runtime import install_circuit_breakers
 from engine.early_filter_runtime import append_early_veto_rows, install_early_filters
 from engine.options_priority_runtime import install_options_priority
 from engine.report_engine import format_numeric_columns, save_reports
@@ -48,6 +49,7 @@ def main():
 
     telemetry = install_data_telemetry(scanner_engine)
     install_retries(scanner_engine, config, telemetry)
+    install_circuit_breakers(scanner_engine, config, telemetry)
     early_state = install_early_filters(scanner_engine, config)
     install_options_priority(scanner_engine, config)
 

@@ -14,6 +14,8 @@ class SourceMetrics:
     successes: int = 0
     failures: int = 0
     retries: int = 0
+    circuit_opens: int = 0
+    blocked_calls: int = 0
     latency_ms_total: float = 0.0
     latency_ms_max: float = 0.0
     requested_items: int = 0
