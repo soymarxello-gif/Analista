@@ -2,7 +2,7 @@
 
 ## Iteración 1 — contrato y control de salida
 
-Estado: **implementada y en validación CI**.
+Estado: **implementada y validada localmente**.
 
 Cambios incluidos:
 
