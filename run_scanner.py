@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+
 from loguru import logger
 
 from config_loader import load_config
+from engine.audit_postprocessor import normalize_scan
+from engine.report_engine import format_numeric_columns, save_reports
 from engine.scanner_engine import run_scan
-from engine.report_engine import save_reports, format_numeric_columns
 
 
 def setup_logger(config: dict, verbose: bool = False):
@@ -22,7 +24,7 @@ def setup_logger(config: dict, verbose: bool = False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Analista MVP - Scanner swing long-only USA")
+    parser = argparse.ArgumentParser(description="Analista - Scanner swing long-only USA")
     parser.add_argument("--config", default=None)
     parser.add_argument("--max-candidates", type=int, default=None)
     parser.add_argument("--json-out", default=None)
@@ -34,12 +36,13 @@ def main():
     config = load_config(args.config)
     setup_logger(config, args.verbose)
 
-    df = run_scan(config, max_candidates=args.max_candidates)
+    raw_df = run_scan(config, max_candidates=args.max_candidates)
 
-    if df.empty:
+    if raw_df.empty:
         logger.warning("Scanner terminó sin candidatos.")
         return
 
+    df = normalize_scan(raw_df, config)
     save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
     logger.info(f"Scanner completado. Candidatos: {len(df)}")
 
@@ -49,9 +52,12 @@ def main():
         "signal",
         "setup_type",
         "final_score",
-        "entry",
-        "stop",
-        "target",
+        "final_trade_score",
+        "quote_status",
+        "execution_quote_quality",
+        "actionable_entry",
+        "actionable_stop",
+        "actionable_target",
         "rr",
         "reason_summary",
     ]
