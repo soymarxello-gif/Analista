@@ -33,6 +33,18 @@ def main() -> int:
         assert len((Path(temp) / "index.jsonl").read_text().splitlines()) == 1
         records = json.loads((run_dir / "scan.json").read_text())
         assert records[0]["exchange_timezone"] == "America/New_York"
+
+        empty = register_scan_for_backtest(
+            pd.DataFrame(),
+            telemetry_snapshot={"health": {"overall_status": "HEALTHY"}},
+            run_trust={"run_trust_status": "TRUSTED", "run_trust_reasons": []},
+            config={"backtesting": {"registry_dir": temp}},
+            now_utc=datetime(2026, 7, 20, 13, 20, 1, tzinfo=timezone.utc),
+        )
+        empty_dir = Path(empty["run_dir"])
+        assert empty["manifest"]["rows"] == 0
+        assert json.loads((empty_dir / "scan.json").read_text()) == []
+        assert len((Path(temp) / "index.jsonl").read_text().splitlines()) == 2
     print("OK: immutable backtest snapshot, hashes and registry index validated")
     return 0
 
