@@ -59,5 +59,7 @@ jobs:
         run: python tools/validate_market_clock.py
       - name: Validate immutable backtest registry
         run: python tools/validate_backtest_registry.py
+      - name: Run pytest regression suite
+        run: pytest -q
       - name: Ruff critical import and syntax check
         run: ruff check . --select E9,F63,F7,F82
