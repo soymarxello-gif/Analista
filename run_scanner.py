@@ -8,8 +8,9 @@ from loguru import logger
 from config_loader import load_config
 from contracts.scan_schema import SCHEMA_VERSION, assert_scan_schema
 from data.quote_context import normalize_scan_with_quote_context
+from engine.early_filter_runtime import append_early_veto_rows, install_early_filters
 from engine.report_engine import format_numeric_columns, save_reports
-from engine.scanner_engine import run_scan
+import engine.scanner_engine as scanner_engine
 
 
 def setup_logger(config: dict, verbose: bool = False):
@@ -37,10 +38,12 @@ def main():
     config = load_config(args.config)
     setup_logger(config, args.verbose)
 
-    raw_df = run_scan(config, max_candidates=args.max_candidates)
+    early_state = install_early_filters(scanner_engine, config)
+    raw_df = scanner_engine.run_scan(config, max_candidates=args.max_candidates)
+    raw_df = append_early_veto_rows(raw_df, early_state)
 
     if raw_df.empty:
-        logger.warning("Scanner terminó sin candidatos.")
+        logger.warning("Scanner terminó sin candidatos ni vetos auditables.")
         return
 
     df = normalize_scan_with_quote_context(raw_df, config)
@@ -53,6 +56,7 @@ def main():
         "rank",
         "ticker",
         "signal",
+        "scanner_stage",
         "setup_type",
         "final_score",
         "final_trade_score",
