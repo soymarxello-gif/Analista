@@ -13,6 +13,7 @@ from engine.data_telemetry_runtime import install_data_telemetry
 from engine.early_filter_runtime import append_early_veto_rows, install_early_filters
 from engine.options_priority_runtime import install_options_priority
 from engine.report_engine import format_numeric_columns, save_reports
+from engine.retry_runtime import install_retries
 import engine.scanner_engine as scanner_engine
 
 
@@ -46,12 +47,16 @@ def main():
     setup_logger(config, args.verbose)
 
     telemetry = install_data_telemetry(scanner_engine)
+    install_retries(scanner_engine, config, telemetry)
     early_state = install_early_filters(scanner_engine, config)
     install_options_priority(scanner_engine, config)
-    raw_df = scanner_engine.run_scan(config, max_candidates=args.max_candidates)
-    raw_df = append_early_veto_rows(raw_df, early_state)
-    telemetry_path = save_telemetry(telemetry, config)
-    logger.info(f"Telemetría de datos: {telemetry_path}")
+
+    try:
+        raw_df = scanner_engine.run_scan(config, max_candidates=args.max_candidates)
+        raw_df = append_early_veto_rows(raw_df, early_state)
+    finally:
+        telemetry_path = save_telemetry(telemetry, config)
+        logger.info(f"Telemetría de datos: {telemetry_path}")
 
     if raw_df.empty:
         logger.warning("Scanner terminó sin candidatos ni vetos auditables.")
