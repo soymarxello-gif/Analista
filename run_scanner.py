@@ -6,6 +6,7 @@ from pathlib import Path
 from loguru import logger
 
 from config_loader import load_config
+from contracts.scan_schema import SCHEMA_VERSION, assert_scan_schema
 from engine.audit_postprocessor import normalize_scan
 from engine.report_engine import format_numeric_columns, save_reports
 from engine.scanner_engine import run_scan
@@ -43,8 +44,10 @@ def main():
         return
 
     df = normalize_scan(raw_df, config)
+    df["schema_version"] = SCHEMA_VERSION
+    assert_scan_schema(df)
     save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
-    logger.info(f"Scanner completado. Candidatos: {len(df)}")
+    logger.info(f"Scanner completado. Candidatos: {len(df)} | schema={SCHEMA_VERSION}")
 
     display_cols = [
         "rank",
