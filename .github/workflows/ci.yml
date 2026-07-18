@@ -26,13 +26,25 @@ jobs:
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
       - name: Validate project
-        run: |
-          python tools/validate_project.py
+        run: python tools/validate_project.py
 
-      - name: Run tests
-        run: |
-          pytest
+      - name: Config tests
+        run: pytest tests/test_config.py -q
+
+      - name: Final score tests
+        run: pytest tests/test_final_score.py -q
+
+      - name: Signal tests
+        run: pytest tests/test_signal_classifier.py -q
+
+      - name: Options tests
+        run: pytest tests/test_options_score.py -q
+
+      - name: Audit postprocessor tests
+        run: pytest tests/test_audit_postprocessor.py -q
+
+      - name: Full test suite
+        run: pytest -q
 
       - name: Ruff import/syntax check
-        run: |
-          ruff check .
+        run: ruff check .
