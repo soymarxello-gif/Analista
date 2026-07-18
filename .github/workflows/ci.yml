@@ -31,8 +31,11 @@ jobs:
       - name: Config tests
         run: pytest tests/test_config.py -q
 
-      - name: Final score tests
-        run: pytest tests/test_final_score.py -q
+      - name: Final score full-components test
+        run: pytest tests/test_final_score.py::test_final_score_all_components_full_equals_100 -q
+
+      - name: Final score clipping test
+        run: pytest tests/test_final_score.py::test_final_score_clips_components_to_0_1 -q
 
       - name: Signal tests
         run: pytest tests/test_signal_classifier.py -q
