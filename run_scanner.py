@@ -15,6 +15,7 @@ from engine.early_filter_runtime import append_early_veto_rows, install_early_fi
 from engine.options_priority_runtime import install_options_priority
 from engine.report_engine import format_numeric_columns, save_reports
 from engine.retry_runtime import install_retries
+from engine.run_trust import assess_run_trust, attach_run_trust
 from engine.source_health import format_health_log
 import engine.scanner_engine as scanner_engine
 
@@ -56,12 +57,18 @@ def main():
         logger.info(f"Telemetría de datos: {telemetry_path}")
         for health_line in format_health_log(telemetry_snapshot["health"]):
             logger.info(health_line)
+        run_trust = assess_run_trust(telemetry_snapshot["health"], config)
+        logger.info(
+            f"Confianza de ejecución: {run_trust['run_trust_status']} | "
+            f"reasons={','.join(run_trust['run_trust_reasons']) or 'none'}"
+        )
 
     if raw_df.empty:
         logger.warning("Scanner terminó sin candidatos ni vetos auditables.")
         return
 
     df = normalize_scan_with_quote_context(raw_df, config)
+    df = attach_run_trust(df, run_trust)
     df["schema_version"] = SCHEMA_VERSION
     assert_scan_schema(df)
     save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
@@ -69,9 +76,9 @@ def main():
 
     display_cols = [
         "rank", "ticker", "signal", "scanner_stage", "setup_type", "final_score",
-        "final_trade_score", "quote_status", "execution_quote_quality", "quote_age_seconds",
-        "market_session", "actionable_entry", "actionable_stop", "actionable_target", "rr",
-        "reason_summary",
+        "final_trade_score", "run_trust_status", "quote_status", "execution_quote_quality",
+        "quote_age_seconds", "market_session", "actionable_entry", "actionable_stop",
+        "actionable_target", "rr", "reason_summary",
     ]
     available = [column for column in display_cols if column in df.columns]
     print(format_numeric_columns(df[available].head(30), decimals=2).to_string(index=False))
