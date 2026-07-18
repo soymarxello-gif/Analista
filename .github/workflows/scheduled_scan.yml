@@ -26,3 +26,12 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Execute only at 09:20 New York on XNYS sessions
         run: python tools/scheduled_scan.py --scheduled-slot "$SCHEDULED_SLOT" $FORCE_ARG
+      - name: Commit backtesting registry
+        run: |
+          if [ -n "$(git status --porcelain backtesting/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add backtesting/
+            git commit -m "Record scheduled Analista scan for backtesting"
+            git push
+          fi
