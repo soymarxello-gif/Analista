@@ -8,6 +8,7 @@ from loguru import logger
 from config_loader import load_config
 from contracts.scan_schema import SCHEMA_VERSION, assert_scan_schema
 from data.quote_context import normalize_scan_with_quote_context
+from engine.backtest_registry import register_scan_for_backtest
 from engine.data_telemetry import save_telemetry
 from engine.data_telemetry_runtime import install_data_telemetry
 from engine.circuit_breaker_runtime import install_circuit_breakers
@@ -71,6 +72,13 @@ def main():
     df = attach_run_trust(df, run_trust)
     df["schema_version"] = SCHEMA_VERSION
     assert_scan_schema(df)
+    registry = register_scan_for_backtest(
+        df,
+        telemetry_snapshot=telemetry_snapshot,
+        run_trust=run_trust,
+        config=config,
+    )
+    logger.info(f"Registro backtesting: {registry['run_dir']}")
     save_reports(df, config, json_out=args.json_out, csv_out=args.csv_out)
     logger.info(f"Scanner completado. Candidatos: {len(df)} | schema={SCHEMA_VERSION}")
 
