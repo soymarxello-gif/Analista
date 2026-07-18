@@ -55,5 +55,7 @@ jobs:
         run: python tools/validate_source_health.py
       - name: Validate execution trust contract
         run: python tools/validate_run_trust.py
+      - name: Validate NYSE market clock and schedule gate
+        run: python tools/validate_market_clock.py
       - name: Ruff critical import and syntax check
         run: ruff check . --select E9,F63,F7,F82
