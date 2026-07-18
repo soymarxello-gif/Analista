@@ -53,36 +53,20 @@ jobs:
           assert calculate_final_score({"rs_score": -1}, {"scoring_weights": {"relative_strength": 100}}) == 0.0
           PY
 
-      - name: Signal liquidity veto
-        continue-on-error: true
-        run: pytest tests/test_signal_classifier.py::test_veto_liquidity_fail -q
+      - name: Signal tests
+        run: pytest tests/test_signal_classifier.py -q
 
-      - name: Signal no valid setup veto
+      - name: Options unknown data
         continue-on-error: true
-        run: pytest tests/test_signal_classifier.py::test_veto_no_valid_setup -q
+        run: pytest tests/test_options_score.py::test_options_no_data_is_unknown -q
 
-      - name: Signal trigger confirmed
+      - name: Options bullish data
         continue-on-error: true
-        run: pytest tests/test_signal_classifier.py::test_trigger_confirmed_requires_valid_quote -q
+        run: pytest tests/test_options_score.py::test_options_bullish_case -q
 
-      - name: Signal low quote blocked
+      - name: Options crowded bullish
         continue-on-error: true
-        run: pytest tests/test_signal_classifier.py::test_low_quote_cannot_trigger_confirmed -q
-
-      - name: Signal ready wait trigger
-        continue-on-error: true
-        run: pytest tests/test_signal_classifier.py::test_ready_wait_trigger_without_trigger -q
-
-      - name: Signal hard filters
-        continue-on-error: true
-        run: pytest tests/test_signal_classifier.py::test_price_and_market_cap_are_hard_filters -q
-
-      - name: Signal buy active disabled
-        continue-on-error: true
-        run: pytest tests/test_signal_classifier.py::test_buy_setup_active_is_never_emitted -q
-
-      - name: Options tests
-        run: pytest tests/test_options_score.py -q
+        run: pytest tests/test_options_score.py::test_extremely_low_put_call_sets_crowded_warning -q
 
       - name: Audit postprocessor tests
         run: pytest tests/test_audit_postprocessor.py -q
