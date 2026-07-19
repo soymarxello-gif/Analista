@@ -27,6 +27,12 @@ interface AnalistaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAnalysis(rows: List<CandidateAnalysisEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSignalContracts(rows: List<SignalContractEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTradeOutcomes(rows: List<TradeOutcomeEntity>)
+
     @Transaction
     suspend fun saveRun(run: ScanRunEntity, candidates: List<CandidateEntity>, snapshots: List<MarketSnapshotEntity>) {
         insertRun(run)
@@ -51,6 +57,12 @@ interface AnalistaDao {
 
     @Query("SELECT * FROM candidate_analysis WHERE runId = :runId ORDER BY finalTradeScore DESC")
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>>
+
+    @Query("SELECT * FROM trade_outcomes ORDER BY evaluatedAtUtc DESC")
+    fun observeTradeOutcomes(): Flow<List<TradeOutcomeEntity>>
+
+    @Query("SELECT * FROM signal_contracts ORDER BY decisionTimestampUtc DESC LIMIT :limit")
+    suspend fun recentSignalContracts(limit: Int = 500): List<SignalContractEntity>
 
     @Query("SELECT * FROM scan_runs ORDER BY startedAtUtc DESC LIMIT 1")
     suspend fun latestRun(): ScanRunEntity?

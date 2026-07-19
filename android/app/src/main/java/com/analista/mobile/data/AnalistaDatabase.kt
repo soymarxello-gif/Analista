@@ -10,9 +10,11 @@ import androidx.room.RoomDatabase
         BacktestOutcomeEntity::class,
         MarketSnapshotEntity::class,
         CandidateEnrichmentEntity::class,
-        CandidateAnalysisEntity::class
+        CandidateAnalysisEntity::class,
+        SignalContractEntity::class,
+        TradeOutcomeEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class AnalistaDatabase : RoomDatabase() {

@@ -9,6 +9,7 @@ import com.analista.mobile.data.MIGRATION_1_2
 import com.analista.mobile.data.MIGRATION_2_3
 import com.analista.mobile.data.MIGRATION_3_4
 import com.analista.mobile.data.MIGRATION_4_5
+import com.analista.mobile.data.MIGRATION_5_6
 import com.analista.mobile.data.MarketDataGateway
 import com.analista.mobile.data.ScanRepository
 import com.analista.mobile.data.YahooFinanceClient
@@ -16,7 +17,7 @@ import com.analista.mobile.data.YahooFinanceClient
 class AnalistaApplication : Application() {
     val database by lazy {
         Room.databaseBuilder(this, AnalistaDatabase::class.java, "analista.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
     }
     private val yahoo by lazy { YahooFinanceClient(this) }

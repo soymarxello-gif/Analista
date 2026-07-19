@@ -11,6 +11,7 @@ import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanRunEntity
+import com.analista.mobile.data.TradeOutcomeEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeAnalysis(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val tradeOutcomes: StateFlow<List<TradeOutcomeEntity>> = repository.observeTradeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val running = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)

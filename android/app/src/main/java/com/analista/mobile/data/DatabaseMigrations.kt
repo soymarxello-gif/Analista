@@ -133,3 +133,53 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_candidate_analysis_finalTradeScore ON candidate_analysis(finalTradeScore)")
     }
 }
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS signal_contracts (
+                signalId TEXT NOT NULL PRIMARY KEY,
+                runId TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                signal TEXT NOT NULL,
+                decisionTimestampUtc INTEGER NOT NULL,
+                referencePrice REAL NOT NULL,
+                triggerPrice REAL NOT NULL,
+                maximumEntry REAL NOT NULL,
+                stopPrice REAL NOT NULL,
+                targetPrice REAL NOT NULL,
+                expirationSessions INTEGER NOT NULL,
+                engineVersion TEXT NOT NULL,
+                createdAtUtc INTEGER NOT NULL
+            )""".trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_signal_contracts_runId ON signal_contracts(runId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_signal_contracts_ticker ON signal_contracts(ticker)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_signal_contracts_decisionTimestampUtc ON signal_contracts(decisionTimestampUtc)")
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS trade_outcomes (
+                signalId TEXT NOT NULL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                evaluatedAtUtc INTEGER NOT NULL,
+                triggered INTEGER NOT NULL,
+                triggerTimestampUtc INTEGER,
+                entryFill REAL,
+                stopHit INTEGER NOT NULL,
+                targetHit INTEGER NOT NULL,
+                firstExitEvent TEXT NOT NULL,
+                return1dPct REAL,
+                return3dPct REAL,
+                return5dPct REAL,
+                return10dPct REAL,
+                return20dPct REAL,
+                mfePct REAL,
+                maePct REAL,
+                holdingSessions INTEGER NOT NULL,
+                ambiguousSameBar INTEGER NOT NULL,
+                status TEXT NOT NULL
+            )""".trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_trade_outcomes_ticker ON trade_outcomes(ticker)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_trade_outcomes_evaluatedAtUtc ON trade_outcomes(evaluatedAtUtc)")
+    }
+}
