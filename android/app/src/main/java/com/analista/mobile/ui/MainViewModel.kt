@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.analista.mobile.AnalistaApplication
 import com.analista.mobile.data.BacktestOutcomeEntity
+import com.analista.mobile.data.CandidateAnalysisEntity
 import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.MarketSnapshotEntity
@@ -31,13 +32,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val enrichment: StateFlow<List<CandidateEnrichmentEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeEnrichment(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val analysis: StateFlow<List<CandidateAnalysisEntity>> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeAnalysis(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val running = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)
 
     init {
-        viewModelScope.launch { runs.collect { list -> if (selectedRunId.value == null) selectedRunId.value = list.firstOrNull()?.runId } }
+        viewModelScope.launch {
+            runs.collect { list ->
+                if (selectedRunId.value == null) selectedRunId.value = list.firstOrNull()?.runId
+            }
+        }
     }
 
     fun selectRun(runId: String) { selectedRunId.value = runId }
