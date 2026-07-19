@@ -51,6 +51,22 @@ class FinalDecisionEngineTest {
     }
 
     @Test
+    fun preliminaryAvoidCannotBePromotedByHighOverlayScore() {
+        val result = FinalDecisionEngine.decide(input(preliminarySignal = "AVOID", finalTradeScore = 100.0))
+        assertEquals("AVOID", result.finalSignal)
+        assertFalse(result.eligibleForContract)
+        assertTrue("preliminary_avoid_not_promoted" in result.penaltyReasons)
+    }
+
+    @Test
+    fun preliminaryWatchlistCannotBePromotedByHighOverlayScore() {
+        val result = FinalDecisionEngine.decide(input(preliminarySignal = "WATCHLIST", finalTradeScore = 100.0))
+        assertEquals("WATCHLIST", result.finalSignal)
+        assertFalse(result.eligibleForContract)
+        assertTrue("preliminary_watchlist_not_promoted" in result.penaltyReasons)
+    }
+
+    @Test
     fun failedBreakoutIsAvoidEvenWithHighScore() {
         val result = FinalDecisionEngine.decide(input(finalTradeScore = 95.0, failedBreakout = true))
         assertEquals("AVOID", result.finalSignal)
