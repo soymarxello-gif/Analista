@@ -145,7 +145,10 @@ data class MarketQuote(
     val marketCap: Long?,
     val quoteType: String?,
     val marketState: String? = null,
-    val capturedAtUtc: Long = System.currentTimeMillis()
+    val capturedAtUtc: Long = System.currentTimeMillis(),
+    val provider: String? = null,
+    val providerTimestampUtc: Long? = null,
+    val retrievedAtUtc: Long = capturedAtUtc
 )
 
 data class TradeContext(
