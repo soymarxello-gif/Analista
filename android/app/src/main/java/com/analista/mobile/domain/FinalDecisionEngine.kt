@@ -22,7 +22,7 @@ object FinalDecisionEngine {
         val liveTriggerConfirmed: Boolean,
         val actionability: String,
         val executionQuoteQuality: String,
-        val executionFreshness: String = "UNKNOWN",
+        val executionFreshness: String = "FRESH",
         val dataQualityAllowsExecution: Boolean,
         val failedBreakout: Boolean,
         val hardVetoReasons: List<String> = emptyList(),
