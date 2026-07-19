@@ -46,6 +46,7 @@ class MarketDataGateway(
                 if (yahooMid != null && kotlin.math.abs(alpacaMid / yahooMid - 1.0) * 100.0 > MAX_DIVERGENCE_PCT) {
                     divergenceCount += 1
                 }
+                val retrievedAt = System.currentTimeMillis()
                 results[symbol] = MarketQuote(
                     bid = alpacaQuote.bid,
                     ask = alpacaQuote.ask,
@@ -54,7 +55,10 @@ class MarketDataGateway(
                     marketCap = yahooQuote?.marketCap,
                     quoteType = yahooQuote?.quoteType,
                     marketState = yahooQuote?.marketState,
-                    capturedAtUtc = alpacaQuote.timestampUtcMillis ?: System.currentTimeMillis()
+                    capturedAtUtc = alpacaQuote.timestampUtcMillis ?: retrievedAt,
+                    provider = "ALPACA",
+                    providerTimestampUtc = alpacaQuote.timestampUtcMillis,
+                    retrievedAtUtc = retrievedAt
                 )
             } else if (yahooQuote != null) {
                 fallbackCount += 1
