@@ -9,6 +9,7 @@ import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateAnalysisEntity
 import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
+import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanRunEntity
 import com.analista.mobile.data.TradeOutcomeEntity
@@ -36,6 +37,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val analysis: StateFlow<List<CandidateAnalysisEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeAnalysis(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val tradePlans: StateFlow<List<CandidateTradePlanEntity>> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeTradePlans(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
