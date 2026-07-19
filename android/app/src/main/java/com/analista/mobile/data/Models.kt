@@ -115,6 +115,23 @@ data class FetchResult(
     val retries: Int
 )
 
+data class MarketQuote(
+    val bid: Double?,
+    val ask: Double?,
+    val regularMarketPrice: Double?,
+    val preMarketPrice: Double?,
+    val marketCap: Long?,
+    val quoteType: String?,
+    val capturedAtUtc: Long = System.currentTimeMillis()
+)
+
+data class TradeContext(
+    val quote: MarketQuote? = null,
+    val marketCap: Long? = quote?.marketCap,
+    val quoteType: String? = quote?.quoteType,
+    val setupType: String = "BREAKOUT_OR_PULLBACK"
+)
+
 data class ScanCandidate(
     val ticker: String,
     val signal: String,
@@ -132,7 +149,19 @@ data class ScanCandidate(
     val stop: Double?,
     val target: Double?,
     val rr: Double?,
-    val reason: String
+    val reason: String,
+    val quoteStatus: String = "MISSING",
+    val executionQuoteQuality: String = "LOW",
+    val triggerConfirmed: Boolean = false,
+    val setupType: String = "BREAKOUT_OR_PULLBACK",
+    val allVetoReasons: List<String> = emptyList(),
+    val penaltyReasons: List<String> = emptyList(),
+    val actionableEntry: Double? = entry,
+    val actionableStop: Double? = stop,
+    val actionableTarget: Double? = target,
+    val theoreticalEntry: Double? = null,
+    val theoreticalStop: Double? = null,
+    val theoreticalTarget: Double? = null
 )
 
 data class FundamentalMetrics(
