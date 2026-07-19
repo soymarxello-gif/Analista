@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         MarketSnapshotEntity::class,
         CandidateEnrichmentEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AnalistaDatabase : RoomDatabase() {
