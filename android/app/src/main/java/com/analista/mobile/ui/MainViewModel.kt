@@ -20,6 +20,7 @@ import com.analista.mobile.domain.ReproducibilityDiagnosticsEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -51,13 +52,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val reproducibilityManifests: StateFlow<List<ReproducibilityManifestEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeReproducibilityManifests(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val reproducibilitySummary: StateFlow<ReproducibilityDiagnosticsEngine.Summary> = reproducibilityManifests
-        .map { ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, it) }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, emptyList())
-        )
     val rankingComparison: StateFlow<RankingComparisonEntity?> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(null) else dao.observeRankingComparison(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -67,6 +61,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             RankingDiagnosticsPresenter.present(null)
+        )
+    val reproducibilitySummary: StateFlow<ReproducibilityDiagnosticsEngine.Summary> =
+        combine(reproducibilityManifests, rankingDiagnostics) { manifests, ranking ->
+            val base = ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, manifests)
+            base.copy(
+                providers = base.providers + ranking.compactLabel,
+                status = "${base.status} · ${ranking.status}"
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, emptyList()).copy(
+                providers = setOf(RankingDiagnosticsPresenter.present(null).compactLabel),
+                status = "INCOMPLETE · NO_DATA"
+            )
         )
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
