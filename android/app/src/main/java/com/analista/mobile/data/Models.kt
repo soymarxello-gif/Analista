@@ -65,6 +65,29 @@ data class BacktestOutcomeEntity(
     val evaluatedAtUtc: Long
 )
 
+@Entity(tableName = "candidate_enrichment", indices = [Index("runId"), Index("ticker")])
+data class CandidateEnrichmentEntity(
+    @PrimaryKey val enrichmentId: String,
+    val runId: String,
+    val ticker: String,
+    val marketCap: Long?,
+    val trailingPe: Double?,
+    val priceToSales: Double?,
+    val epsTrailing: Double?,
+    val revenueGrowthPct: Double?,
+    val grossMarginPct: Double?,
+    val operatingMarginPct: Double?,
+    val profitMarginPct: Double?,
+    val debtToEquity: Double?,
+    val optionsPutCallOi: Double?,
+    val optionsNearCallOi: Long?,
+    val optionsNearPutOi: Long?,
+    val optionsExpiry: Long?,
+    val fundamentalsStatus: String,
+    val optionsStatus: String,
+    val capturedAtUtc: Long
+)
+
 @Entity(tableName = "market_snapshots")
 data class MarketSnapshotEntity(
     @PrimaryKey val snapshotId: String,
@@ -110,4 +133,23 @@ data class ScanCandidate(
     val target: Double?,
     val rr: Double?,
     val reason: String
+)
+
+data class FundamentalMetrics(
+    val marketCap: Long?,
+    val trailingPe: Double?,
+    val priceToSales: Double?,
+    val epsTrailing: Double?,
+    val revenueGrowthPct: Double?,
+    val grossMarginPct: Double?,
+    val operatingMarginPct: Double?,
+    val profitMarginPct: Double?,
+    val debtToEquity: Double?
+)
+
+data class OptionsMetrics(
+    val putCallOi: Double?,
+    val nearCallOi: Long?,
+    val nearPutOi: Long?,
+    val expiry: Long?
 )

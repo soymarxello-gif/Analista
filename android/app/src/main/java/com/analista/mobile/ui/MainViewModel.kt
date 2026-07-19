@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.analista.mobile.AnalistaApplication
 import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateEntity
+import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanRunEntity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val macro: StateFlow<List<MarketSnapshotEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeMarketSnapshots(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val enrichment: StateFlow<List<CandidateEnrichmentEntity>> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeEnrichment(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

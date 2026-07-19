@@ -84,5 +84,84 @@ class YahooFinanceClient(
         return bars
     }
 
+    suspend fun fundamentals(ticker: String): FundamentalMetrics = withContext(Dispatchers.IO) {
+        val safeTicker = ticker.trim().uppercase().replace(".", "-")
+        val modules = "defaultKeyStatistics,financialData,summaryDetail"
+        val body = getJson("https://query1.finance.yahoo.com/v10/finance/quoteSummary/$safeTicker?modules=$modules")
+        parseFundamentals(body, safeTicker)
+    }
+
+    suspend fun options(ticker: String): OptionsMetrics = withContext(Dispatchers.IO) {
+        val safeTicker = ticker.trim().uppercase().replace(".", "-")
+        val body = getJson("https://query2.finance.yahoo.com/v7/finance/options/$safeTicker")
+        parseOptions(body, safeTicker)
+    }
+
+    private fun getJson(url: String): String {
+        val request = Request.Builder().url(url)
+            .header("User-Agent", "Mozilla/5.0 AnalistaAndroid/1.2")
+            .header("Accept", "application/json").build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("Yahoo HTTP ${response.code}")
+            return response.body?.string() ?: throw IOException("Yahoo empty body")
+        }
+    }
+
+    internal fun parseFundamentals(json: String, ticker: String): FundamentalMetrics {
+        val root = JSONObject(json)
+        val response = root.optJSONObject("quoteSummary") ?: throw IOException("Missing quoteSummary for $ticker")
+        if (!response.isNull("error")) throw IOException("Yahoo fundamentals error for $ticker")
+        val result = response.optJSONArray("result")?.optJSONObject(0)
+            ?: throw IOException("No fundamentals for $ticker")
+        val stats = result.optJSONObject("defaultKeyStatistics") ?: JSONObject()
+        val financial = result.optJSONObject("financialData") ?: JSONObject()
+        val summary = result.optJSONObject("summaryDetail") ?: JSONObject()
+        return FundamentalMetrics(
+            marketCap = rawLong(summary, "marketCap"),
+            trailingPe = rawDouble(summary, "trailingPE"),
+            priceToSales = rawDouble(summary, "priceToSalesTrailing12Months"),
+            epsTrailing = rawDouble(stats, "trailingEps"),
+            revenueGrowthPct = rawDouble(financial, "revenueGrowth")?.times(100.0),
+            grossMarginPct = rawDouble(financial, "grossMargins")?.times(100.0),
+            operatingMarginPct = rawDouble(financial, "operatingMargins")?.times(100.0),
+            profitMarginPct = rawDouble(financial, "profitMargins")?.times(100.0),
+            debtToEquity = rawDouble(financial, "debtToEquity")
+        )
+    }
+
+    internal fun parseOptions(json: String, ticker: String): OptionsMetrics {
+        val root = JSONObject(json)
+        val result = root.optJSONObject("optionChain")?.optJSONArray("result")?.optJSONObject(0)
+            ?: throw IOException("No options for $ticker")
+        val options = result.optJSONArray("options")?.optJSONObject(0)
+            ?: return OptionsMetrics(null, null, null, null)
+        val calls = options.optJSONArray("calls")
+        val puts = options.optJSONArray("puts")
+        fun sumOi(array: org.json.JSONArray?): Long {
+            if (array == null) return 0L
+            var total = 0L
+            for (i in 0 until array.length()) total += array.optJSONObject(i)?.optLong("openInterest", 0L) ?: 0L
+            return total
+        }
+        val callOi = sumOi(calls)
+        val putOi = sumOi(puts)
+        return OptionsMetrics(
+            putCallOi = if (callOi > 0) putOi.toDouble() / callOi else null,
+            nearCallOi = callOi.takeIf { it > 0 },
+            nearPutOi = putOi.takeIf { it > 0 },
+            expiry = options.optLong("expirationDate", 0L).takeIf { it > 0 }
+        )
+    }
+
+    private fun rawDouble(parent: JSONObject, key: String): Double? {
+        val value = parent.optJSONObject(key) ?: return null
+        return if (value.has("raw") && !value.isNull("raw")) value.optDouble("raw").takeIf { it.isFinite() } else null
+    }
+
+    private fun rawLong(parent: JSONObject, key: String): Long? {
+        val value = parent.optJSONObject(key) ?: return null
+        return if (value.has("raw") && !value.isNull("raw")) value.optLong("raw").takeIf { it > 0 } else null
+    }
+
     companion object { private const val CACHE_MAX_AGE_MS = 72L * 60 * 60 * 1000 }
 }
