@@ -4,6 +4,7 @@ import com.analista.mobile.domain.BacktestEngine
 import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DataQualityEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
+import com.analista.mobile.domain.FinalDecisionPersistenceFactory
 import com.analista.mobile.domain.LiveReproducibilityAssembler
 import com.analista.mobile.domain.TechnicalEngine
 import com.analista.mobile.domain.TradePlanGenerationEngine
@@ -24,6 +25,7 @@ private data class ScanWorkItem(
     val analyzed: AnalyzedCandidate,
     val bars: List<PriceBar>,
     val dataQualityStatus: String,
+    val executionDataAllowed: Boolean,
     val cacheHit: Boolean,
     val retries: Int,
     val retrievedAtUtc: Long
@@ -77,6 +79,7 @@ class ScanRepository(
                             ),
                             bars = fetched.bars,
                             dataQualityStatus = quality.status,
+                            executionDataAllowed = quality.executionAllowed,
                             cacheHit = fetched.cacheHit,
                             retries = fetched.retries,
                             retrievedAtUtc = retrievedAtUtc
@@ -87,6 +90,7 @@ class ScanRepository(
         }.awaitAll().filterNotNull().sortedByDescending { it.analyzed.candidate.score }
         val analyzed = workItems.map { it.analyzed }
         val barsByTicker = workItems.associate { it.analyzed.candidate.ticker to it.bars }
+        val workItemsByTicker = workItems.associateBy { it.analyzed.candidate.ticker }
 
         val runId = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.of("UTC"))
             .format(Instant.ofEpochMilli(started)) + "-" + UUID.randomUUID().toString().take(8)
@@ -161,10 +165,19 @@ class ScanRepository(
         val enrichment = fetchEnrichment(runId, rows, semaphore)
         val enrichmentByTicker = enrichment.associateBy { it.ticker }
         val engineVersion = "${CanonicalAnalysisEngine.ENGINE_VERSION}+${DecisionOverlayEngine.ENGINE_VERSION}+${TradePlanGenerationEngine.ENGINE_VERSION}"
+        val overlaysByTicker = analyzed.associate { item ->
+            val candidate = item.candidate
+            candidate.ticker to DecisionOverlayEngine.apply(
+                candidate,
+                item.analysis,
+                snapshots,
+                enrichmentByTicker[candidate.ticker]
+            )
+        }
         val analysisRows = analyzed.map { item ->
             val candidate = item.candidate
             val a = item.analysis
-            val overlay = DecisionOverlayEngine.apply(candidate, a, snapshots, enrichmentByTicker[candidate.ticker])
+            val overlay = overlaysByTicker.getValue(candidate.ticker)
             CandidateAnalysisEntity(
                 analysisId = "$runId-${candidate.ticker}", runId = runId, ticker = candidate.ticker,
                 rsi6 = a.rsi6, rsi14Canonical = a.rsi14, rsi6GtRsi14 = a.rsi6 > a.rsi14,
@@ -249,34 +262,38 @@ class ScanRepository(
             )
         }
         val tradePlansByTicker = tradePlans.associateBy { it.ticker }
-        val contracts = analyzed.mapNotNull { item ->
+        val macroConfidence = when {
+            snapshots.size >= 6 -> "HIGH"
+            snapshots.isEmpty() -> "UNKNOWN"
+            else -> "PARTIAL"
+        }
+        val finalized = analyzed.mapNotNull { item ->
             val candidate = item.candidate
             val plan = tradePlansByTicker[candidate.ticker] ?: return@mapNotNull null
-            if (candidate.signal !in setOf("READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED")) return@mapNotNull null
-            if (!plan.riskPlanValid || plan.auditedTradeScore > 100.0) return@mapNotNull null
-            val trigger = candidate.plannedTrigger ?: candidate.theoreticalEntry ?: return@mapNotNull null
-            val maximumEntry = candidate.maximumEntry ?: return@mapNotNull null
-            SignalContractEntity(
-                signalId = "$runId-${candidate.ticker}",
+            val analysis = analysisByTicker[candidate.ticker] ?: return@mapNotNull null
+            val overlay = overlaysByTicker[candidate.ticker] ?: return@mapNotNull null
+            val workItem = workItemsByTicker[candidate.ticker] ?: return@mapNotNull null
+            FinalDecisionPersistenceFactory.create(
                 runId = runId,
-                ticker = candidate.ticker,
-                signal = candidate.signal,
+                candidate = candidate,
+                analysis = analysis,
+                overlay = overlay,
+                plan = plan,
+                dataQualityAllowsExecution = workItem.executionDataAllowed,
+                macroConfidence = macroConfidence,
                 decisionTimestampUtc = started,
-                referencePrice = candidate.referenceClose ?: candidate.close,
-                triggerPrice = trigger,
-                maximumEntry = maximumEntry,
-                stopPrice = plan.structuralStop,
-                targetPrice = plan.structuralTarget,
-                expirationSessions = 20,
-                engineVersion = engineVersion,
-                createdAtUtc = finished
+                calculatedAtUtc = System.currentTimeMillis(),
+                engineVersion = engineVersion
             )
         }
+        val finalDecisions = finalized.map { it.decision }
+        val contracts = finalized.mapNotNull { it.contract }
 
         dao.saveRun(run, rows, snapshots)
         if (analysisRows.isNotEmpty()) dao.insertAnalysis(analysisRows)
         if (enrichment.isNotEmpty()) dao.insertEnrichment(enrichment)
         if (tradePlans.isNotEmpty()) dao.insertTradePlans(tradePlans)
+        if (finalDecisions.isNotEmpty()) dao.insertFinalDecisions(finalDecisions)
         if (manifests.isNotEmpty()) dao.insertReproducibilityManifests(manifests)
         if (contracts.isNotEmpty()) dao.insertSignalContracts(contracts)
         evaluateSignalContracts(barsByTicker)
@@ -389,6 +406,7 @@ class ScanRepository(
     fun observeTradeOutcomes(): Flow<List<TradeOutcomeEntity>> = dao.observeTradeOutcomes()
     fun observeEnrichment(runId: String): Flow<List<CandidateEnrichmentEntity>> = dao.observeEnrichment(runId)
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>> = dao.observeAnalysis(runId)
+    fun observeFinalDecisions(runId: String): Flow<List<FinalDecisionEntity>> = dao.observeFinalDecisions(runId)
     fun observeTradePlans(runId: String): Flow<List<CandidateTradePlanEntity>> = dao.observeTradePlans(runId)
     fun observeReproducibilityManifests(runId: String): Flow<List<ReproducibilityManifestEntity>> =
         dao.observeReproducibilityManifests(runId)
