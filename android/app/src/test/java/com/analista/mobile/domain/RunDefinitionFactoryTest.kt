@@ -53,9 +53,9 @@ class RunDefinitionFactoryTest {
         manifestId = "run-1-$ticker", runId = "run-1", ticker = ticker,
         barsHash = "a".repeat(64), configurationHash = "b".repeat(64),
         universeHash = "d".repeat(64), manifestHash = "e".repeat(64),
-        barCount = 100, firstBarTimestampUtc = 1L, lastBarTimestampUtc = 2L,
+        barCount = 100, firstBarEpochSeconds = 1L, lastBarEpochSeconds = 2L,
         provider = "Yahoo", providerHost = "query1.finance.yahoo.com",
-        sourceStatus = "AVAILABLE", fallbackUsed = false, cacheHit = false,
-        retrievedAtUtc = 3L, engineVersion = "reproducibility-1", createdAtUtc = 4L
+        providerStatus = "AVAILABLE", fallbackUsed = false, cacheHit = false,
+        retrievedAtUtc = 3L, engineVersion = "reproducibility-1"
     )
 }
