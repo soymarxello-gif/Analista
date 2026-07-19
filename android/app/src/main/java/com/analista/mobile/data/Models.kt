@@ -152,7 +152,13 @@ data class TradeContext(
     val quote: MarketQuote? = null,
     val marketCap: Long? = quote?.marketCap,
     val quoteType: String? = quote?.quoteType,
-    val setupType: String = "BREAKOUT_OR_PULLBACK"
+    val setupType: String = "BREAKOUT_OR_PULLBACK",
+    val dataQualityStatus: String = "HIGH",
+    val dataQualityScore: Double = 100.0,
+    val dataQualityReasons: List<String> = emptyList(),
+    val averageDollarVolume20: Double? = null,
+    val sessionsOld: Int = 0,
+    val executionDataAllowed: Boolean = true
 )
 
 data class ScanCandidate(
