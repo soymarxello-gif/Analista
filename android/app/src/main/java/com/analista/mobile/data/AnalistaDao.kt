@@ -45,6 +45,9 @@ interface AnalistaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReproducibilityManifests(rows: List<ReproducibilityManifestEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRunDefinition(row: RunDefinitionEntity)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSignalContracts(rows: List<SignalContractEntity>)
 
@@ -84,6 +87,9 @@ interface AnalistaDao {
 
     @Query("SELECT * FROM reproducibility_manifests WHERE runId = :runId ORDER BY ticker")
     fun observeReproducibilityManifests(runId: String): Flow<List<ReproducibilityManifestEntity>>
+
+    @Query("SELECT * FROM run_definitions WHERE runId = :runId LIMIT 1")
+    fun observeRunDefinition(runId: String): Flow<RunDefinitionEntity?>
 
     @Query("SELECT * FROM trade_outcomes ORDER BY evaluatedAtUtc DESC")
     fun observeTradeOutcomes(): Flow<List<TradeOutcomeEntity>>
