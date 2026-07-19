@@ -14,15 +14,39 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class ScanService : Service() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO); private val channelId = "analista_scan"
-    override fun onCreate() { super.onCreate(); getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(channelId, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_DEFAULT)); startForeground(920, notification("Analista está ejecutando el scan premarket")) }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val channelId = "analista_scan"
+
+    override fun onCreate() {
+        super.onCreate()
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(NotificationChannel(channelId, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_DEFAULT))
+        startForeground(920, notification("Analista está ejecutando el scan premarket"))
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         scope.launch {
+            DiagnosticsStore.markStart(this@ScanService)
             val result = runCatching { (application as AnalistaApplication).repository.runScan() }
-            val text = result.fold({ "Scan ${it.trustStatus}: ${it.candidateCount} símbolos analizados" }, { "Scan fallido: ${it.message ?: "error desconocido"}" })
-            getSystemService(NotificationManager::class.java).notify(921, notification(text)); ScanScheduler.scheduleNext(this@ScanService); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(startId)
-        }; return START_NOT_STICKY
+            val text = result.fold(
+                onSuccess = { "Scan ${it.trustStatus}: ${it.candidateCount} símbolos analizados" },
+                onFailure = { "Scan fallido: ${it.message ?: "error desconocido"}" }
+            )
+            DiagnosticsStore.markFinish(this@ScanService, result.fold(onSuccess = { it.status }, onFailure = { "FAILED" }))
+            getSystemService(NotificationManager::class.java).notify(921, notification(text))
+            ScanScheduler.scheduleNext(this@ScanService)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf(startId)
+        }
+        return START_NOT_STICKY
     }
-    private fun notification(text: String) = NotificationCompat.Builder(this, channelId).setSmallIcon(android.R.drawable.ic_popup_sync).setContentTitle("Analista").setContentText(text).setOngoing(text.contains("ejecutando")).build()
+
+    private fun notification(text: String) = NotificationCompat.Builder(this, channelId)
+        .setSmallIcon(android.R.drawable.ic_popup_sync)
+        .setContentTitle("Analista")
+        .setContentText(text)
+        .setOngoing(text.contains("ejecutando"))
+        .build()
+
     override fun onBind(intent: Intent?): IBinder? = null
 }
