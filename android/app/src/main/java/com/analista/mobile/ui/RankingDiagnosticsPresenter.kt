@@ -14,7 +14,8 @@ object RankingDiagnosticsPresenter {
         val spearman: Double?,
         val medianAbsoluteDisplacement: Double?,
         val missingItems: Int,
-        val reasons: List<String>
+        val reasons: List<String>,
+        val compactLabel: String
     )
 
     fun present(entity: RankingComparisonEntity?): Model {
@@ -30,9 +31,13 @@ object RankingDiagnosticsPresenter {
                 spearman = null,
                 medianAbsoluteDisplacement = null,
                 missingItems = 0,
-                reasons = listOf("COMPARISON_NOT_AVAILABLE")
+                reasons = listOf("COMPARISON_NOT_AVAILABLE"),
+                compactLabel = "Ranking: sin comparación · legacy activo"
             )
         }
+        val overlap = "%.1f".format(entity.topKOverlapPct)
+        val spearman = entity.spearman?.let { "%.4f".format(it) } ?: "—"
+        val displacement = entity.medianAbsoluteDisplacement?.let { "%.2f".format(it) } ?: "—"
         return Model(
             available = true,
             status = entity.status,
@@ -48,7 +53,8 @@ object RankingDiagnosticsPresenter {
             spearman = entity.spearman,
             medianAbsoluteDisplacement = entity.medianAbsoluteDisplacement,
             missingItems = entity.missingItems,
-            reasons = entity.reasons.split(',').map { it.trim() }.filter { it.isNotBlank() }
+            reasons = entity.reasons.split(',').map { it.trim() }.filter { it.isNotBlank() },
+            compactLabel = "Ranking ${entity.status}: top-${entity.topK} $overlap% · Spearman $spearman · Δmed $displacement · faltantes ${entity.missingItems} · legacy activo"
         )
     }
 }
