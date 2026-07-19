@@ -24,13 +24,17 @@ jobs:
           gradle-version: "8.11.1"
       - name: Unit tests
         working-directory: android
-        run: gradle :app:testDebugUnitTest --stacktrace
-      - name: Upload unit test reports
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --stacktrace 2>&1 | tee "$RUNNER_TEMP/android-unit-tests.log"
+      - name: Upload unit test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-unit-test-reports
+          name: android-unit-test-diagnostics
           path: |
+            ${{ runner.temp }}/android-unit-tests.log
             android/app/build/reports/tests/testDebugUnitTest
             android/app/build/test-results/testDebugUnitTest
           if-no-files-found: warn
