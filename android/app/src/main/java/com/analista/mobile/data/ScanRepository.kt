@@ -1,6 +1,7 @@
 package com.analista.mobile.data
 
 import com.analista.mobile.domain.CanonicalAnalysisEngine
+import com.analista.mobile.domain.DataQualityEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
 import com.analista.mobile.domain.TechnicalEngine
 import kotlinx.coroutines.async
@@ -28,6 +29,8 @@ class ScanRepository(
         var failures = 0
         var cacheHits = 0
         var retries = 0
+        var lowQualityCount = 0
+        var unusableQualityCount = 0
         val quoteBatch = marketData.quotes(tickers)
         val quoteFailures = tickers.count { quoteBatch.quotes[it] == null }
         val analyzed = tickers.map { ticker ->
@@ -35,15 +38,28 @@ class ScanRepository(
                 runCatching {
                     semaphore.withPermit {
                         val fetched = yahoo.dailyHistory(ticker)
+                        val quality = DataQualityEngine.assess(fetched.bars, fetched.cacheHit, started)
                         synchronized(this@ScanRepository) {
                             if (fetched.cacheHit) cacheHits += 1
                             retries += fetched.retries
+                            if (quality.status == "LOW") lowQualityCount += 1
+                            if (quality.status == "UNUSABLE") unusableQualityCount += 1
                         }
                         val quote = quoteBatch.quotes[ticker]
                         TechnicalEngine.analyzeWithAnalysis(
                             ticker,
                             fetched.bars,
-                            TradeContext(quote = quote, marketCap = quote?.marketCap, quoteType = quote?.quoteType)
+                            TradeContext(
+                                quote = quote,
+                                marketCap = quote?.marketCap,
+                                quoteType = quote?.quoteType,
+                                dataQualityStatus = quality.status,
+                                dataQualityScore = quality.score,
+                                dataQualityReasons = quality.reasons,
+                                averageDollarVolume20 = quality.averageDollarVolume20,
+                                sessionsOld = quality.sessionsOld,
+                                executionDataAllowed = quality.executionAllowed
+                            )
                         )
                     }
                 }.onFailure { synchronized(this@ScanRepository) { failures += 1 } }.getOrNull()
@@ -56,8 +72,9 @@ class ScanRepository(
         val alpacaDegraded = quoteBatch.alpacaStatus !in setOf("AVAILABLE", "NOT_CONFIGURED")
         val trust = when {
             analyzed.isEmpty() -> "UNUSABLE"
-            failures > tickers.size / 2 -> "UNUSABLE"
-            failures > 0 || cacheHits > 0 || quoteFailures > 0 || alpacaDegraded || quoteBatch.divergenceCount > 0 -> "DEGRADED"
+            failures > tickers.size / 2 || unusableQualityCount > tickers.size / 2 -> "UNUSABLE"
+            failures > 0 || cacheHits > 0 || quoteFailures > 0 || lowQualityCount > 0 ||
+                unusableQualityCount > 0 || alpacaDegraded || quoteBatch.divergenceCount > 0 -> "DEGRADED"
             else -> "TRUSTED"
         }
         val finished = System.currentTimeMillis()
@@ -66,7 +83,9 @@ class ScanRepository(
             quoteBatch.feed?.let { append("/").append(it) }
             if (quoteBatch.fallbackCount > 0) append(" + fallback(").append(quoteBatch.fallbackCount).append(")")
             if (quoteBatch.divergenceCount > 0) append(" + divergence(").append(quoteBatch.divergenceCount).append(")")
-            if (cacheHits > 0) append(" + cache")
+            if (cacheHits > 0) append(" + cache(").append(cacheHits).append(")")
+            if (lowQualityCount > 0) append(" + quality-low(").append(lowQualityCount).append(")")
+            if (unusableQualityCount > 0) append(" + quality-unusable(").append(unusableQualityCount).append(")")
         }
         val run = ScanRunEntity(
             runId = runId, startedAtUtc = started, finishedAtUtc = finished,
