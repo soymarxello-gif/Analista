@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.analista.mobile.domain.RankingComparisonPersistenceFactory
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -28,7 +29,18 @@ interface AnalistaDao {
     suspend fun insertAnalysis(rows: List<CandidateAnalysisEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTradePlans(rows: List<CandidateTradePlanEntity>)
+    suspend fun insertTradePlansRaw(rows: List<CandidateTradePlanEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRankingComparison(row: RankingComparisonEntity)
+
+    @Transaction
+    suspend fun insertTradePlans(rows: List<CandidateTradePlanEntity>) {
+        if (rows.isEmpty()) return
+        insertTradePlansRaw(rows)
+        RankingComparisonPersistenceFactory.create(rows, System.currentTimeMillis())
+            ?.let { insertRankingComparison(it) }
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReproducibilityManifests(rows: List<ReproducibilityManifestEntity>)
@@ -66,6 +78,9 @@ interface AnalistaDao {
 
     @Query("SELECT * FROM candidate_trade_plans WHERE runId = :runId ORDER BY tradeRank ASC")
     fun observeTradePlans(runId: String): Flow<List<CandidateTradePlanEntity>>
+
+    @Query("SELECT * FROM ranking_comparisons WHERE runId = :runId LIMIT 1")
+    fun observeRankingComparison(runId: String): Flow<RankingComparisonEntity?>
 
     @Query("SELECT * FROM reproducibility_manifests WHERE runId = :runId ORDER BY ticker")
     fun observeReproducibilityManifests(runId: String): Flow<List<ReproducibilityManifestEntity>>
