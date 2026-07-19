@@ -32,7 +32,7 @@ class YahooFinanceClient(
                 try {
                     val url = "https://$host/v8/finance/chart/$safeTicker?range=$range&interval=1d&events=div%2Csplits"
                     val request = Request.Builder().url(url)
-                        .header("User-Agent", "Mozilla/5.0 AnalistaAndroid/1.1")
+                        .header("User-Agent", "Mozilla/5.0 AnalistaAndroid/2.0")
                         .header("Accept", "application/json").build()
                     client.newCall(request).execute().use { response ->
                         if (!response.isSuccessful) throw IOException("Yahoo HTTP ${response.code} for $safeTicker")
@@ -54,6 +54,30 @@ class YahooFinanceClient(
             return@withContext FetchResult(parseChart(cache.readText(), safeTicker), "Yahoo/cache", true, retries)
         }
         throw IOException(lastError?.message ?: "No data for $safeTicker", lastError)
+    }
+
+    suspend fun marketQuote(ticker: String): MarketQuote = withContext(Dispatchers.IO) {
+        val safeTicker = ticker.trim().uppercase().replace(".", "-")
+        val body = getJson("https://query1.finance.yahoo.com/v7/finance/quote?symbols=$safeTicker")
+        parseMarketQuote(body, safeTicker)
+    }
+
+    internal fun parseMarketQuote(json: String, ticker: String): MarketQuote {
+        val result = JSONObject(json)
+            .optJSONObject("quoteResponse")
+            ?.optJSONArray("result")
+            ?.optJSONObject(0)
+            ?: throw IOException("No quote for $ticker")
+        return MarketQuote(
+            bid = result.optNullableDouble("bid"),
+            ask = result.optNullableDouble("ask"),
+            regularMarketPrice = result.optNullableDouble("regularMarketPrice"),
+            preMarketPrice = result.optNullableDouble("preMarketPrice"),
+            marketCap = result.optNullableLong("marketCap"),
+            quoteType = result.optString("quoteType").takeIf { it.isNotBlank() },
+            marketState = result.optString("marketState").takeIf { it.isNotBlank() },
+            capturedAtUtc = System.currentTimeMillis()
+        )
     }
 
     internal fun parseChart(json: String, ticker: String): List<PriceBar> {
@@ -99,7 +123,7 @@ class YahooFinanceClient(
 
     private fun getJson(url: String): String {
         val request = Request.Builder().url(url)
-            .header("User-Agent", "Mozilla/5.0 AnalistaAndroid/1.2")
+            .header("User-Agent", "Mozilla/5.0 AnalistaAndroid/2.0")
             .header("Accept", "application/json").build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Yahoo HTTP ${response.code}")
@@ -162,6 +186,12 @@ class YahooFinanceClient(
         val value = parent.optJSONObject(key) ?: return null
         return if (value.has("raw") && !value.isNull("raw")) value.optLong("raw").takeIf { it > 0 } else null
     }
+
+    private fun JSONObject.optNullableDouble(key: String): Double? =
+        if (has(key) && !isNull(key)) optDouble(key).takeIf { it.isFinite() && it > 0.0 } else null
+
+    private fun JSONObject.optNullableLong(key: String): Long? =
+        if (has(key) && !isNull(key)) optLong(key).takeIf { it > 0L } else null
 
     companion object { private const val CACHE_MAX_AGE_MS = 72L * 60 * 60 * 1000 }
 }

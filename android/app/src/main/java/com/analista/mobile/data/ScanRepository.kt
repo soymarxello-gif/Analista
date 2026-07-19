@@ -23,6 +23,7 @@ class ScanRepository(
         val started = System.currentTimeMillis()
         val semaphore = Semaphore(4)
         var failures = 0
+        var quoteFailures = 0
         var cacheHits = 0
         var retries = 0
         val candidates = tickers.map { ticker ->
@@ -30,11 +31,18 @@ class ScanRepository(
                 runCatching {
                     semaphore.withPermit {
                         val fetched = yahoo.dailyHistory(ticker)
+                        val quoteResult = runCatching { yahoo.marketQuote(ticker) }
+                        if (quoteResult.isFailure) synchronized(this@ScanRepository) { quoteFailures += 1 }
                         synchronized(this@ScanRepository) {
                             if (fetched.cacheHit) cacheHits += 1
                             retries += fetched.retries
                         }
-                        TechnicalEngine.analyze(ticker, fetched.bars)
+                        val quote = quoteResult.getOrNull()
+                        TechnicalEngine.analyze(
+                            ticker,
+                            fetched.bars,
+                            TradeContext(quote = quote, marketCap = quote?.marketCap, quoteType = quote?.quoteType)
+                        )
                     }
                 }.onFailure { synchronized(this@ScanRepository) { failures += 1 } }.getOrNull()
             }
@@ -46,7 +54,7 @@ class ScanRepository(
         val trust = when {
             candidates.isEmpty() -> "UNUSABLE"
             failures > tickers.size / 2 -> "UNUSABLE"
-            failures > 0 || cacheHits > 0 -> "DEGRADED"
+            failures > 0 || cacheHits > 0 || quoteFailures > 0 -> "DEGRADED"
             else -> "TRUSTED"
         }
         val finished = System.currentTimeMillis()
@@ -54,7 +62,7 @@ class ScanRepository(
             runId = runId, startedAtUtc = started, finishedAtUtc = finished,
             marketDateEt = marketDate,
             status = if (candidates.isEmpty()) "FAILED_DATA_SOURCE" else "COMPLETED",
-            trustStatus = trust, candidateCount = candidates.size, failureCount = failures,
+            trustStatus = trust, candidateCount = candidates.size, failureCount = failures + quoteFailures,
             source = if (cacheHits > 0) "Yahoo Finance + cache" else "Yahoo Finance",
             durationMs = finished - started, cacheHitCount = cacheHits, retryCount = retries
         )
@@ -64,7 +72,19 @@ class ScanRepository(
                 close = it.close, sma20 = it.sma20, sma50 = it.sma50, rsi14 = it.rsi14,
                 macd = it.macd, macdSignal = it.macdSignal, stochastic = it.stochastic,
                 atr14 = it.atr14, relativeVolume = it.relativeVolume, entry = it.entry,
-                stop = it.stop, target = it.target, rr = it.rr, reason = it.reason
+                stop = it.stop, target = it.target, rr = it.rr, reason = it.reason,
+                quoteStatus = it.quoteStatus, executionQuoteQuality = it.executionQuoteQuality,
+                triggerConfirmed = it.triggerConfirmed, setupType = it.setupType,
+                allVetoReasons = it.allVetoReasons.joinToString(","),
+                penaltyReasons = it.penaltyReasons.joinToString(","),
+                actionableEntry = it.actionableEntry, actionableStop = it.actionableStop,
+                actionableTarget = it.actionableTarget, theoreticalEntry = it.theoreticalEntry,
+                theoreticalStop = it.theoreticalStop, theoreticalTarget = it.theoreticalTarget,
+                referenceClose = it.referenceClose, livePremarketPrice = it.livePremarketPrice,
+                bid = it.bid, ask = it.ask, spreadPct = it.spreadPct,
+                openingGapPct = it.openingGapPct, plannedTrigger = it.plannedTrigger,
+                maximumEntry = it.maximumEntry, actionabilityAtExecution = it.actionabilityAtExecution,
+                quoteCapturedAtUtc = it.quoteCapturedAtUtc
             )
         }
         val snapshots = fetchMacro(runId, semaphore)
@@ -107,21 +127,16 @@ class ScanRepository(
                     val fundamental = fundamentalResult.getOrNull()
                     val options = optionsResult.getOrNull()
                     CandidateEnrichmentEntity(
-                        enrichmentId = "$runId-${candidate.ticker}",
-                        runId = runId,
-                        ticker = candidate.ticker,
-                        marketCap = fundamental?.marketCap,
-                        trailingPe = fundamental?.trailingPe,
-                        priceToSales = fundamental?.priceToSales,
-                        epsTrailing = fundamental?.epsTrailing,
+                        enrichmentId = "$runId-${candidate.ticker}", runId = runId, ticker = candidate.ticker,
+                        marketCap = fundamental?.marketCap, trailingPe = fundamental?.trailingPe,
+                        priceToSales = fundamental?.priceToSales, epsTrailing = fundamental?.epsTrailing,
                         revenueGrowthPct = fundamental?.revenueGrowthPct?.let(::round2),
                         grossMarginPct = fundamental?.grossMarginPct?.let(::round2),
                         operatingMarginPct = fundamental?.operatingMarginPct?.let(::round2),
                         profitMarginPct = fundamental?.profitMarginPct?.let(::round2),
                         debtToEquity = fundamental?.debtToEquity?.let(::round2),
                         optionsPutCallOi = options?.putCallOi?.let(::round2),
-                        optionsNearCallOi = options?.nearCallOi,
-                        optionsNearPutOi = options?.nearPutOi,
+                        optionsNearCallOi = options?.nearCallOi, optionsNearPutOi = options?.nearPutOi,
                         optionsExpiry = options?.expiry,
                         fundamentalsStatus = if (fundamentalResult.isSuccess) "AVAILABLE" else "UNAVAILABLE",
                         optionsStatus = if (optionsResult.isSuccess) "AVAILABLE" else "UNAVAILABLE",

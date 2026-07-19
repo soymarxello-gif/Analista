@@ -20,7 +20,12 @@ object TradingPolicy {
         if (bid <= 0.0 || ask <= 0.0 || ask <= bid) return QuoteAssessment("INVALID", "LOW")
         val midpoint = (bid + ask) / 2.0
         val spreadPct = (ask - bid) / midpoint * 100.0
-        val distancePct = if (referencePrice > 0.0) kotlin.math.abs(midpoint / referencePrice - 1.0) * 100.0 else Double.POSITIVE_INFINITY
+        val liveAnchor = quote.preMarketPrice ?: quote.regularMarketPrice ?: referencePrice
+        val distancePct = if (liveAnchor > 0.0) {
+            kotlin.math.abs(midpoint / liveAnchor - 1.0) * 100.0
+        } else {
+            Double.POSITIVE_INFINITY
+        }
         if (distancePct > MAX_QUOTE_DISTANCE_PCT) return QuoteAssessment("STALE_POSSIBLE", "LOW")
         if (spreadPct > 1.0) return QuoteAssessment("WIDE_OR_INCOHERENT", "MEDIUM")
         return QuoteAssessment("VALID", "HIGH")

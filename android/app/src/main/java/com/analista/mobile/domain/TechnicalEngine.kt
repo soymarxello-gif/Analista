@@ -3,6 +3,7 @@ package com.analista.mobile.domain
 import com.analista.mobile.data.PriceBar
 import com.analista.mobile.data.ScanCandidate
 import com.analista.mobile.data.TradeContext
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.round
 
@@ -42,19 +43,46 @@ object TechnicalEngine {
         if (stochastic in 35.0..80.0) { score += 10; reasons += "stochastic_confirmed" }
         if (relativeVolume >= 1.2) { score += 15; reasons += "volume_confirmation" }
 
-        val breakout = close > prior20High
-        val triggerConfirmed = breakout && relativeVolume >= 1.2
+        val quote = TradingPolicy.assessQuote(context.quote, close)
+        val bid = context.quote?.bid
+        val ask = context.quote?.ask
+        val livePremarket = context.quote?.preMarketPrice
+        val executionPrice = ask ?: livePremarket ?: context.quote?.regularMarketPrice
+        val spreadPct = if (bid != null && ask != null && bid > 0 && ask > bid) {
+            (ask - bid) / ((ask + bid) / 2.0) * 100.0
+        } else null
+        val openingGapPct = livePremarket?.let { (it / close - 1.0) * 100.0 }
+        val plannedTrigger = prior20High + max(0.25 * atr, prior20High * 0.005)
+        val maximumEntry = plannedTrigger + 0.50 * atr
+        val dailyBreakout = close > prior20High && relativeVolume >= 1.2
+        val liveTrigger = executionPrice?.let { it >= plannedTrigger && it <= maximumEntry } ?: false
+        val triggerConfirmed = (dailyBreakout || liveTrigger) && quote.quality != "LOW"
         if (triggerConfirmed) { score += 10; reasons += "breakout_confirmed" }
+
+        val gapAtr = livePremarket?.let { abs(it - close) / atr }
+        val actionability = when {
+            vetoReasons.isNotEmpty() -> "VETOED"
+            quote.quality == "LOW" -> "QUOTE_UNCONFIRMED"
+            executionPrice == null -> "QUOTE_MISSING"
+            gapAtr != null && gapAtr > 1.5 -> "GAP_EXCESSIVE"
+            executionPrice > maximumEntry -> "ABOVE_MAX_ENTRY"
+            triggerConfirmed -> "ACTIONABLE_REVIEW"
+            else -> "WAIT_TRIGGER"
+        }
+        if (actionability == "GAP_EXCESSIVE") penalties += "opening_gap_excessive"
+        if (actionability == "ABOVE_MAX_ENTRY") penalties += "above_maximum_entry"
 
         val overextended = rsi > 75 || close > sma20 + 2.5 * atr
         if (overextended) reasons += "overextended"
         if (context.setupType == "NO_VALID_SETUP") vetoReasons += "no_valid_setup"
 
-        val quote = TradingPolicy.assessQuote(context.quote, close)
-        val theoreticalEntry = close
-        val theoreticalStop = max(0.01, close - 1.5 * atr)
-        val theoreticalTarget = close + 2.5 * (close - theoreticalStop)
-        val rr = (theoreticalTarget - theoreticalEntry) / (theoreticalEntry - theoreticalStop)
+        val theoreticalEntry = plannedTrigger
+        val theoreticalStop = max(0.01, minOf(sma20, plannedTrigger - 1.5 * atr))
+        val theoreticalTarget = plannedTrigger + 2.5 * (plannedTrigger - theoreticalStop)
+        val theoreticalRr = (theoreticalTarget - theoreticalEntry) / (theoreticalEntry - theoreticalStop)
+        val executableEntry = executionPrice?.takeIf { actionability == "ACTIONABLE_REVIEW" }
+        val executableRr = executableEntry?.let { (theoreticalTarget - it) / (it - theoreticalStop) }
+        val rr = executableRr ?: theoreticalRr
 
         var signal = when {
             vetoReasons.isNotEmpty() -> "VETO"
@@ -64,8 +92,7 @@ object TechnicalEngine {
             score >= 50 -> "WATCHLIST"
             else -> "AVOID"
         }
-
-        if (signal == "TRIGGER_CONFIRMED" && quote.quality == "LOW") {
+        if (signal == "TRIGGER_CONFIRMED" && actionability != "ACTIONABLE_REVIEW") {
             signal = "WATCHLIST"
             penalties += "execution_quote_unconfirmed"
         }
@@ -79,41 +106,29 @@ object TechnicalEngine {
         }
         require(signal in TradingPolicy.allowedSignals)
 
-        val actionable = signal == "TRIGGER_CONFIRMED" || signal == "READY_WAIT_TRIGGER"
-        val actionableEntry = theoreticalEntry.takeIf { actionable }
+        val actionable = signal == "TRIGGER_CONFIRMED" && actionability == "ACTIONABLE_REVIEW"
+        val actionableEntry = executableEntry.takeIf { actionable }
         val actionableStop = theoreticalStop.takeIf { actionable }
         val actionableTarget = theoreticalTarget.takeIf { actionable }
 
         return ScanCandidate(
-            ticker = ticker.uppercase(),
-            signal = signal,
-            score = round2(score),
-            close = round2(close),
-            sma20 = round2(sma20),
-            sma50 = round2(sma50),
-            rsi14 = round2(rsi),
-            macd = round4(macd),
-            macdSignal = round4(macdSignal),
-            stochastic = round2(stochastic),
-            atr14 = round2(atr),
-            relativeVolume = round2(relativeVolume),
-            entry = actionableEntry?.let(::round2),
-            stop = actionableStop?.let(::round2),
-            target = actionableTarget?.let(::round2),
-            rr = round2(rr),
-            reason = reasons.joinToString(","),
-            quoteStatus = quote.status,
-            executionQuoteQuality = quote.quality,
-            triggerConfirmed = triggerConfirmed,
-            setupType = context.setupType,
-            allVetoReasons = vetoReasons.distinct(),
-            penaltyReasons = penalties.distinct(),
-            actionableEntry = actionableEntry?.let(::round2),
-            actionableStop = actionableStop?.let(::round2),
-            actionableTarget = actionableTarget?.let(::round2),
-            theoreticalEntry = round2(theoreticalEntry),
-            theoreticalStop = round2(theoreticalStop),
-            theoreticalTarget = round2(theoreticalTarget)
+            ticker = ticker.uppercase(), signal = signal, score = round2(score), close = round2(close),
+            sma20 = round2(sma20), sma50 = round2(sma50), rsi14 = round2(rsi),
+            macd = round4(macd), macdSignal = round4(macdSignal), stochastic = round2(stochastic),
+            atr14 = round2(atr), relativeVolume = round2(relativeVolume),
+            entry = actionableEntry?.let(::round2), stop = actionableStop?.let(::round2),
+            target = actionableTarget?.let(::round2), rr = round2(rr), reason = reasons.joinToString(","),
+            quoteStatus = quote.status, executionQuoteQuality = quote.quality,
+            triggerConfirmed = triggerConfirmed, setupType = context.setupType,
+            allVetoReasons = vetoReasons.distinct(), penaltyReasons = penalties.distinct(),
+            actionableEntry = actionableEntry?.let(::round2), actionableStop = actionableStop?.let(::round2),
+            actionableTarget = actionableTarget?.let(::round2), theoreticalEntry = round2(theoreticalEntry),
+            theoreticalStop = round2(theoreticalStop), theoreticalTarget = round2(theoreticalTarget),
+            referenceClose = round2(close), livePremarketPrice = livePremarket?.let(::round2),
+            bid = bid?.let(::round2), ask = ask?.let(::round2), spreadPct = spreadPct?.let(::round2),
+            openingGapPct = openingGapPct?.let(::round2), plannedTrigger = round2(plannedTrigger),
+            maximumEntry = round2(maximumEntry), actionabilityAtExecution = actionability,
+            quoteCapturedAtUtc = context.quote?.capturedAtUtc
         )
     }
 
@@ -142,7 +157,7 @@ object TechnicalEngine {
     }
 
     fun atr(bars: List<PriceBar>, period: Int): Double = bars.zipWithNext { previous, current ->
-        max(current.high - current.low, max(kotlin.math.abs(current.high - previous.close), kotlin.math.abs(current.low - previous.close)))
+        max(current.high - current.low, max(abs(current.high - previous.close), abs(current.low - previous.close)))
     }.takeLast(period).average()
 
     private fun round2(value: Double) = round(value * 100.0) / 100.0
