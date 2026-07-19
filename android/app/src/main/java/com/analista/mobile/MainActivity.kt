@@ -203,6 +203,7 @@ class MainActivity : ComponentActivity() {
         val feed by vm.alpacaFeed.collectAsState()
         val status by vm.alpacaStatus.collectAsState()
         val testing by vm.testingAlpaca.collectAsState()
+        val reproducibility by vm.reproducibilitySummary.collectAsState()
         var apiKey by remember { mutableStateOf("") }
         var secretKey by remember { mutableStateOf("") }
         LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -219,6 +220,19 @@ class MainActivity : ComponentActivity() {
                         if (!d.exactAlarmGranted) {
                             Button(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) { Text("Habilitar alarma exacta") }
                         }
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Reproducibilidad del scan", fontWeight = FontWeight.Bold)
+                        Text("Estado: ${reproducibility.status} · cobertura ${"%.2f".format(reproducibility.coveragePct)}%")
+                        Text("Manifiestos: ${reproducibility.manifestCount}/${reproducibility.expectedTickers}")
+                        Text("Configuraciones: ${reproducibility.uniqueConfigurationHashes} · universos: ${reproducibility.uniqueUniverseHashes}")
+                        Text("Proveedores: ${reproducibility.providers.joinToString().ifBlank { "sin datos" }}")
+                        Text("Fallbacks: ${reproducibility.fallbackCount} · cache: ${reproducibility.cacheHitCount} · inválidos: ${reproducibility.invalidManifestCount}")
+                        Text("COMPLETE exige cobertura total, hashes consistentes y cero manifiestos inválidos.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
