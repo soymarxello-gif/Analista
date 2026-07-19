@@ -1,14 +1,21 @@
 package com.analista.mobile.domain
 
+import com.analista.mobile.data.HistorySourceRegistry
 import com.analista.mobile.data.PriceBar
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LiveReproducibilityAssemblerTest {
+    @After
+    fun clearRegistry() = HistorySourceRegistry.clear()
+
     @Test
-    fun `ensambla manifiestos ordenados y consistentes`() {
+    fun `ensambla manifiestos ordenados consistentes y con procedencia real`() {
+        HistorySourceRegistry.record("MSFT", "Yahoo/query2.finance.yahoo.com")
+        HistorySourceRegistry.record("AAPL", "Yahoo/cache")
         val manifests = LiveReproducibilityAssembler.assemble(
             runId = "run-1",
             universe = listOf("MSFT", "AAPL"),
@@ -17,8 +24,13 @@ class LiveReproducibilityAssemblerTest {
         assertEquals(listOf("AAPL", "MSFT"), manifests.map { it.ticker })
         assertEquals(1, manifests.map { it.configurationHash }.distinct().size)
         assertEquals(1, manifests.map { it.universeHash }.distinct().size)
-        assertTrue(manifests.first { it.ticker == "AAPL" }.cacheHit)
-        assertTrue(manifests.first { it.ticker == "AAPL" }.fallbackUsed)
+        val aapl = manifests.first { it.ticker == "AAPL" }
+        val msft = manifests.first { it.ticker == "MSFT" }
+        assertEquals("cache", aapl.providerHost)
+        assertTrue(aapl.cacheHit)
+        assertTrue(aapl.fallbackUsed)
+        assertEquals("query2.finance.yahoo.com", msft.providerHost)
+        assertTrue(msft.fallbackUsed)
     }
 
     @Test

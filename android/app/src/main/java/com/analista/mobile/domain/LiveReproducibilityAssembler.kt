@@ -1,10 +1,11 @@
 package com.analista.mobile.domain
 
+import com.analista.mobile.data.HistorySourceRegistry
 import com.analista.mobile.data.PriceBar
 import com.analista.mobile.data.ReproducibilityManifestEntity
 
 object LiveReproducibilityAssembler {
-    const val VERSION = "live-repro-assembler-1"
+    const val VERSION = "live-repro-assembler-2"
 
     data class TickerInput(
         val ticker: String,
@@ -26,13 +27,24 @@ object LiveReproducibilityAssembler {
                 ScanReproducibilityPolicy.RuntimeInput(item.dataQualityStatus, item.cacheHit, item.retries),
                 item.retrievedAtUtc
             )
+            val actualSource = HistorySourceRegistry.sourceFor(item.ticker)
+            val actualHost = actualSource
+                ?.takeIf { it.startsWith("Yahoo/") }
+                ?.removePrefix("Yahoo/")
+                ?.takeIf { it.isNotBlank() }
+                ?: policy.source.providerHost
+            val source = policy.source.copy(
+                providerHost = actualHost,
+                fallbackUsed = policy.source.fallbackUsed || actualHost == "query2.finance.yahoo.com" || actualHost == "cache",
+                cacheHit = item.cacheHit || actualHost == "cache"
+            )
             ReproducibilityManifestFactory.Input(
                 runId = runId,
                 ticker = item.ticker,
                 bars = item.bars,
                 configuration = policy.configuration + ("assemblerVersion" to VERSION),
                 universe = normalizedUniverse,
-                source = policy.source
+                source = source
             )
         })
     }
