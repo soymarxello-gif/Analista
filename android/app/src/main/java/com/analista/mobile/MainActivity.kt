@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
+import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanRunEntity
 import com.analista.mobile.data.TradeOutcomeEntity
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
         val candidates by vm.candidates.collectAsState()
         val macro by vm.macro.collectAsState()
         val enrichment by vm.enrichment.collectAsState()
+        val tradePlans by vm.tradePlans.collectAsState()
         val outcomes by vm.outcomes.collectAsState()
         val tradeOutcomes by vm.tradeOutcomes.collectAsState()
         val running by vm.running.collectAsState()
@@ -93,7 +95,7 @@ class MainActivity : ComponentActivity() {
             }
         ) { padding ->
             when (tab) {
-                0 -> SummaryScreen(runs, candidates, enrichment, macro, running, error, vm::runNow, Modifier.padding(padding))
+                0 -> SummaryScreen(runs, candidates, enrichment, tradePlans, macro, running, error, vm::runNow, Modifier.padding(padding))
                 1 -> HistoryScreen(runs, vm::selectRun, Modifier.padding(padding))
                 2 -> BacktestScreen(tradeOutcomes, outcomes, Modifier.padding(padding))
                 else -> DiagnosticsScreen(vm, Modifier.padding(padding))
@@ -106,6 +108,7 @@ class MainActivity : ComponentActivity() {
         runs: List<ScanRunEntity>,
         candidates: List<CandidateEntity>,
         enrichment: List<CandidateEnrichmentEntity>,
+        tradePlans: List<CandidateTradePlanEntity>,
         macro: List<MarketSnapshotEntity>,
         running: Boolean,
         error: String?,
@@ -132,7 +135,10 @@ class MainActivity : ComponentActivity() {
             item { Text("Candidatos", style = MaterialTheme.typography.titleLarge) }
             if (candidates.isEmpty()) item { Text("Aún no hay resultados para esta ejecución.") }
             val enrichmentByTicker = enrichment.associateBy { it.ticker }
-            items(candidates, key = { it.id }) { CandidateCard(it, enrichmentByTicker[it.ticker]) }
+            val planByTicker = tradePlans.associateBy { it.ticker }
+            items(candidates, key = { it.id }) { candidate ->
+                CandidateCard(candidate, enrichmentByTicker[candidate.ticker], planByTicker[candidate.ticker])
+            }
         }
     }
 
@@ -174,9 +180,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            if (tradeOutcomes.isEmpty()) {
-                item { Text("Aún no hay contratos con barras posteriores suficientes.") }
-            }
+            if (tradeOutcomes.isEmpty()) item { Text("Aún no hay contratos con barras posteriores suficientes.") }
             items(tradeOutcomes.take(100), key = { it.signalId }) { outcome ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -188,9 +192,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            if (legacyOutcomes.isNotEmpty()) {
-                item { Text("Seguimiento legacy conservado: ${legacyOutcomes.size}", style = MaterialTheme.typography.bodySmall) }
-            }
+            if (legacyOutcomes.isNotEmpty()) item { Text("Seguimiento legacy conservado: ${legacyOutcomes.size}", style = MaterialTheme.typography.bodySmall) }
         }
     }
 
@@ -215,9 +217,7 @@ class MainActivity : ComponentActivity() {
                         Text("Último fin automático: ${formatTime(d.lastAutomaticFinishMillis)}")
                         Text("Estado automático: ${d.lastAutomaticStatus}")
                         if (!d.exactAlarmGranted) {
-                            Button(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) {
-                                Text("Habilitar alarma exacta")
-                            }
+                            Button(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) { Text("Habilitar alarma exacta") }
                         }
                     }
                 }
@@ -229,21 +229,8 @@ class MainActivity : ComponentActivity() {
                         Text("Configurada: ${if (configured) "sí" else "no"} · feed $feed · estado $status")
                         Text("Las claves se cifran con Android Keystore y no se incluyen en reportes ni logs.", style = MaterialTheme.typography.bodySmall)
                         if (!configured) {
-                            OutlinedTextField(
-                                value = apiKey,
-                                onValueChange = { apiKey = it },
-                                label = { Text("API Key") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OutlinedTextField(
-                                value = secretKey,
-                                onValueChange = { secretKey = it },
-                                label = { Text("Secret Key") },
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            OutlinedTextField(apiKey, { apiKey = it }, label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(secretKey, { secretKey = it }, label = { Text("Secret Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
                             Button(
                                 onClick = { vm.saveAndTestAlpaca(apiKey, secretKey, "iex") },
                                 enabled = !testing && apiKey.isNotBlank() && secretKey.isNotBlank()
@@ -295,7 +282,11 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun CandidateCard(candidate: CandidateEntity, enrichment: CandidateEnrichmentEntity?) {
+    private fun CandidateCard(
+        candidate: CandidateEntity,
+        enrichment: CandidateEnrichmentEntity?,
+        plan: CandidateTradePlanEntity?
+    ) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -304,7 +295,15 @@ class MainActivity : ComponentActivity() {
                 }
                 Text("Cierre ${candidate.close} · RSI ${candidate.rsi14} · RVOL ${candidate.relativeVolume}")
                 Text("SMA20 ${candidate.sma20} · SMA50 ${candidate.sma50} · ATR ${candidate.atr14}")
-                candidate.entry?.let { Text("Entrada $it · Stop ${candidate.stop} · Objetivo ${candidate.target} · R/R ${candidate.rr}") }
+                plan?.let {
+                    Text("Plan estructural ${if (it.riskPlanValid) "válido" else "no válido"}", fontWeight = FontWeight.Bold)
+                    Text("Entrada ${it.plannedEntry} · Stop ${it.structuralStop} (${it.stopType}) · Objetivo ${it.structuralTarget}")
+                    Text("R/R ${it.structuralRr} · Riesgo ${it.riskPct}% · Recompensa ${it.rewardPct}%")
+                    Text("Sizing ${it.shares} acciones · Posición $${"%.2f".format(it.positionValue)} · Riesgo $${"%.2f".format(it.riskBudget)}")
+                    Text("Estructura ${it.structureScore} · RS SPY ${it.relativeStrengthStatus} (${it.relativeStrengthScore})")
+                    Text("Ranking legacy #${it.legacyRank} · operativo #${it.tradeRank} · Δ ${rankDeltaLabel(it.rankDelta)}")
+                    Text("Score operativo auditado ${it.auditedTradeScore}", style = MaterialTheme.typography.bodySmall)
+                } ?: Text("Plan operativo aún no disponible.", style = MaterialTheme.typography.bodySmall)
                 enrichment?.let {
                     Text("Fundamental: ${it.fundamentalsStatus} · Opciones: ${it.optionsStatus}", fontWeight = FontWeight.Bold)
                     val fundamental = listOfNotNull(
@@ -324,6 +323,11 @@ class MainActivity : ComponentActivity() {
                     .forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
             }
         }
+    }
+
+    private fun rankDeltaLabel(delta: Int): String = when {
+        delta > 0 -> "+$delta"
+        else -> delta.toString()
     }
 
     private fun signalLabel(signal: String) = when (signal) {
