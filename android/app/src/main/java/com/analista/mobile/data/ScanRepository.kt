@@ -5,6 +5,7 @@ import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DataQualityEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
 import com.analista.mobile.domain.TechnicalEngine
+import com.analista.mobile.domain.TradePlanGenerationEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -131,7 +132,7 @@ class ScanRepository(
         val snapshots = fetchMacro(runId, semaphore)
         val enrichment = fetchEnrichment(runId, rows, semaphore)
         val enrichmentByTicker = enrichment.associateBy { it.ticker }
-        val engineVersion = "${CanonicalAnalysisEngine.ENGINE_VERSION}+${DecisionOverlayEngine.ENGINE_VERSION}"
+        val engineVersion = "${CanonicalAnalysisEngine.ENGINE_VERSION}+${DecisionOverlayEngine.ENGINE_VERSION}+${TradePlanGenerationEngine.ENGINE_VERSION}"
         val analysisRows = analyzed.map { item ->
             val candidate = item.candidate
             val a = item.analysis
@@ -152,13 +153,81 @@ class ScanRepository(
                 calculatedAtUtc = System.currentTimeMillis()
             )
         }
+        val analysisByTicker = analysisRows.associateBy { it.ticker }
+        val spyBars = runCatching { yahoo.dailyHistory("SPY", "1y").bars }.getOrNull()
+        val generatedPlans = TradePlanGenerationEngine.generate(
+            analyzed.mapNotNull { item ->
+                val candidate = item.candidate
+                val bars = barsByTicker[candidate.ticker] ?: return@mapNotNull null
+                val analysis = analysisByTicker[candidate.ticker] ?: return@mapNotNull null
+                if (bars.size < 60 || candidate.atr14 <= 0.0) return@mapNotNull null
+                val plannedEntry = candidate.actionableEntry
+                    ?: candidate.plannedTrigger
+                    ?: candidate.theoreticalEntry
+                    ?: candidate.close
+                TradePlanGenerationEngine.Input(
+                    ticker = candidate.ticker,
+                    signal = candidate.signal,
+                    setupType = candidate.setupType,
+                    legacyScore = candidate.score,
+                    finalTradeScore = analysis.finalTradeScore,
+                    bars = bars,
+                    benchmarkBars = spyBars,
+                    entry = plannedEntry,
+                    atr = candidate.atr14,
+                    sma20 = candidate.sma20
+                )
+            }
+        )
+        val tradePlans = generatedPlans.map { generated ->
+            val s = generated.structure
+            val rs = generated.relativeStrength
+            val p = generated.riskPlan
+            CandidateTradePlanEntity(
+                planId = "$runId-${generated.ticker}",
+                runId = runId,
+                ticker = generated.ticker,
+                priorResistance = round2(s.priorResistance),
+                nextResistance = s.nextResistance?.let(::round2),
+                swingLow = round2(s.swingLow),
+                closeLocationValue = round2(s.closeLocationValue),
+                baseRangeAtr = round2(s.baseRangeAtr),
+                volatilityCompression = round2(s.volatilityCompression),
+                resistanceTouches = s.resistanceTouches,
+                structureScore = round2(s.structureScore),
+                rs20VsSpy = rs?.rs20Pct?.let(::round2),
+                rs60VsSpy = rs?.rs60Pct?.let(::round2),
+                relativeStrengthScore = round2(rs?.score ?: 50.0),
+                relativeStrengthStatus = rs?.status ?: "UNAVAILABLE",
+                plannedEntry = round2(p.entry),
+                structuralStop = round2(p.stop),
+                structuralTarget = round2(p.target),
+                stopType = p.stopType,
+                stopAtrMultiple = round2(p.stopAtrMultiple),
+                structuralRr = round2(p.rr),
+                riskPct = round2(p.riskPct),
+                rewardPct = round2(p.rewardPct),
+                shares = p.shares,
+                positionValue = round2(p.positionValue),
+                riskBudget = round2(p.riskBudget),
+                riskPlanValid = p.valid,
+                legacyRank = generated.legacyRank,
+                tradeRank = generated.tradeRank,
+                rankDelta = generated.rankDelta,
+                auditedTradeScore = round2(generated.auditedTradeScore),
+                reasons = generated.reasons.joinToString(","),
+                engineVersion = TradePlanGenerationEngine.ENGINE_VERSION,
+                calculatedAtUtc = System.currentTimeMillis()
+            )
+        }
+        val tradePlansByTicker = tradePlans.associateBy { it.ticker }
         val contracts = analyzed.mapNotNull { item ->
             val candidate = item.candidate
+            val plan = tradePlansByTicker[candidate.ticker] ?: return@mapNotNull null
             if (candidate.signal !in setOf("READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED")) return@mapNotNull null
+            if (!plan.riskPlanValid || plan.auditedTradeScore > 100.0) return@mapNotNull null
             val trigger = candidate.plannedTrigger ?: candidate.theoreticalEntry ?: return@mapNotNull null
             val maximumEntry = candidate.maximumEntry ?: return@mapNotNull null
-            val stop = candidate.theoreticalStop ?: return@mapNotNull null
-            val target = candidate.theoreticalTarget ?: return@mapNotNull null
             SignalContractEntity(
                 signalId = "$runId-${candidate.ticker}",
                 runId = runId,
@@ -168,8 +237,8 @@ class ScanRepository(
                 referencePrice = candidate.referenceClose ?: candidate.close,
                 triggerPrice = trigger,
                 maximumEntry = maximumEntry,
-                stopPrice = stop,
-                targetPrice = target,
+                stopPrice = plan.structuralStop,
+                targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
                 engineVersion = engineVersion,
                 createdAtUtc = finished
@@ -179,6 +248,7 @@ class ScanRepository(
         dao.saveRun(run, rows, snapshots)
         if (analysisRows.isNotEmpty()) dao.insertAnalysis(analysisRows)
         if (enrichment.isNotEmpty()) dao.insertEnrichment(enrichment)
+        if (tradePlans.isNotEmpty()) dao.insertTradePlans(tradePlans)
         if (contracts.isNotEmpty()) dao.insertSignalContracts(contracts)
         evaluateSignalContracts(barsByTicker)
         updateBacktestOutcomes(runId, rows)
@@ -290,6 +360,7 @@ class ScanRepository(
     fun observeTradeOutcomes(): Flow<List<TradeOutcomeEntity>> = dao.observeTradeOutcomes()
     fun observeEnrichment(runId: String): Flow<List<CandidateEnrichmentEntity>> = dao.observeEnrichment(runId)
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>> = dao.observeAnalysis(runId)
+    fun observeTradePlans(runId: String): Flow<List<CandidateTradePlanEntity>> = dao.observeTradePlans(runId)
 
     companion object {
         val DEFAULT_TICKERS = listOf(
