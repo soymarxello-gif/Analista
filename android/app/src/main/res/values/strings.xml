@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Analista</string>
+    <string name="notification_channel">Escáner premarket</string>
+</resources>
