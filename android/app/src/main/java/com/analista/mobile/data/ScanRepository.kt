@@ -19,27 +19,27 @@ import kotlin.math.round
 class ScanRepository(
     private val dao: AnalistaDao,
     private val yahoo: YahooFinanceClient,
+    private val marketData: MarketDataGateway,
     private val tickers: List<String> = DEFAULT_TICKERS
 ) {
     suspend fun runScan(): ScanRunEntity = coroutineScope {
         val started = System.currentTimeMillis()
         val semaphore = Semaphore(4)
         var failures = 0
-        var quoteFailures = 0
         var cacheHits = 0
         var retries = 0
+        val quoteBatch = marketData.quotes(tickers)
+        val quoteFailures = tickers.count { quoteBatch.quotes[it] == null }
         val analyzed = tickers.map { ticker ->
             async {
                 runCatching {
                     semaphore.withPermit {
                         val fetched = yahoo.dailyHistory(ticker)
-                        val quoteResult = runCatching { yahoo.marketQuote(ticker) }
-                        if (quoteResult.isFailure) synchronized(this@ScanRepository) { quoteFailures += 1 }
                         synchronized(this@ScanRepository) {
                             if (fetched.cacheHit) cacheHits += 1
                             retries += fetched.retries
                         }
-                        val quote = quoteResult.getOrNull()
+                        val quote = quoteBatch.quotes[ticker]
                         TechnicalEngine.analyzeWithAnalysis(
                             ticker,
                             fetched.bars,
@@ -53,19 +53,27 @@ class ScanRepository(
         val runId = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.of("UTC"))
             .format(Instant.ofEpochMilli(started)) + "-" + UUID.randomUUID().toString().take(8)
         val marketDate = LocalDate.now(ZoneId.of("America/New_York")).toString()
+        val alpacaDegraded = quoteBatch.alpacaStatus !in setOf("AVAILABLE", "NOT_CONFIGURED")
         val trust = when {
             analyzed.isEmpty() -> "UNUSABLE"
             failures > tickers.size / 2 -> "UNUSABLE"
-            failures > 0 || cacheHits > 0 || quoteFailures > 0 -> "DEGRADED"
+            failures > 0 || cacheHits > 0 || quoteFailures > 0 || alpacaDegraded || quoteBatch.divergenceCount > 0 -> "DEGRADED"
             else -> "TRUSTED"
         }
         val finished = System.currentTimeMillis()
+        val sourceDescription = buildString {
+            append(quoteBatch.primarySource)
+            quoteBatch.feed?.let { append("/").append(it) }
+            if (quoteBatch.fallbackCount > 0) append(" + fallback(").append(quoteBatch.fallbackCount).append(")")
+            if (quoteBatch.divergenceCount > 0) append(" + divergence(").append(quoteBatch.divergenceCount).append(")")
+            if (cacheHits > 0) append(" + cache")
+        }
         val run = ScanRunEntity(
             runId = runId, startedAtUtc = started, finishedAtUtc = finished,
             marketDateEt = marketDate,
             status = if (analyzed.isEmpty()) "FAILED_DATA_SOURCE" else "COMPLETED",
             trustStatus = trust, candidateCount = analyzed.size, failureCount = failures + quoteFailures,
-            source = if (cacheHits > 0) "Yahoo Finance + cache" else "Yahoo Finance",
+            source = sourceDescription,
             durationMs = finished - started, cacheHitCount = cacheHits, retryCount = retries
         )
         val rows = analyzed.map { item ->
@@ -119,6 +127,11 @@ class ScanRepository(
         updateBacktestOutcomes(runId, rows)
         run
     }
+
+    suspend fun testAlpaca(credentials: AlpacaCredentialsStore.Credentials) = marketData.testAlpacaConnection(credentials)
+    fun saveAlpaca(credentials: AlpacaCredentialsStore.Credentials) = marketData.saveAlpacaCredentials(credentials)
+    fun clearAlpaca() = marketData.clearAlpacaCredentials()
+    fun alpacaCredentials(): AlpacaCredentialsStore.Credentials? = marketData.alpacaCredentials()
 
     private suspend fun fetchMacro(runId: String, semaphore: Semaphore): List<MarketSnapshotEntity> = coroutineScope {
         MACRO_SYMBOLS.map { (symbol, label) ->

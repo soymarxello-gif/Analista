@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.analista.mobile.AnalistaApplication
+import com.analista.mobile.data.AlpacaCredentialsStore
 import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateAnalysisEntity
 import com.analista.mobile.data.CandidateEntity
@@ -39,6 +40,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val running = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)
+    val alpacaConfigured = MutableStateFlow(repository.alpacaCredentials() != null)
+    val alpacaFeed = MutableStateFlow(repository.alpacaCredentials()?.feed ?: "iex")
+    val alpacaStatus = MutableStateFlow("NO_PROBADO")
+    val testingAlpaca = MutableStateFlow(false)
 
     init {
         viewModelScope.launch {
@@ -60,5 +65,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { error.value = it.message ?: "Error desconocido" }
             running.value = false
         }
+    }
+
+    fun saveAndTestAlpaca(apiKey: String, secretKey: String, feed: String) {
+        if (testingAlpaca.value) return
+        viewModelScope.launch {
+            testingAlpaca.value = true
+            val credentials = AlpacaCredentialsStore.Credentials(apiKey.trim(), secretKey.trim(), feed)
+            runCatching {
+                require(credentials.apiKey.isNotBlank() && credentials.secretKey.isNotBlank()) { "Credenciales incompletas" }
+                val result = repository.testAlpaca(credentials)
+                alpacaStatus.value = result.status
+                if (result.ok) {
+                    repository.saveAlpaca(credentials)
+                    alpacaConfigured.value = true
+                    alpacaFeed.value = feed
+                }
+            }.onFailure { alpacaStatus.value = it.message ?: "ERROR" }
+            testingAlpaca.value = false
+        }
+    }
+
+    fun clearAlpaca() {
+        repository.clearAlpaca()
+        alpacaConfigured.value = false
+        alpacaFeed.value = "iex"
+        alpacaStatus.value = "BORRADO"
     }
 }
