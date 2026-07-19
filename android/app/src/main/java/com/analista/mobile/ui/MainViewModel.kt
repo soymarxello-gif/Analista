@@ -11,6 +11,7 @@ import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.MarketSnapshotEntity
+import com.analista.mobile.data.RankingComparisonEntity
 import com.analista.mobile.data.ReproducibilityManifestEntity
 import com.analista.mobile.data.ScanRepository
 import com.analista.mobile.data.ScanRunEntity
@@ -26,7 +27,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = (application as AnalistaApplication).repository
+    private val app = application as AnalistaApplication
+    private val repository = app.repository
+    private val dao = app.database.dao()
     val runs: StateFlow<List<ScanRunEntity>> = repository.observeRuns()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val selectedRunId = MutableStateFlow<String?>(null)
@@ -54,6 +57,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, emptyList())
+        )
+    val rankingComparison: StateFlow<RankingComparisonEntity?> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(null) else dao.observeRankingComparison(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val rankingDiagnostics: StateFlow<RankingDiagnosticsPresenter.Model> = rankingComparison
+        .map(RankingDiagnosticsPresenter::present)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            RankingDiagnosticsPresenter.present(null)
         )
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
