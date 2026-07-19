@@ -48,6 +48,17 @@ interface AnalistaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRunDefinition(row: RunDefinitionEntity)
 
+    @Transaction
+    suspend fun insertReproducibilityBundle(
+        manifests: List<ReproducibilityManifestEntity>,
+        definition: RunDefinitionEntity
+    ) {
+        require(manifests.isNotEmpty())
+        require(manifests.all { it.runId == definition.runId })
+        insertReproducibilityManifests(manifests)
+        insertRunDefinition(definition)
+    }
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSignalContracts(rows: List<SignalContractEntity>)
 
