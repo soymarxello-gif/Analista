@@ -43,6 +43,7 @@ import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanRunEntity
+import com.analista.mobile.data.TradeOutcomeEntity
 import com.analista.mobile.schedule.DiagnosticsStore
 import com.analista.mobile.schedule.ScanScheduler
 import com.analista.mobile.ui.MainViewModel
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
         val macro by vm.macro.collectAsState()
         val enrichment by vm.enrichment.collectAsState()
         val outcomes by vm.outcomes.collectAsState()
+        val tradeOutcomes by vm.tradeOutcomes.collectAsState()
         val running by vm.running.collectAsState()
         val error by vm.error.collectAsState()
         var tab by remember { mutableIntStateOf(0) }
@@ -93,7 +95,7 @@ class MainActivity : ComponentActivity() {
             when (tab) {
                 0 -> SummaryScreen(runs, candidates, enrichment, macro, running, error, vm::runNow, Modifier.padding(padding))
                 1 -> HistoryScreen(runs, vm::selectRun, Modifier.padding(padding))
-                2 -> BacktestScreen(outcomes, Modifier.padding(padding))
+                2 -> BacktestScreen(tradeOutcomes, outcomes, Modifier.padding(padding))
                 else -> DiagnosticsScreen(vm, Modifier.padding(padding))
             }
         }
@@ -145,29 +147,49 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun BacktestScreen(outcomes: List<BacktestOutcomeEntity>, modifier: Modifier) {
-        val completed = outcomes.size
-        val winners = outcomes.count { it.returnPct > 0 }
-        val avg = outcomes.map { it.returnPct }.average().takeIf { !it.isNaN() } ?: 0.0
+    private fun BacktestScreen(
+        tradeOutcomes: List<TradeOutcomeEntity>,
+        legacyOutcomes: List<BacktestOutcomeEntity>,
+        modifier: Modifier
+    ) {
+        val triggered = tradeOutcomes.count { it.triggered }
+        val targets = tradeOutcomes.count { it.firstExitEvent == "TARGET" }
+        val stops = tradeOutcomes.count { it.firstExitEvent == "STOP" }
+        val ambiguous = tradeOutcomes.count { it.ambiguousSameBar }
+        val closed = tradeOutcomes.filter { it.firstExitEvent in setOf("TARGET", "STOP") }
+        val hitRate = if (closed.isEmpty()) 0.0 else targets * 100.0 / closed.size
+        val avgMfe = tradeOutcomes.mapNotNull { it.mfePct }.average().takeIf { !it.isNaN() } ?: 0.0
+        val avgMae = tradeOutcomes.mapNotNull { it.maePct }.average().takeIf { !it.isNaN() } ?: 0.0
         LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Text("Seguimiento de señales", style = MaterialTheme.typography.headlineSmall) }
+            item { Text("Backtest inmutable", style = MaterialTheme.typography.headlineSmall) }
             item {
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Evaluaciones: $completed")
-                        Text("Positivas: $winners")
-                        Text("Retorno medio observado: ${"%.2f".format(avg)}%")
-                        Text("Métrica preliminar: se actualiza al ejecutar nuevos scans.", style = MaterialTheme.typography.bodySmall)
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Contratos evaluados: ${tradeOutcomes.size}")
+                        Text("Activados: $triggered · objetivos: $targets · stops: $stops")
+                        Text("Tasa objetivo sobre cierres: ${"%.1f".format(hitRate)}%")
+                        Text("MFE medio: ${"%.2f".format(avgMfe)}% · MAE medio: ${"%.2f".format(avgMae)}%")
+                        if (ambiguous > 0) Text("Resultados ambiguos misma barra: $ambiguous")
+                        Text("Las señales se evalúan sólo con barras posteriores a la decisión.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
-            items(outcomes.take(100), key = { it.outcomeId }) { outcome ->
+            if (tradeOutcomes.isEmpty()) {
+                item { Text("Aún no hay contratos con barras posteriores suficientes.") }
+            }
+            items(tradeOutcomes.take(100), key = { it.signalId }) { outcome ->
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text("${outcome.ticker} · ${outcome.signal}", fontWeight = FontWeight.Bold)
-                        Text("${outcome.sourceClose} → ${outcome.latestClose} · ${outcome.returnPct}%")
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("${outcome.ticker} · ${outcome.status}", fontWeight = FontWeight.Bold)
+                        Text("Trigger: ${if (outcome.triggered) "sí" else "no"} · salida: ${outcome.firstExitEvent}")
+                        Text("Fill ${outcome.entryFill ?: "—"} · sesiones ${outcome.holdingSessions}")
+                        Text("1D ${fmt(outcome.return1dPct)} · 5D ${fmt(outcome.return5dPct)} · 20D ${fmt(outcome.return20dPct)}")
+                        Text("MFE ${fmt(outcome.mfePct)} · MAE ${fmt(outcome.maePct)}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
+            }
+            if (legacyOutcomes.isNotEmpty()) {
+                item { Text("Seguimiento legacy conservado: ${legacyOutcomes.size}", style = MaterialTheme.typography.bodySmall) }
             }
         }
     }
@@ -321,6 +343,8 @@ class MainActivity : ComponentActivity() {
         "breakout_confirmed" to "Ruptura confirmada con volumen",
         "overextended" to "Precio sobreextendido"
     )[reason] ?: reason.replace("_", " ")
+
+    private fun fmt(value: Double?): String = value?.let { "${"%.2f".format(it)}%" } ?: "—"
 
     private fun formatTime(epochMillis: Long): String {
         if (epochMillis <= 0) return "no registrada"
