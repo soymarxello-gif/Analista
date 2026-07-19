@@ -13,6 +13,7 @@ import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.RankingComparisonEntity
 import com.analista.mobile.data.ReproducibilityManifestEntity
+import com.analista.mobile.data.RunDefinitionEntity
 import com.analista.mobile.data.ScanRepository
 import com.analista.mobile.data.ScanRunEntity
 import com.analista.mobile.data.TradeOutcomeEntity
@@ -52,6 +53,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val reproducibilityManifests: StateFlow<List<ReproducibilityManifestEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeReproducibilityManifests(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val runDefinition: StateFlow<RunDefinitionEntity?> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(null) else dao.observeRunDefinition(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val rankingComparison: StateFlow<RankingComparisonEntity?> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(null) else dao.observeRankingComparison(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -63,18 +67,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             RankingDiagnosticsPresenter.present(null)
         )
     val reproducibilitySummary: StateFlow<ReproducibilityDiagnosticsEngine.Summary> =
-        combine(reproducibilityManifests, rankingDiagnostics) { manifests, ranking ->
+        combine(reproducibilityManifests, rankingDiagnostics, runDefinition) { manifests, ranking, definition ->
             val base = ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, manifests)
+            val definitionLabels = if (definition == null) {
+                setOf("Definición: NO_DATA")
+            } else {
+                setOf(
+                    "Universo ${definition.universeVersion}",
+                    "Config ${definition.configurationVersion}",
+                    "Motores ${definition.engineBundleVersion}"
+                )
+            }
             base.copy(
-                providers = base.providers + ranking.compactLabel,
-                status = "${base.status} · ${ranking.status}"
+                providers = base.providers + ranking.compactLabel + definitionLabels,
+                status = "${base.status} · ${ranking.status} · ${if (definition == null) "NO_DEFINITION" else "DEFINED"}"
             )
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, emptyList()).copy(
-                providers = setOf(RankingDiagnosticsPresenter.present(null).compactLabel),
-                status = "INCOMPLETE · NO_DATA"
+                providers = setOf(RankingDiagnosticsPresenter.present(null).compactLabel, "Definición: NO_DATA"),
+                status = "INCOMPLETE · NO_DATA · NO_DEFINITION"
             )
         )
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
