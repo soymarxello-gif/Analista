@@ -11,13 +11,17 @@ import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.MarketSnapshotEntity
+import com.analista.mobile.data.ReproducibilityManifestEntity
+import com.analista.mobile.data.ScanRepository
 import com.analista.mobile.data.ScanRunEntity
 import com.analista.mobile.data.TradeOutcomeEntity
+import com.analista.mobile.domain.ReproducibilityDiagnosticsEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -41,6 +45,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val tradePlans: StateFlow<List<CandidateTradePlanEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeTradePlans(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val reproducibilityManifests: StateFlow<List<ReproducibilityManifestEntity>> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeReproducibilityManifests(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val reproducibilitySummary: StateFlow<ReproducibilityDiagnosticsEngine.Summary> = reproducibilityManifests
+        .map { ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, it) }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, emptyList())
+        )
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val tradeOutcomes: StateFlow<List<TradeOutcomeEntity>> = repository.observeTradeOutcomes()
