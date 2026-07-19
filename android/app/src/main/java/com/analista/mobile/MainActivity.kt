@@ -22,6 +22,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -30,10 +31,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateEntity
@@ -91,7 +94,7 @@ class MainActivity : ComponentActivity() {
                 0 -> SummaryScreen(runs, candidates, enrichment, macro, running, error, vm::runNow, Modifier.padding(padding))
                 1 -> HistoryScreen(runs, vm::selectRun, Modifier.padding(padding))
                 2 -> BacktestScreen(outcomes, Modifier.padding(padding))
-                else -> DiagnosticsScreen(Modifier.padding(padding))
+                else -> DiagnosticsScreen(vm, Modifier.padding(padding))
             }
         }
     }
@@ -112,7 +115,7 @@ class MainActivity : ComponentActivity() {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Ejecución local autónoma", fontWeight = FontWeight.Bold)
-                        Text("NYSE · 09:20 America/New_York · Yahoo Finance")
+                        Text("NYSE · 09:20 America/New_York · Alpaca/Yahoo")
                         Text("Próxima ejecución: ${formatTime(ScanScheduler.nextTrigger(this@MainActivity))}")
                         Button(onClick = runNow, enabled = !running) { Text(if (running) "Ejecutando…" else "Ejecutar ahora") }
                         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -170,8 +173,14 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun DiagnosticsScreen(modifier: Modifier) {
+    private fun DiagnosticsScreen(vm: MainViewModel, modifier: Modifier) {
         val d = DiagnosticsStore.snapshot(this)
+        val configured by vm.alpacaConfigured.collectAsState()
+        val feed by vm.alpacaFeed.collectAsState()
+        val status by vm.alpacaStatus.collectAsState()
+        val testing by vm.testingAlpaca.collectAsState()
+        var apiKey by remember { mutableStateOf("") }
+        var secretKey by remember { mutableStateOf("") }
         LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Text("Diagnóstico operativo", style = MaterialTheme.typography.headlineSmall) }
             item {
@@ -187,6 +196,38 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) {
                                 Text("Habilitar alarma exacta")
                             }
+                        }
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Fuente Alpaca", fontWeight = FontWeight.Bold)
+                        Text("Configurada: ${if (configured) "sí" else "no"} · feed $feed · estado $status")
+                        Text("Las claves se cifran con Android Keystore y no se incluyen en reportes ni logs.", style = MaterialTheme.typography.bodySmall)
+                        if (!configured) {
+                            OutlinedTextField(
+                                value = apiKey,
+                                onValueChange = { apiKey = it },
+                                label = { Text("API Key") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = secretKey,
+                                onValueChange = { secretKey = it },
+                                label = { Text("Secret Key") },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Button(
+                                onClick = { vm.saveAndTestAlpaca(apiKey, secretKey, "iex") },
+                                enabled = !testing && apiKey.isNotBlank() && secretKey.isNotBlank()
+                            ) { Text(if (testing) "Probando…" else "Guardar y probar Alpaca IEX") }
+                        } else {
+                            Button(onClick = vm::clearAlpaca) { Text("Borrar credenciales Alpaca") }
                         }
                     }
                 }
