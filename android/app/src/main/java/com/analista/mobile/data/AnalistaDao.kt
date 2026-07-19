@@ -5,7 +5,11 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.analista.mobile.domain.CanonicalAnalysisEngine
+import com.analista.mobile.domain.DecisionOverlayEngine
+import com.analista.mobile.domain.LiveRunDefinitionAssembler
 import com.analista.mobile.domain.RankingComparisonPersistenceFactory
+import com.analista.mobile.domain.TradePlanGenerationEngine
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -43,10 +47,30 @@ interface AnalistaDao {
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReproducibilityManifests(rows: List<ReproducibilityManifestEntity>)
+    suspend fun insertReproducibilityManifestsRaw(rows: List<ReproducibilityManifestEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRunDefinition(row: RunDefinitionEntity)
+
+    @Transaction
+    suspend fun insertReproducibilityManifests(rows: List<ReproducibilityManifestEntity>) {
+        if (rows.isEmpty()) return
+        val runId = rows.first().runId
+        require(rows.all { it.runId == runId })
+        val engineBundleVersion = listOf(
+            CanonicalAnalysisEngine.ENGINE_VERSION,
+            DecisionOverlayEngine.ENGINE_VERSION,
+            TradePlanGenerationEngine.ENGINE_VERSION
+        ).joinToString("+")
+        val definition = LiveRunDefinitionAssembler.assemble(
+            runId = runId,
+            universe = ScanRepository.DEFAULT_TICKERS,
+            manifests = rows,
+            engineBundleVersion = engineBundleVersion,
+            createdAtUtc = System.currentTimeMillis()
+        )
+        insertReproducibilityBundle(rows, definition)
+    }
 
     @Transaction
     suspend fun insertReproducibilityBundle(
@@ -55,7 +79,7 @@ interface AnalistaDao {
     ) {
         require(manifests.isNotEmpty())
         require(manifests.all { it.runId == definition.runId })
-        insertReproducibilityManifests(manifests)
+        insertReproducibilityManifestsRaw(manifests)
         insertRunDefinition(definition)
     }
 
