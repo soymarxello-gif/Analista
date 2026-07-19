@@ -28,8 +28,21 @@ jobs:
       - name: Assemble debug APK
         working-directory: android
         run: gradle :app:assembleDebug --stacktrace
+      - name: Sign stable sideload APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL 'https://android.googlesource.com/platform/build/+/refs/heads/master/target/product/security/testkey.pk8?format=TEXT' | base64 -d > /tmp/testkey.pk8
+          curl -fsSL 'https://android.googlesource.com/platform/build/+/refs/heads/master/target/product/security/testkey.x509.pem?format=TEXT' | base64 -d > /tmp/testkey.x509.pem
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          "$APKSIGNER" sign \
+            --key /tmp/testkey.pk8 \
+            --cert /tmp/testkey.x509.pem \
+            --out android/app/build/outputs/apk/debug/analista-stable.apk \
+            android/app/build/outputs/apk/debug/app-debug.apk
+          "$APKSIGNER" verify --verbose --print-certs android/app/build/outputs/apk/debug/analista-stable.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: analista-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: analista-stable-apk
+          path: android/app/build/outputs/apk/debug/analista-stable.apk
           if-no-files-found: error
