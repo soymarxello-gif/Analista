@@ -1,0 +1,71 @@
+package com.analista.mobile.domain
+
+import com.analista.mobile.data.CandidateEnrichmentEntity
+import com.analista.mobile.data.CanonicalAnalysis
+import com.analista.mobile.data.MarketSnapshotEntity
+import com.analista.mobile.data.ScanCandidate
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class DecisionOverlayEngineTest {
+    @Test
+    fun missingOptionsRemainUnknownAndReduceConfidence() {
+        val result = DecisionOverlayEngine.apply(candidate(), base(), macro(), null)
+        assertEquals("UNKNOWN_OPTIONS_FLOW", result.optionsBias)
+        assertEquals("UNKNOWN", result.optionsCoverage)
+        assertTrue(result.confidencePenalty > 0.0)
+    }
+
+    @Test
+    fun crowdedBullishOptionsReceiveContrarianPenalty() {
+        val crowded = enrichment(putCall = 0.20)
+        val neutral = enrichment(putCall = 0.90)
+        val crowdedResult = DecisionOverlayEngine.apply(candidate(), base(), macro(), crowded)
+        val neutralResult = DecisionOverlayEngine.apply(candidate(), base(), macro(), neutral)
+        assertEquals("CROWDED_BULLISH", crowdedResult.optionsBias)
+        assertTrue(crowdedResult.finalTradeScore < neutralResult.finalTradeScore)
+    }
+
+    @Test
+    fun vetoCanNeverExceedFortyNine() {
+        val result = DecisionOverlayEngine.apply(candidate(signal = "VETO"), base(final = 95.0), macro(), enrichment(0.80))
+        assertTrue(result.finalTradeScore <= 49.0)
+    }
+
+    private fun macro() = listOf(
+        snapshot("SPY", 1.0, 600.0), snapshot("QQQ", 1.1, 550.0), snapshot("IWM", 0.8, 240.0),
+        snapshot("VIX", -2.0, 17.0), snapshot("US10Y", 0.2, 4.2), snapshot("DXY", -0.1, 99.0)
+    )
+
+    private fun snapshot(label: String, change: Double, close: Double) = MarketSnapshotEntity(
+        snapshotId = label, runId = "run", symbol = label, label = label,
+        close = close, changePct = change, capturedAtUtc = 1L
+    )
+
+    private fun enrichment(putCall: Double) = CandidateEnrichmentEntity(
+        enrichmentId = "e", runId = "run", ticker = "TEST", marketCap = 5_000_000_000,
+        trailingPe = 20.0, priceToSales = 3.0, epsTrailing = 5.0, revenueGrowthPct = 15.0,
+        grossMarginPct = 45.0, operatingMarginPct = 18.0, profitMarginPct = 12.0,
+        debtToEquity = 60.0, optionsPutCallOi = putCall, optionsNearCallOi = 1000,
+        optionsNearPutOi = 900, optionsExpiry = 1_800_000_000,
+        fundamentalsStatus = "AVAILABLE_COMPLETE", optionsStatus = "AVAILABLE_COMPLETE", capturedAtUtc = 1L
+    )
+
+    private fun base(final: Double = 70.0) = CanonicalAnalysis(
+        rsi6 = 60.0, rsi14 = 55.0, ema20 = 100.0, ema50 = 95.0, ema200 = 80.0,
+        macd = 2.0, macdSignal = 1.0, atr14 = 3.0, weeklyTrend = "UP",
+        assetQualityScore = 80.0, setupQualityScore = 75.0, contextScore = 50.0,
+        institutionalScore = 50.0, riskScore = 80.0, finalTradeScore = final,
+        stopAtrMultiple = 1.5, stopAtrStatus = "PREFERRED", scoreBreakdown = "base"
+    )
+
+    private fun candidate(signal: String = "WATCHLIST") = ScanCandidate(
+        ticker = "TEST", signal = signal, score = 70.0, close = 100.0, sma20 = 95.0,
+        sma50 = 90.0, rsi14 = 55.0, macd = 2.0, macdSignal = 1.0,
+        stochastic = 60.0, atr14 = 3.0, relativeVolume = 1.3,
+        entry = null, stop = null, target = null, rr = 2.5, reason = "test",
+        quoteStatus = "VALID", executionQuoteQuality = "HIGH", triggerConfirmed = false,
+        setupType = "BREAKOUT_OR_PULLBACK"
+    )
+}

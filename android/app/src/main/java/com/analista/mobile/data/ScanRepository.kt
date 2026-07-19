@@ -1,6 +1,7 @@
 package com.analista.mobile.data
 
 import com.analista.mobile.domain.CanonicalAnalysisEngine
+import com.analista.mobile.domain.DecisionOverlayEngine
 import com.analista.mobile.domain.TechnicalEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -89,9 +90,13 @@ class ScanRepository(
                 quoteCapturedAtUtc = it.quoteCapturedAtUtc
             )
         }
+        val snapshots = fetchMacro(runId, semaphore)
+        val enrichment = fetchEnrichment(runId, rows, semaphore)
+        val enrichmentByTicker = enrichment.associateBy { it.ticker }
         val analysisRows = analyzed.map { item ->
             val candidate = item.candidate
             val a = item.analysis
+            val overlay = DecisionOverlayEngine.apply(candidate, a, snapshots, enrichmentByTicker[candidate.ticker])
             CandidateAnalysisEntity(
                 analysisId = "$runId-${candidate.ticker}", runId = runId, ticker = candidate.ticker,
                 rsi6 = a.rsi6, rsi14Canonical = a.rsi14, rsi6GtRsi14 = a.rsi6 > a.rsi14,
@@ -100,18 +105,16 @@ class ScanRepository(
                 priceVsEma50Pct = round2((candidate.close / a.ema50 - 1.0) * 100.0),
                 priceVsEma200Pct = round2((candidate.close / a.ema200 - 1.0) * 100.0),
                 weeklyTrend = a.weeklyTrend, assetQualityScore = a.assetQualityScore,
-                setupQualityScore = a.setupQualityScore, contextScore = a.contextScore,
-                institutionalScore = a.institutionalScore, riskScore = a.riskScore,
-                finalTradeScore = a.finalTradeScore, stopAtrMultiple = a.stopAtrMultiple,
-                stopAtrStatus = a.stopAtrStatus, scoreBreakdown = a.scoreBreakdown,
-                engineVersion = CanonicalAnalysisEngine.ENGINE_VERSION,
+                setupQualityScore = a.setupQualityScore, contextScore = overlay.contextScore,
+                institutionalScore = overlay.institutionalScore, riskScore = a.riskScore,
+                finalTradeScore = overlay.finalTradeScore, stopAtrMultiple = a.stopAtrMultiple,
+                stopAtrStatus = a.stopAtrStatus, scoreBreakdown = overlay.breakdown,
+                engineVersion = "${CanonicalAnalysisEngine.ENGINE_VERSION}+${DecisionOverlayEngine.ENGINE_VERSION}",
                 calculatedAtUtc = System.currentTimeMillis()
             )
         }
-        val snapshots = fetchMacro(runId, semaphore)
         dao.saveRun(run, rows, snapshots)
         if (analysisRows.isNotEmpty()) dao.insertAnalysis(analysisRows)
-        val enrichment = fetchEnrichment(runId, rows.take(10), semaphore)
         if (enrichment.isNotEmpty()) dao.insertEnrichment(enrichment)
         updateBacktestOutcomes(runId, rows)
         run
@@ -148,6 +151,13 @@ class ScanRepository(
                     val optionsResult = runCatching { yahoo.options(candidate.ticker) }
                     val fundamental = fundamentalResult.getOrNull()
                     val options = optionsResult.getOrNull()
+                    val fundamentalFields = listOf(
+                        fundamental?.marketCap, fundamental?.trailingPe, fundamental?.priceToSales,
+                        fundamental?.epsTrailing, fundamental?.revenueGrowthPct, fundamental?.grossMarginPct,
+                        fundamental?.operatingMarginPct, fundamental?.profitMarginPct, fundamental?.debtToEquity
+                    ).count { it != null }
+                    val optionFields = listOf(options?.putCallOi, options?.nearCallOi, options?.nearPutOi, options?.expiry)
+                        .count { it != null }
                     CandidateEnrichmentEntity(
                         enrichmentId = "$runId-${candidate.ticker}", runId = runId, ticker = candidate.ticker,
                         marketCap = fundamental?.marketCap, trailingPe = fundamental?.trailingPe,
@@ -160,8 +170,18 @@ class ScanRepository(
                         optionsPutCallOi = options?.putCallOi?.let(::round2),
                         optionsNearCallOi = options?.nearCallOi, optionsNearPutOi = options?.nearPutOi,
                         optionsExpiry = options?.expiry,
-                        fundamentalsStatus = if (fundamentalResult.isSuccess) "AVAILABLE" else "UNAVAILABLE",
-                        optionsStatus = if (optionsResult.isSuccess) "AVAILABLE" else "UNAVAILABLE",
+                        fundamentalsStatus = when {
+                            fundamentalResult.isFailure -> "ERROR"
+                            fundamentalFields == 0 -> "EMPTY"
+                            fundamentalFields >= 7 -> "AVAILABLE_COMPLETE"
+                            else -> "AVAILABLE_PARTIAL"
+                        },
+                        optionsStatus = when {
+                            optionsResult.isFailure -> "ERROR"
+                            optionFields == 0 -> "EMPTY"
+                            optionFields == 4 -> "AVAILABLE_COMPLETE"
+                            else -> "AVAILABLE_PARTIAL"
+                        },
                         capturedAtUtc = System.currentTimeMillis()
                     )
                 }
@@ -200,6 +220,7 @@ class ScanRepository(
             "CAT", "GE", "RTX", "XOM", "CVX", "WMT", "HD", "UNH"
         )
         val MACRO_SYMBOLS = listOf(
+            "SPY" to "SPY", "QQQ" to "QQQ", "IWM" to "IWM",
             "^TNX" to "US10Y", "^TYX" to "US30Y", "^VIX" to "VIX",
             "DX-Y.NYB" to "DXY", "CL=F" to "WTI", "BTC-USD" to "Bitcoin"
         )
