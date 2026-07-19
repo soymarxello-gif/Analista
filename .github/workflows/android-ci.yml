@@ -25,6 +25,15 @@ jobs:
       - name: Unit tests
         working-directory: android
         run: gradle :app:testDebugUnitTest --stacktrace
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unit-test-reports
+          path: |
+            android/app/build/reports/tests/testDebugUnitTest
+            android/app/build/test-results/testDebugUnitTest
+          if-no-files-found: warn
       - name: Assemble debug APK
         working-directory: android
         run: gradle :app:assembleDebug --stacktrace
