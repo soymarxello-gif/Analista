@@ -4,6 +4,7 @@ import com.analista.mobile.domain.BacktestEngine
 import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DataQualityEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
+import com.analista.mobile.domain.LiveReproducibilityAssembler
 import com.analista.mobile.domain.TechnicalEngine
 import com.analista.mobile.domain.TradePlanGenerationEngine
 import kotlinx.coroutines.async
@@ -21,7 +22,11 @@ import kotlin.math.round
 
 private data class ScanWorkItem(
     val analyzed: AnalyzedCandidate,
-    val bars: List<PriceBar>
+    val bars: List<PriceBar>,
+    val dataQualityStatus: String,
+    val cacheHit: Boolean,
+    val retries: Int,
+    val retrievedAtUtc: Long
 )
 
 class ScanRepository(
@@ -45,6 +50,7 @@ class ScanRepository(
                 runCatching {
                     semaphore.withPermit {
                         val fetched = yahoo.dailyHistory(ticker)
+                        val retrievedAtUtc = System.currentTimeMillis()
                         val quality = DataQualityEngine.assess(fetched.bars, fetched.cacheHit, started)
                         synchronized(this@ScanRepository) {
                             if (fetched.cacheHit) cacheHits += 1
@@ -69,7 +75,11 @@ class ScanRepository(
                                     executionDataAllowed = quality.executionAllowed
                                 )
                             ),
-                            bars = fetched.bars
+                            bars = fetched.bars,
+                            dataQualityStatus = quality.status,
+                            cacheHit = fetched.cacheHit,
+                            retries = fetched.retries,
+                            retrievedAtUtc = retrievedAtUtc
                         )
                     }
                 }.onFailure { synchronized(this@ScanRepository) { failures += 1 } }.getOrNull()
@@ -80,6 +90,24 @@ class ScanRepository(
 
         val runId = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.of("UTC"))
             .format(Instant.ofEpochMilli(started)) + "-" + UUID.randomUUID().toString().take(8)
+        val manifests = if (workItems.isEmpty()) {
+            emptyList()
+        } else {
+            LiveReproducibilityAssembler.assemble(
+                runId = runId,
+                universe = tickers,
+                inputs = workItems.map { item ->
+                    LiveReproducibilityAssembler.TickerInput(
+                        ticker = item.analyzed.candidate.ticker,
+                        bars = item.bars,
+                        dataQualityStatus = item.dataQualityStatus,
+                        cacheHit = item.cacheHit,
+                        retries = item.retries,
+                        retrievedAtUtc = item.retrievedAtUtc
+                    )
+                }
+            )
+        }
         val marketDate = LocalDate.now(ZoneId.of("America/New_York")).toString()
         val alpacaDegraded = quoteBatch.alpacaStatus !in setOf("AVAILABLE", "NOT_CONFIGURED")
         val trust = when {
@@ -249,6 +277,7 @@ class ScanRepository(
         if (analysisRows.isNotEmpty()) dao.insertAnalysis(analysisRows)
         if (enrichment.isNotEmpty()) dao.insertEnrichment(enrichment)
         if (tradePlans.isNotEmpty()) dao.insertTradePlans(tradePlans)
+        if (manifests.isNotEmpty()) dao.insertReproducibilityManifests(manifests)
         if (contracts.isNotEmpty()) dao.insertSignalContracts(contracts)
         evaluateSignalContracts(barsByTicker)
         updateBacktestOutcomes(runId, rows)
@@ -361,6 +390,8 @@ class ScanRepository(
     fun observeEnrichment(runId: String): Flow<List<CandidateEnrichmentEntity>> = dao.observeEnrichment(runId)
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>> = dao.observeAnalysis(runId)
     fun observeTradePlans(runId: String): Flow<List<CandidateTradePlanEntity>> = dao.observeTradePlans(runId)
+    fun observeReproducibilityManifests(runId: String): Flow<List<ReproducibilityManifestEntity>> =
+        dao.observeReproducibilityManifests(runId)
 
     companion object {
         val DEFAULT_TICKERS = listOf(
