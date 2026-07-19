@@ -1,7 +1,7 @@
 package com.analista.mobile.domain
 
 object FinalDecisionEngine {
-    const val VERSION = "final-decision-1"
+    const val VERSION = "final-decision-2"
 
     data class Thresholds(
         val minimumReadyScore: Double = 65.0,
@@ -53,6 +53,14 @@ object FinalDecisionEngine {
 
         val finalSignal = when {
             vetoReasons.isNotEmpty() -> "VETO"
+            input.preliminarySignal == "AVOID" -> {
+                penalties += "preliminary_avoid_not_promoted"
+                "AVOID"
+            }
+            input.preliminarySignal == "WATCHLIST" -> {
+                penalties += "preliminary_watchlist_not_promoted"
+                "WATCHLIST"
+            }
             input.failedBreakout -> {
                 penalties += "failed_breakout"
                 "AVOID"
