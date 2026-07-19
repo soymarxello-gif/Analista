@@ -72,6 +72,11 @@ class YahooFinanceClient(
             ?.optJSONArray("result")
             ?.optJSONObject(0)
             ?: throw IOException("No quote for $ticker")
+        val retrievedAt = System.currentTimeMillis()
+        val providerTimestamp = listOf("preMarketTime", "regularMarketTime", "postMarketTime")
+            .mapNotNull { result.optNullableLong(it) }
+            .maxOrNull()
+            ?.times(1000L)
         return MarketQuote(
             bid = result.optNullableDouble("bid"),
             ask = result.optNullableDouble("ask"),
@@ -80,7 +85,10 @@ class YahooFinanceClient(
             marketCap = result.optNullableLong("marketCap"),
             quoteType = result.optString("quoteType").takeIf { it.isNotBlank() },
             marketState = result.optString("marketState").takeIf { it.isNotBlank() },
-            capturedAtUtc = System.currentTimeMillis()
+            capturedAtUtc = providerTimestamp ?: retrievedAt,
+            provider = "YAHOO",
+            providerTimestampUtc = providerTimestamp,
+            retrievedAtUtc = retrievedAt
         )
     }
 
