@@ -65,3 +65,35 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_candidate_enrichment_ticker ON candidate_enrichment(ticker)")
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val additions = listOf(
+            "quoteStatus TEXT NOT NULL DEFAULT 'MISSING'",
+            "executionQuoteQuality TEXT NOT NULL DEFAULT 'LOW'",
+            "triggerConfirmed INTEGER NOT NULL DEFAULT 0",
+            "setupType TEXT NOT NULL DEFAULT 'BREAKOUT_OR_PULLBACK'",
+            "allVetoReasons TEXT NOT NULL DEFAULT ''",
+            "penaltyReasons TEXT NOT NULL DEFAULT ''",
+            "actionableEntry REAL",
+            "actionableStop REAL",
+            "actionableTarget REAL",
+            "theoreticalEntry REAL",
+            "theoreticalStop REAL",
+            "theoreticalTarget REAL",
+            "referenceClose REAL",
+            "livePremarketPrice REAL",
+            "bid REAL",
+            "ask REAL",
+            "spreadPct REAL",
+            "openingGapPct REAL",
+            "plannedTrigger REAL",
+            "maximumEntry REAL",
+            "actionabilityAtExecution TEXT NOT NULL DEFAULT 'QUOTE_UNCONFIRMED'",
+            "quoteCapturedAtUtc INTEGER"
+        )
+        additions.forEach { definition ->
+            db.execSQL("ALTER TABLE scan_candidates ADD COLUMN $definition")
+        }
+    }
+}
