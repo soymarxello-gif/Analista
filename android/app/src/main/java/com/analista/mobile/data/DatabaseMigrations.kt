@@ -97,3 +97,39 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         }
     }
 }
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS candidate_analysis (
+                analysisId TEXT NOT NULL PRIMARY KEY,
+                runId TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                rsi6 REAL NOT NULL,
+                rsi14Canonical REAL NOT NULL,
+                rsi6GtRsi14 INTEGER NOT NULL,
+                ema20 REAL NOT NULL,
+                ema50 REAL NOT NULL,
+                ema200 REAL NOT NULL,
+                priceVsEma20Pct REAL NOT NULL,
+                priceVsEma50Pct REAL NOT NULL,
+                priceVsEma200Pct REAL NOT NULL,
+                weeklyTrend TEXT NOT NULL,
+                assetQualityScore REAL NOT NULL,
+                setupQualityScore REAL NOT NULL,
+                contextScore REAL NOT NULL,
+                institutionalScore REAL NOT NULL,
+                riskScore REAL NOT NULL,
+                finalTradeScore REAL NOT NULL,
+                stopAtrMultiple REAL NOT NULL,
+                stopAtrStatus TEXT NOT NULL,
+                scoreBreakdown TEXT NOT NULL,
+                engineVersion TEXT NOT NULL,
+                calculatedAtUtc INTEGER NOT NULL
+            )""".trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_candidate_analysis_runId ON candidate_analysis(runId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_candidate_analysis_ticker ON candidate_analysis(ticker)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_candidate_analysis_finalTradeScore ON candidate_analysis(finalTradeScore)")
+    }
+}
