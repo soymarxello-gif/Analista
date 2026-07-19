@@ -2,7 +2,7 @@ package com.analista.mobile.domain
 
 import com.analista.mobile.data.ReproducibilityManifestEntity
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
+import org.junit.Assert.fail
 import org.junit.Test
 
 class RunDefinitionFactoryTest {
@@ -38,11 +38,14 @@ class RunDefinitionFactoryTest {
     @Test
     fun `inconsistent manifest hashes are rejected`() {
         val inconsistent = manifest("MSFT").copy(configurationHash = "c".repeat(64))
-        assertThrows(IllegalArgumentException::class.java) {
+        try {
             RunDefinitionFactory.create(
                 "run-1", "default", "1", listOf("AAPL", "MSFT"), "1", emptyMap(),
                 "engines-1", listOf(manifest("AAPL"), inconsistent), 10L
             )
+            fail("Expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+            // Expected: a run definition cannot mix configuration hashes.
         }
     }
 
