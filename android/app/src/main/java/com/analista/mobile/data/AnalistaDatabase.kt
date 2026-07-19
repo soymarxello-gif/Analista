@@ -13,9 +13,10 @@ import androidx.room.RoomDatabase
         CandidateAnalysisEntity::class,
         SignalContractEntity::class,
         TradeOutcomeEntity::class,
-        CandidateTradePlanEntity::class
+        CandidateTradePlanEntity::class,
+        ReproducibilityManifestEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class AnalistaDatabase : RoomDatabase() {
