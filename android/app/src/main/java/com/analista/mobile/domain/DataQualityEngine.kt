@@ -1,10 +1,8 @@
 package com.analista.mobile.domain
 
 import com.analista.mobile.data.PriceBar
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -62,23 +60,9 @@ object DataQualityEngine {
         )
     }
 
-    internal fun latestCompletedSession(nowEt: ZonedDateTime): LocalDate {
-        var date = nowEt.toLocalDate()
-        val afterClose = nowEt.toLocalTime() >= LocalTime.of(16, 15)
-        if (date.dayOfWeek.value <= 5 && afterClose) return date
-        date = date.minusDays(1)
-        while (date.dayOfWeek in setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)) date = date.minusDays(1)
-        return date
-    }
+    internal fun latestCompletedSession(nowEt: ZonedDateTime): LocalDate =
+        NyseSessionCalendar.latestCompletedSession(nowEt)
 
-    internal fun businessDaysBetween(start: LocalDate, end: LocalDate): Int {
-        if (!end.isAfter(start)) return 0
-        var date = start.plusDays(1)
-        var count = 0
-        while (!date.isAfter(end)) {
-            if (date.dayOfWeek.value <= 5) count += 1
-            date = date.plusDays(1)
-        }
-        return count
-    }
+    internal fun businessDaysBetween(start: LocalDate, end: LocalDate): Int =
+        NyseSessionCalendar.sessionsBetween(start, end)
 }
