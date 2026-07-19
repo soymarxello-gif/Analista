@@ -1,5 +1,6 @@
 package com.analista.mobile.data
 
+import com.analista.mobile.domain.BacktestEngine
 import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DataQualityEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
@@ -17,6 +18,11 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlin.math.round
 
+private data class ScanWorkItem(
+    val analyzed: AnalyzedCandidate,
+    val bars: List<PriceBar>
+)
+
 class ScanRepository(
     private val dao: AnalistaDao,
     private val yahoo: YahooFinanceClient,
@@ -33,7 +39,7 @@ class ScanRepository(
         var unusableQualityCount = 0
         val quoteBatch = marketData.quotes(tickers)
         val quoteFailures = tickers.count { quoteBatch.quotes[it] == null }
-        val analyzed = tickers.map { ticker ->
+        val workItems = tickers.map { ticker ->
             async {
                 runCatching {
                     semaphore.withPermit {
@@ -46,25 +52,30 @@ class ScanRepository(
                             if (quality.status == "UNUSABLE") unusableQualityCount += 1
                         }
                         val quote = quoteBatch.quotes[ticker]
-                        TechnicalEngine.analyzeWithAnalysis(
-                            ticker,
-                            fetched.bars,
-                            TradeContext(
-                                quote = quote,
-                                marketCap = quote?.marketCap,
-                                quoteType = quote?.quoteType,
-                                dataQualityStatus = quality.status,
-                                dataQualityScore = quality.score,
-                                dataQualityReasons = quality.reasons,
-                                averageDollarVolume20 = quality.averageDollarVolume20,
-                                sessionsOld = quality.sessionsOld,
-                                executionDataAllowed = quality.executionAllowed
-                            )
+                        ScanWorkItem(
+                            analyzed = TechnicalEngine.analyzeWithAnalysis(
+                                ticker,
+                                fetched.bars,
+                                TradeContext(
+                                    quote = quote,
+                                    marketCap = quote?.marketCap,
+                                    quoteType = quote?.quoteType,
+                                    dataQualityStatus = quality.status,
+                                    dataQualityScore = quality.score,
+                                    dataQualityReasons = quality.reasons,
+                                    averageDollarVolume20 = quality.averageDollarVolume20,
+                                    sessionsOld = quality.sessionsOld,
+                                    executionDataAllowed = quality.executionAllowed
+                                )
+                            ),
+                            bars = fetched.bars
                         )
                     }
                 }.onFailure { synchronized(this@ScanRepository) { failures += 1 } }.getOrNull()
             }
-        }.awaitAll().filterNotNull().sortedByDescending { it.candidate.score }
+        }.awaitAll().filterNotNull().sortedByDescending { it.analyzed.candidate.score }
+        val analyzed = workItems.map { it.analyzed }
+        val barsByTicker = workItems.associate { it.analyzed.candidate.ticker to it.bars }
 
         val runId = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.of("UTC"))
             .format(Instant.ofEpochMilli(started)) + "-" + UUID.randomUUID().toString().take(8)
@@ -120,6 +131,7 @@ class ScanRepository(
         val snapshots = fetchMacro(runId, semaphore)
         val enrichment = fetchEnrichment(runId, rows, semaphore)
         val enrichmentByTicker = enrichment.associateBy { it.ticker }
+        val engineVersion = "${CanonicalAnalysisEngine.ENGINE_VERSION}+${DecisionOverlayEngine.ENGINE_VERSION}"
         val analysisRows = analyzed.map { item ->
             val candidate = item.candidate
             val a = item.analysis
@@ -136,13 +148,39 @@ class ScanRepository(
                 institutionalScore = overlay.institutionalScore, riskScore = a.riskScore,
                 finalTradeScore = overlay.finalTradeScore, stopAtrMultiple = a.stopAtrMultiple,
                 stopAtrStatus = a.stopAtrStatus, scoreBreakdown = overlay.breakdown,
-                engineVersion = "${CanonicalAnalysisEngine.ENGINE_VERSION}+${DecisionOverlayEngine.ENGINE_VERSION}",
+                engineVersion = engineVersion,
                 calculatedAtUtc = System.currentTimeMillis()
             )
         }
+        val contracts = analyzed.mapNotNull { item ->
+            val candidate = item.candidate
+            if (candidate.signal !in setOf("READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED")) return@mapNotNull null
+            val trigger = candidate.plannedTrigger ?: candidate.theoreticalEntry ?: return@mapNotNull null
+            val maximumEntry = candidate.maximumEntry ?: return@mapNotNull null
+            val stop = candidate.theoreticalStop ?: return@mapNotNull null
+            val target = candidate.theoreticalTarget ?: return@mapNotNull null
+            SignalContractEntity(
+                signalId = "$runId-${candidate.ticker}",
+                runId = runId,
+                ticker = candidate.ticker,
+                signal = candidate.signal,
+                decisionTimestampUtc = started,
+                referencePrice = candidate.referenceClose ?: candidate.close,
+                triggerPrice = trigger,
+                maximumEntry = maximumEntry,
+                stopPrice = stop,
+                targetPrice = target,
+                expirationSessions = 20,
+                engineVersion = engineVersion,
+                createdAtUtc = finished
+            )
+        }
+
         dao.saveRun(run, rows, snapshots)
         if (analysisRows.isNotEmpty()) dao.insertAnalysis(analysisRows)
         if (enrichment.isNotEmpty()) dao.insertEnrichment(enrichment)
+        if (contracts.isNotEmpty()) dao.insertSignalContracts(contracts)
+        evaluateSignalContracts(barsByTicker)
         updateBacktestOutcomes(runId, rows)
         run
     }
@@ -151,6 +189,14 @@ class ScanRepository(
     fun saveAlpaca(credentials: AlpacaCredentialsStore.Credentials) = marketData.saveAlpacaCredentials(credentials)
     fun clearAlpaca() = marketData.clearAlpacaCredentials()
     fun alpacaCredentials(): AlpacaCredentialsStore.Credentials? = marketData.alpacaCredentials()
+
+    private suspend fun evaluateSignalContracts(barsByTicker: Map<String, List<PriceBar>>) {
+        val outcomes = dao.recentSignalContracts().mapNotNull { contract ->
+            val bars = barsByTicker[contract.ticker] ?: return@mapNotNull null
+            BacktestEngine.evaluate(contract, bars)
+        }
+        if (outcomes.isNotEmpty()) dao.upsertTradeOutcomes(outcomes)
+    }
 
     private suspend fun fetchMacro(runId: String, semaphore: Semaphore): List<MarketSnapshotEntity> = coroutineScope {
         MACRO_SYMBOLS.map { (symbol, label) ->
@@ -241,6 +287,7 @@ class ScanRepository(
     fun observeCandidates(runId: String): Flow<List<CandidateEntity>> = dao.observeCandidates(runId)
     fun observeMarketSnapshots(runId: String): Flow<List<MarketSnapshotEntity>> = dao.observeMarketSnapshots(runId)
     fun observeOutcomes(): Flow<List<BacktestOutcomeEntity>> = dao.observeOutcomes()
+    fun observeTradeOutcomes(): Flow<List<TradeOutcomeEntity>> = dao.observeTradeOutcomes()
     fun observeEnrichment(runId: String): Flow<List<CandidateEnrichmentEntity>> = dao.observeEnrichment(runId)
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>> = dao.observeAnalysis(runId)
 
