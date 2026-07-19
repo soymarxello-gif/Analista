@@ -50,7 +50,29 @@ data class CandidateEntity(
     val stop: Double?,
     val target: Double?,
     val rr: Double?,
-    val reason: String
+    val reason: String,
+    val quoteStatus: String = "MISSING",
+    val executionQuoteQuality: String = "LOW",
+    val triggerConfirmed: Boolean = false,
+    val setupType: String = "BREAKOUT_OR_PULLBACK",
+    val allVetoReasons: String = "",
+    val penaltyReasons: String = "",
+    val actionableEntry: Double? = null,
+    val actionableStop: Double? = null,
+    val actionableTarget: Double? = null,
+    val theoreticalEntry: Double? = null,
+    val theoreticalStop: Double? = null,
+    val theoreticalTarget: Double? = null,
+    val referenceClose: Double? = null,
+    val livePremarketPrice: Double? = null,
+    val bid: Double? = null,
+    val ask: Double? = null,
+    val spreadPct: Double? = null,
+    val openingGapPct: Double? = null,
+    val plannedTrigger: Double? = null,
+    val maximumEntry: Double? = null,
+    val actionabilityAtExecution: String = "QUOTE_UNCONFIRMED",
+    val quoteCapturedAtUtc: Long? = null
 )
 
 @Entity(tableName = "backtest_outcomes", indices = [Index("ticker"), Index("sourceRunId")])
@@ -122,6 +144,7 @@ data class MarketQuote(
     val preMarketPrice: Double?,
     val marketCap: Long?,
     val quoteType: String?,
+    val marketState: String? = null,
     val capturedAtUtc: Long = System.currentTimeMillis()
 )
 
@@ -161,7 +184,17 @@ data class ScanCandidate(
     val actionableTarget: Double? = target,
     val theoreticalEntry: Double? = null,
     val theoreticalStop: Double? = null,
-    val theoreticalTarget: Double? = null
+    val theoreticalTarget: Double? = null,
+    val referenceClose: Double? = null,
+    val livePremarketPrice: Double? = null,
+    val bid: Double? = null,
+    val ask: Double? = null,
+    val spreadPct: Double? = null,
+    val openingGapPct: Double? = null,
+    val plannedTrigger: Double? = null,
+    val maximumEntry: Double? = null,
+    val actionabilityAtExecution: String = "QUOTE_UNCONFIRMED",
+    val quoteCapturedAtUtc: Long? = null
 )
 
 data class FundamentalMetrics(
