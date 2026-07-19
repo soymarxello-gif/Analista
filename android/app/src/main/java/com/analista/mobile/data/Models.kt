@@ -15,12 +15,20 @@ data class ScanRunEntity(
     val trustStatus: String,
     val candidateCount: Int,
     val failureCount: Int,
-    val source: String = "Yahoo Finance"
+    val source: String = "Yahoo Finance",
+    val durationMs: Long = 0,
+    val cacheHitCount: Int = 0,
+    val retryCount: Int = 0
 )
 
 @Entity(
     tableName = "scan_candidates",
-    foreignKeys = [ForeignKey(entity = ScanRunEntity::class, parentColumns = ["runId"], childColumns = ["runId"], onDelete = ForeignKey.CASCADE)],
+    foreignKeys = [ForeignKey(
+        entity = ScanRunEntity::class,
+        parentColumns = ["runId"],
+        childColumns = ["runId"],
+        onDelete = ForeignKey.CASCADE
+    )],
     indices = [Index("runId"), Index("ticker")]
 )
 data class CandidateEntity(
@@ -45,12 +53,61 @@ data class CandidateEntity(
     val reason: String
 )
 
-data class PriceBar(val epochSeconds: Long, val open: Double, val high: Double, val low: Double, val close: Double, val volume: Long)
+@Entity(tableName = "backtest_outcomes", indices = [Index("ticker"), Index("sourceRunId")])
+data class BacktestOutcomeEntity(
+    @PrimaryKey val outcomeId: String,
+    val sourceRunId: String,
+    val ticker: String,
+    val signal: String,
+    val sourceClose: Double,
+    val latestClose: Double,
+    val returnPct: Double,
+    val evaluatedAtUtc: Long
+)
+
+@Entity(tableName = "market_snapshots")
+data class MarketSnapshotEntity(
+    @PrimaryKey val snapshotId: String,
+    val runId: String,
+    val symbol: String,
+    val label: String,
+    val close: Double,
+    val changePct: Double,
+    val capturedAtUtc: Long
+)
+
+data class PriceBar(
+    val epochSeconds: Long,
+    val open: Double,
+    val high: Double,
+    val low: Double,
+    val close: Double,
+    val volume: Long
+)
+
+data class FetchResult(
+    val bars: List<PriceBar>,
+    val source: String,
+    val cacheHit: Boolean,
+    val retries: Int
+)
 
 data class ScanCandidate(
-    val ticker: String, val signal: String, val score: Double, val close: Double,
-    val sma20: Double, val sma50: Double, val rsi14: Double, val macd: Double,
-    val macdSignal: Double, val stochastic: Double, val atr14: Double,
-    val relativeVolume: Double, val entry: Double?, val stop: Double?,
-    val target: Double?, val rr: Double?, val reason: String
+    val ticker: String,
+    val signal: String,
+    val score: Double,
+    val close: Double,
+    val sma20: Double,
+    val sma50: Double,
+    val rsi14: Double,
+    val macd: Double,
+    val macdSignal: Double,
+    val stochastic: Double,
+    val atr14: Double,
+    val relativeVolume: Double,
+    val entry: Double?,
+    val stop: Double?,
+    val target: Double?,
+    val rr: Double?,
+    val reason: String
 )

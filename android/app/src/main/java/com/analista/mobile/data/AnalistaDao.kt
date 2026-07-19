@@ -11,15 +11,38 @@ import kotlinx.coroutines.flow.Flow
 interface AnalistaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRun(run: ScanRunEntity)
+
     @Insert
     suspend fun insertCandidates(candidates: List<CandidateEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOutcomes(outcomes: List<BacktestOutcomeEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMarketSnapshots(snapshots: List<MarketSnapshotEntity>)
+
     @Transaction
-    suspend fun saveRun(run: ScanRunEntity, candidates: List<CandidateEntity>) {
+    suspend fun saveRun(run: ScanRunEntity, candidates: List<CandidateEntity>, snapshots: List<MarketSnapshotEntity>) {
         insertRun(run)
         if (candidates.isNotEmpty()) insertCandidates(candidates)
+        if (snapshots.isNotEmpty()) insertMarketSnapshots(snapshots)
     }
+
     @Query("SELECT * FROM scan_runs ORDER BY startedAtUtc DESC")
     fun observeRuns(): Flow<List<ScanRunEntity>>
+
     @Query("SELECT * FROM scan_candidates WHERE runId = :runId ORDER BY score DESC")
     fun observeCandidates(runId: String): Flow<List<CandidateEntity>>
+
+    @Query("SELECT * FROM market_snapshots WHERE runId = :runId ORDER BY symbol")
+    fun observeMarketSnapshots(runId: String): Flow<List<MarketSnapshotEntity>>
+
+    @Query("SELECT * FROM backtest_outcomes ORDER BY evaluatedAtUtc DESC")
+    fun observeOutcomes(): Flow<List<BacktestOutcomeEntity>>
+
+    @Query("SELECT * FROM scan_runs ORDER BY startedAtUtc DESC LIMIT 1")
+    suspend fun latestRun(): ScanRunEntity?
+
+    @Query("SELECT * FROM scan_candidates WHERE runId != :currentRunId ORDER BY id DESC LIMIT 300")
+    suspend fun priorCandidates(currentRunId: String): List<CandidateEntity>
 }
