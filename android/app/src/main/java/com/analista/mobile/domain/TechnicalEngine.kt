@@ -1,5 +1,6 @@
 package com.analista.mobile.domain
 
+import com.analista.mobile.data.AnalyzedCandidate
 import com.analista.mobile.data.PriceBar
 import com.analista.mobile.data.ScanCandidate
 import com.analista.mobile.data.TradeContext
@@ -8,6 +9,15 @@ import kotlin.math.max
 import kotlin.math.round
 
 object TechnicalEngine {
+    fun analyzeWithAnalysis(
+        ticker: String,
+        bars: List<PriceBar>,
+        context: TradeContext = TradeContext(marketCap = Long.MAX_VALUE)
+    ): AnalyzedCandidate {
+        val candidate = analyze(ticker, bars, context)
+        return AnalyzedCandidate(candidate, CanonicalAnalysisEngine.evaluate(bars, candidate))
+    }
+
     fun analyze(
         ticker: String,
         bars: List<PriceBar>,
@@ -21,12 +31,10 @@ object TechnicalEngine {
         val close = closes.last()
         val sma20 = sma(closes, 20)
         val sma50 = sma(closes, 50)
-        val rsi = rsi(closes, 14)
-        val macdSeries = emaSeries(closes, 12).zip(emaSeries(closes, 26)).map { (a, b) -> a - b }
-        val macd = macdSeries.last()
-        val macdSignal = emaSeries(macdSeries, 9).last()
+        val rsi = CanonicalAnalysisEngine.rsiWilder(closes, 14)
+        val (macd, macdSignal) = CanonicalAnalysisEngine.macd(closes)
         val stochastic = stochastic(highs, lows, closes, 14)
-        val atr = atr(bars, 14)
+        val atr = CanonicalAnalysisEngine.atrWilder(bars, 14)
         val averageVolume = volumes.takeLast(20).dropLast(1).average().takeIf { it > 0 } ?: 1.0
         val relativeVolume = volumes.last() / averageVolume
         val prior20High = highs.takeLast(21).dropLast(1).maxOrNull() ?: close
@@ -134,21 +142,11 @@ object TechnicalEngine {
 
     fun sma(values: List<Double>, period: Int) = values.takeLast(period).average()
 
-    fun emaSeries(values: List<Double>, period: Int): List<Double> {
-        val alpha = 2.0 / (period + 1.0)
-        var previous = values.first()
-        return values.mapIndexed { index, value ->
-            previous = if (index == 0) value else alpha * value + (1 - alpha) * previous
-            previous
-        }
-    }
+    fun emaSeries(values: List<Double>, period: Int): List<Double> =
+        CanonicalAnalysisEngine.emaSeries(values, period)
 
-    fun rsi(values: List<Double>, period: Int): Double {
-        val changes = values.zipWithNext { a, b -> b - a }.takeLast(period)
-        val gains = changes.sumOf { max(it, 0.0) } / period
-        val losses = changes.sumOf { max(-it, 0.0) } / period
-        return if (losses == 0.0) 100.0 else 100.0 - 100.0 / (1.0 + gains / losses)
-    }
+    fun rsi(values: List<Double>, period: Int): Double =
+        CanonicalAnalysisEngine.rsiWilder(values, period)
 
     fun stochastic(highs: List<Double>, lows: List<Double>, closes: List<Double>, period: Int): Double {
         val high = highs.takeLast(period).maxOrNull() ?: closes.last()
@@ -156,9 +154,8 @@ object TechnicalEngine {
         return if (high == low) 50.0 else 100.0 * (closes.last() - low) / (high - low)
     }
 
-    fun atr(bars: List<PriceBar>, period: Int): Double = bars.zipWithNext { previous, current ->
-        max(current.high - current.low, max(abs(current.high - previous.close), abs(current.low - previous.close)))
-    }.takeLast(period).average()
+    fun atr(bars: List<PriceBar>, period: Int): Double =
+        CanonicalAnalysisEngine.atrWilder(bars, period)
 
     private fun round2(value: Double) = round(value * 100.0) / 100.0
     private fun round4(value: Double) = round(value * 10000.0) / 10000.0
