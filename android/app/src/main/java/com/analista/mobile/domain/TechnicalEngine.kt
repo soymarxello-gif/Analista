@@ -62,10 +62,15 @@ object TechnicalEngine {
         val openingGapPct = livePremarket?.let { (it / close - 1.0) * 100.0 }
         val plannedTrigger = prior20High + max(0.25 * atr, prior20High * 0.005)
         val maximumEntry = plannedTrigger + 0.50 * atr
-        val dailyBreakout = close > prior20High && relativeVolume >= 1.2
-        val liveTrigger = executionPrice?.let { it >= plannedTrigger && it <= maximumEntry } ?: false
-        val triggerConfirmed = (dailyBreakout || liveTrigger) && quote.quality != "LOW" && context.executionDataAllowed
-        if (triggerConfirmed) { score += 10; reasons += "breakout_confirmed" }
+        val priorSessionBreakout = close > prior20High && relativeVolume >= 1.2
+        val liveTriggerConfirmed = executionPrice?.let { it >= plannedTrigger && it <= maximumEntry } ?: false
+        val breakoutHolding = priorSessionBreakout && executionPrice?.let { it >= plannedTrigger } == true
+        val failedBreakout = priorSessionBreakout && executionPrice?.let { it < prior20High } == true
+        val triggerDistancePct = executionPrice?.let { (it / plannedTrigger - 1.0) * 100.0 }
+        val triggerConfirmed = liveTriggerConfirmed && quote.quality != "LOW" && context.executionDataAllowed
+        if (priorSessionBreakout) reasons += "prior_session_breakout"
+        if (triggerConfirmed) { score += 10; reasons += "live_breakout_confirmed" }
+        if (failedBreakout) reasons += "failed_breakout"
 
         val gapAtr = livePremarket?.let { abs(it - close) / atr }
         val actionability = when {
@@ -76,11 +81,14 @@ object TechnicalEngine {
             executionPrice == null -> "QUOTE_MISSING"
             gapAtr != null && gapAtr > 1.5 -> "GAP_EXCESSIVE"
             executionPrice > maximumEntry -> "ABOVE_MAX_ENTRY"
+            failedBreakout -> "FAILED_BREAKOUT"
+            executionPrice < plannedTrigger -> "WAIT_TRIGGER"
             triggerConfirmed -> "ACTIONABLE_REVIEW"
             else -> "WAIT_TRIGGER"
         }
         if (actionability == "GAP_EXCESSIVE") penalties += "opening_gap_excessive"
         if (actionability == "ABOVE_MAX_ENTRY") penalties += "above_maximum_entry"
+        if (actionability == "FAILED_BREAKOUT") penalties += "failed_breakout"
         if (actionability == "DATA_UNUSABLE") penalties += "execution_data_unusable"
         if (actionability == "STALE_OR_ILLIQUID_DATA") penalties += "execution_data_unconfirmed"
 
@@ -98,7 +106,7 @@ object TechnicalEngine {
 
         var signal = when {
             vetoReasons.isNotEmpty() -> "VETO"
-            overextended -> "AVOID"
+            overextended || failedBreakout -> "AVOID"
             triggerConfirmed && score >= 80 -> "TRIGGER_CONFIRMED"
             score >= 65 -> "READY_WAIT_TRIGGER"
             score >= 50 -> "WATCHLIST"
@@ -144,7 +152,13 @@ object TechnicalEngine {
             bid = bid?.let(::round2), ask = ask?.let(::round2), spreadPct = spreadPct?.let(::round2),
             openingGapPct = openingGapPct?.let(::round2), plannedTrigger = round2(plannedTrigger),
             maximumEntry = round2(maximumEntry), actionabilityAtExecution = actionability,
-            quoteCapturedAtUtc = context.quote?.capturedAtUtc
+            quoteCapturedAtUtc = context.quote?.capturedAtUtc,
+            priorSessionBreakout = priorSessionBreakout,
+            liveTriggerConfirmed = liveTriggerConfirmed,
+            breakoutHolding = breakoutHolding,
+            failedBreakout = failedBreakout,
+            executionPrice = executionPrice?.let(::round2),
+            triggerDistancePct = triggerDistancePct?.let(::round2)
         )
     }
 
