@@ -39,7 +39,9 @@ class YahooFinanceClient(
                         val body = response.body?.string() ?: throw IOException("Yahoo empty body for $safeTicker")
                         val bars = parseChart(body, safeTicker)
                         cache.writeText(body)
-                        return@withContext FetchResult(bars, "Yahoo/$host", false, retries)
+                        val source = "Yahoo/$host"
+                        HistorySourceRegistry.record(safeTicker, source)
+                        return@withContext FetchResult(bars, source, false, retries)
                     }
                 } catch (error: Throwable) {
                     lastError = error
@@ -51,7 +53,9 @@ class YahooFinanceClient(
             }
         }
         if (cache.exists() && System.currentTimeMillis() - cache.lastModified() <= CACHE_MAX_AGE_MS) {
-            return@withContext FetchResult(parseChart(cache.readText(), safeTicker), "Yahoo/cache", true, retries)
+            val source = "Yahoo/cache"
+            HistorySourceRegistry.record(safeTicker, source)
+            return@withContext FetchResult(parseChart(cache.readText(), safeTicker), source, true, retries)
         }
         throw IOException(lastError?.message ?: "No data for $safeTicker", lastError)
     }
