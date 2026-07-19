@@ -1,5 +1,6 @@
 package com.analista.mobile.data
 
+import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.TechnicalEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -26,7 +27,7 @@ class ScanRepository(
         var quoteFailures = 0
         var cacheHits = 0
         var retries = 0
-        val candidates = tickers.map { ticker ->
+        val analyzed = tickers.map { ticker ->
             async {
                 runCatching {
                     semaphore.withPermit {
@@ -38,7 +39,7 @@ class ScanRepository(
                             retries += fetched.retries
                         }
                         val quote = quoteResult.getOrNull()
-                        TechnicalEngine.analyze(
+                        TechnicalEngine.analyzeWithAnalysis(
                             ticker,
                             fetched.bars,
                             TradeContext(quote = quote, marketCap = quote?.marketCap, quoteType = quote?.quoteType)
@@ -46,13 +47,13 @@ class ScanRepository(
                     }
                 }.onFailure { synchronized(this@ScanRepository) { failures += 1 } }.getOrNull()
             }
-        }.awaitAll().filterNotNull().sortedByDescending { it.score }
+        }.awaitAll().filterNotNull().sortedByDescending { it.candidate.score }
 
         val runId = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.of("UTC"))
             .format(Instant.ofEpochMilli(started)) + "-" + UUID.randomUUID().toString().take(8)
         val marketDate = LocalDate.now(ZoneId.of("America/New_York")).toString()
         val trust = when {
-            candidates.isEmpty() -> "UNUSABLE"
+            analyzed.isEmpty() -> "UNUSABLE"
             failures > tickers.size / 2 -> "UNUSABLE"
             failures > 0 || cacheHits > 0 || quoteFailures > 0 -> "DEGRADED"
             else -> "TRUSTED"
@@ -61,12 +62,13 @@ class ScanRepository(
         val run = ScanRunEntity(
             runId = runId, startedAtUtc = started, finishedAtUtc = finished,
             marketDateEt = marketDate,
-            status = if (candidates.isEmpty()) "FAILED_DATA_SOURCE" else "COMPLETED",
-            trustStatus = trust, candidateCount = candidates.size, failureCount = failures + quoteFailures,
+            status = if (analyzed.isEmpty()) "FAILED_DATA_SOURCE" else "COMPLETED",
+            trustStatus = trust, candidateCount = analyzed.size, failureCount = failures + quoteFailures,
             source = if (cacheHits > 0) "Yahoo Finance + cache" else "Yahoo Finance",
             durationMs = finished - started, cacheHitCount = cacheHits, retryCount = retries
         )
-        val rows = candidates.map {
+        val rows = analyzed.map { item ->
+            val it = item.candidate
             CandidateEntity(
                 runId = runId, ticker = it.ticker, signal = it.signal, score = it.score,
                 close = it.close, sma20 = it.sma20, sma50 = it.sma50, rsi14 = it.rsi14,
@@ -87,8 +89,28 @@ class ScanRepository(
                 quoteCapturedAtUtc = it.quoteCapturedAtUtc
             )
         }
+        val analysisRows = analyzed.map { item ->
+            val candidate = item.candidate
+            val a = item.analysis
+            CandidateAnalysisEntity(
+                analysisId = "$runId-${candidate.ticker}", runId = runId, ticker = candidate.ticker,
+                rsi6 = a.rsi6, rsi14Canonical = a.rsi14, rsi6GtRsi14 = a.rsi6 > a.rsi14,
+                ema20 = a.ema20, ema50 = a.ema50, ema200 = a.ema200,
+                priceVsEma20Pct = round2((candidate.close / a.ema20 - 1.0) * 100.0),
+                priceVsEma50Pct = round2((candidate.close / a.ema50 - 1.0) * 100.0),
+                priceVsEma200Pct = round2((candidate.close / a.ema200 - 1.0) * 100.0),
+                weeklyTrend = a.weeklyTrend, assetQualityScore = a.assetQualityScore,
+                setupQualityScore = a.setupQualityScore, contextScore = a.contextScore,
+                institutionalScore = a.institutionalScore, riskScore = a.riskScore,
+                finalTradeScore = a.finalTradeScore, stopAtrMultiple = a.stopAtrMultiple,
+                stopAtrStatus = a.stopAtrStatus, scoreBreakdown = a.scoreBreakdown,
+                engineVersion = CanonicalAnalysisEngine.ENGINE_VERSION,
+                calculatedAtUtc = System.currentTimeMillis()
+            )
+        }
         val snapshots = fetchMacro(runId, semaphore)
         dao.saveRun(run, rows, snapshots)
+        if (analysisRows.isNotEmpty()) dao.insertAnalysis(analysisRows)
         val enrichment = fetchEnrichment(runId, rows.take(10), semaphore)
         if (enrichment.isNotEmpty()) dao.insertEnrichment(enrichment)
         updateBacktestOutcomes(runId, rows)
@@ -168,6 +190,7 @@ class ScanRepository(
     fun observeMarketSnapshots(runId: String): Flow<List<MarketSnapshotEntity>> = dao.observeMarketSnapshots(runId)
     fun observeOutcomes(): Flow<List<BacktestOutcomeEntity>> = dao.observeOutcomes()
     fun observeEnrichment(runId: String): Flow<List<CandidateEnrichmentEntity>> = dao.observeEnrichment(runId)
+    fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>> = dao.observeAnalysis(runId)
 
     companion object {
         val DEFAULT_TICKERS = listOf(
