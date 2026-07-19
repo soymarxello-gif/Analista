@@ -200,7 +200,13 @@ data class ScanCandidate(
     val plannedTrigger: Double? = null,
     val maximumEntry: Double? = null,
     val actionabilityAtExecution: String = "QUOTE_UNCONFIRMED",
-    val quoteCapturedAtUtc: Long? = null
+    val quoteCapturedAtUtc: Long? = null,
+    val priorSessionBreakout: Boolean = false,
+    val liveTriggerConfirmed: Boolean = false,
+    val breakoutHolding: Boolean = false,
+    val failedBreakout: Boolean = false,
+    val executionPrice: Double? = null,
+    val triggerDistancePct: Double? = null
 )
 
 data class FundamentalMetrics(
