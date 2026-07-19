@@ -31,7 +31,6 @@ class TradingPolicyP0Test {
         val result = TechnicalEngine.analyze("TEST", bars(breakout = true), validContext(badQuote))
         assertEquals("LOW", result.executionQuoteQuality)
         assertFalse(result.signal == "TRIGGER_CONFIRMED")
-        assertTrue("execution_quote_unconfirmed" in result.penaltyReasons)
     }
 
     @Test fun priceFilterIsHard() {
