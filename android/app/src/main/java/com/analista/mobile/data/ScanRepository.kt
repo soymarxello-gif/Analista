@@ -69,6 +69,8 @@ class ScanRepository(
         }
         val snapshots = fetchMacro(runId, semaphore)
         dao.saveRun(run, rows, snapshots)
+        val enrichment = fetchEnrichment(runId, rows.take(10), semaphore)
+        if (enrichment.isNotEmpty()) dao.insertEnrichment(enrichment)
         updateBacktestOutcomes(runId, rows)
         run
     }
@@ -92,6 +94,44 @@ class ScanRepository(
         }.awaitAll().filterNotNull()
     }
 
+    private suspend fun fetchEnrichment(
+        runId: String,
+        candidates: List<CandidateEntity>,
+        semaphore: Semaphore
+    ): List<CandidateEnrichmentEntity> = coroutineScope {
+        candidates.map { candidate ->
+            async {
+                semaphore.withPermit {
+                    val fundamentalResult = runCatching { yahoo.fundamentals(candidate.ticker) }
+                    val optionsResult = runCatching { yahoo.options(candidate.ticker) }
+                    val fundamental = fundamentalResult.getOrNull()
+                    val options = optionsResult.getOrNull()
+                    CandidateEnrichmentEntity(
+                        enrichmentId = "$runId-${candidate.ticker}",
+                        runId = runId,
+                        ticker = candidate.ticker,
+                        marketCap = fundamental?.marketCap,
+                        trailingPe = fundamental?.trailingPe,
+                        priceToSales = fundamental?.priceToSales,
+                        epsTrailing = fundamental?.epsTrailing,
+                        revenueGrowthPct = fundamental?.revenueGrowthPct?.let(::round2),
+                        grossMarginPct = fundamental?.grossMarginPct?.let(::round2),
+                        operatingMarginPct = fundamental?.operatingMarginPct?.let(::round2),
+                        profitMarginPct = fundamental?.profitMarginPct?.let(::round2),
+                        debtToEquity = fundamental?.debtToEquity?.let(::round2),
+                        optionsPutCallOi = options?.putCallOi?.let(::round2),
+                        optionsNearCallOi = options?.nearCallOi,
+                        optionsNearPutOi = options?.nearPutOi,
+                        optionsExpiry = options?.expiry,
+                        fundamentalsStatus = if (fundamentalResult.isSuccess) "AVAILABLE" else "UNAVAILABLE",
+                        optionsStatus = if (optionsResult.isSuccess) "AVAILABLE" else "UNAVAILABLE",
+                        capturedAtUtc = System.currentTimeMillis()
+                    )
+                }
+            }
+        }.awaitAll()
+    }
+
     private suspend fun updateBacktestOutcomes(currentRunId: String, current: List<CandidateEntity>) {
         val latestByTicker = current.associateBy { it.ticker }
         val outcomes = dao.priorCandidates(currentRunId)
@@ -112,6 +152,7 @@ class ScanRepository(
     fun observeCandidates(runId: String): Flow<List<CandidateEntity>> = dao.observeCandidates(runId)
     fun observeMarketSnapshots(runId: String): Flow<List<MarketSnapshotEntity>> = dao.observeMarketSnapshots(runId)
     fun observeOutcomes(): Flow<List<BacktestOutcomeEntity>> = dao.observeOutcomes()
+    fun observeEnrichment(runId: String): Flow<List<CandidateEnrichmentEntity>> = dao.observeEnrichment(runId)
 
     companion object {
         val DEFAULT_TICKERS = listOf(

@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateEntity
+import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanRunEntity
 import com.analista.mobile.schedule.DiagnosticsStore
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
         val runs by vm.runs.collectAsState()
         val candidates by vm.candidates.collectAsState()
         val macro by vm.macro.collectAsState()
+        val enrichment by vm.enrichment.collectAsState()
         val outcomes by vm.outcomes.collectAsState()
         val running by vm.running.collectAsState()
         val error by vm.error.collectAsState()
@@ -86,7 +88,7 @@ class MainActivity : ComponentActivity() {
             }
         ) { padding ->
             when (tab) {
-                0 -> SummaryScreen(runs, candidates, macro, running, error, vm::runNow, Modifier.padding(padding))
+                0 -> SummaryScreen(runs, candidates, enrichment, macro, running, error, vm::runNow, Modifier.padding(padding))
                 1 -> HistoryScreen(runs, vm::selectRun, Modifier.padding(padding))
                 2 -> BacktestScreen(outcomes, Modifier.padding(padding))
                 else -> DiagnosticsScreen(Modifier.padding(padding))
@@ -96,8 +98,14 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun SummaryScreen(
-        runs: List<ScanRunEntity>, candidates: List<CandidateEntity>, macro: List<MarketSnapshotEntity>,
-        running: Boolean, error: String?, runNow: () -> Unit, modifier: Modifier
+        runs: List<ScanRunEntity>,
+        candidates: List<CandidateEntity>,
+        enrichment: List<CandidateEnrichmentEntity>,
+        macro: List<MarketSnapshotEntity>,
+        running: Boolean,
+        error: String?,
+        runNow: () -> Unit,
+        modifier: Modifier
     ) {
         LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
@@ -118,7 +126,8 @@ class MainActivity : ComponentActivity() {
             }
             item { Text("Candidatos", style = MaterialTheme.typography.titleLarge) }
             if (candidates.isEmpty()) item { Text("Aún no hay resultados para esta ejecución.") }
-            items(candidates, key = { it.id }) { CandidateCard(it) }
+            val enrichmentByTicker = enrichment.associateBy { it.ticker }
+            items(candidates, key = { it.id }) { CandidateCard(it, enrichmentByTicker[it.ticker]) }
         }
     }
 
@@ -193,9 +202,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @Composable private fun DiagnosticLine(label: String, ok: Boolean) { Text("${if (ok) "✓" else "!"} $label: ${if (ok) "correcto" else "requiere atención"}") }
+    @Composable
+    private fun DiagnosticLine(label: String, ok: Boolean) {
+        Text("${if (ok) "✓" else "!"} $label: ${if (ok) "correcto" else "requiere atención"}")
+    }
 
-    @Composable private fun RunCard(run: ScanRunEntity) { Card(Modifier.fillMaxWidth()) { RunCardContent(run) } }
+    @Composable
+    private fun RunCard(run: ScanRunEntity) {
+        Card(Modifier.fillMaxWidth()) { RunCardContent(run) }
+    }
 
     @Composable
     private fun RunCardContent(run: ScanRunEntity) {
@@ -217,7 +232,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun CandidateCard(candidate: CandidateEntity) {
+    private fun CandidateCard(candidate: CandidateEntity, enrichment: CandidateEnrichmentEntity?) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -227,7 +242,23 @@ class MainActivity : ComponentActivity() {
                 Text("Cierre ${candidate.close} · RSI ${candidate.rsi14} · RVOL ${candidate.relativeVolume}")
                 Text("SMA20 ${candidate.sma20} · SMA50 ${candidate.sma50} · ATR ${candidate.atr14}")
                 candidate.entry?.let { Text("Entrada $it · Stop ${candidate.stop} · Objetivo ${candidate.target} · R/R ${candidate.rr}") }
-                candidate.reason.split(",").filter { it.isNotBlank() }.forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
+                enrichment?.let {
+                    Text("Fundamental: ${it.fundamentalsStatus} · Opciones: ${it.optionsStatus}", fontWeight = FontWeight.Bold)
+                    val fundamental = listOfNotNull(
+                        it.trailingPe?.let { value -> "P/E $value" },
+                        it.priceToSales?.let { value -> "P/Ventas $value" },
+                        it.epsTrailing?.let { value -> "EPS $value" },
+                        it.revenueGrowthPct?.let { value -> "Ingresos ${value}%" },
+                        it.profitMarginPct?.let { value -> "Margen neto ${value}%" },
+                        it.debtToEquity?.let { value -> "Deuda/Patr. $value" }
+                    )
+                    if (fundamental.isNotEmpty()) Text(fundamental.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                    it.optionsPutCallOi?.let { value ->
+                        Text("Put/Call OI $value · Calls ${it.optionsNearCallOi ?: 0} · Puts ${it.optionsNearPutOi ?: 0}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                candidate.reason.split(",").filter { it.isNotBlank() }
+                    .forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
             }
         }
     }
