@@ -227,7 +227,22 @@ data class FundamentalMetrics(
     val grossMarginPct: Double?,
     val operatingMarginPct: Double?,
     val profitMarginPct: Double?,
-    val debtToEquity: Double?
+    val debtToEquity: Double?,
+    val revenueYoyPct: Double? = revenueGrowthPct,
+    val revenueTrend: String? = null,
+    val epsYoyPct: Double? = null,
+    val epsTrend: String? = null,
+    val grossMarginDeltaPct: Double? = null,
+    val operatingMarginDeltaPct: Double? = null,
+    val netMarginDeltaPct: Double? = null,
+    val debtToEbitda: Double? = null,
+    val interestCoverage: Double? = null,
+    val freeCashFlow: Double? = null,
+    val sectorPriceToSalesMedian: Double? = null,
+    val earningsDateUtc: Long? = null,
+    val earningsSessions: Int? = null,
+    val dataAgeDays: Long? = null,
+    val sector: String? = null
 )
 
 data class OptionsMetrics(

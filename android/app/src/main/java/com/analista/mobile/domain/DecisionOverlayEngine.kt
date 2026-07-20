@@ -2,13 +2,15 @@ package com.analista.mobile.domain
 
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CanonicalAnalysis
+import com.analista.mobile.data.FundamentalMetrics
+import com.analista.mobile.data.FundamentalSnapshotRegistry
 import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v3-overlays-2"
+    const val ENGINE_VERSION = "android-v3-overlays-3"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -27,7 +29,9 @@ object DecisionOverlayEngine {
         val eventRisk: String = "UNKNOWN",
         val sectorRegime: String = "UNKNOWN",
         val macroConfidence: String = "UNKNOWN",
-        val macroCoveragePct: Double = 0.0
+        val macroCoveragePct: Double = 0.0,
+        val earningsRiskStatus: String = "UNKNOWN",
+        val fundamentalReasons: List<String> = emptyList()
     )
 
     fun apply(
@@ -38,11 +42,16 @@ object DecisionOverlayEngine {
     ): OverlayResult {
         val histories = MarketHistoryRegistry.snapshot(macro.map { it.symbol })
         val context = MacroRegimeEngine.assess(histories, macro)
-        val fundamental = fundamentalScore(enrichment)
+        val fundamental = temporalFundamental(candidate.ticker, enrichment)
         val institutional = optionsScore(enrichment)
 
         var confidencePenalty = 0.0
-        if (fundamental.coverage != "COMPLETE") confidencePenalty += if (fundamental.coverage == "PARTIAL") 2.0 else 4.0
+        confidencePenalty += when (fundamental.status) {
+            "COMPLETE" -> 0.0
+            "PARTIAL" -> 2.0
+            "STALE" -> 5.0
+            else -> 4.0
+        }
         if (institutional.coverage != "COMPLETE") confidencePenalty += if (institutional.coverage == "PARTIAL") 2.0 else 4.0
         confidencePenalty += when (context.confidence) {
             "HIGH" -> 0.0
@@ -53,12 +62,14 @@ object DecisionOverlayEngine {
 
         var final = base.finalTradeScore +
             0.10 * (context.macroScore - 50.0) +
-            0.10 * (fundamental.score - 50.0) +
+            0.15 * (fundamental.score - 50.0) +
             0.10 * (institutional.score - 50.0) -
             confidencePenalty
 
         if (context.macroRegime == "RISK_OFF") final -= 5.0
         if (context.ratesRegime == "RISING") final -= 2.0
+        if (fundamental.earningsRiskStatus == "IMMINENT") final -= 5.0
+        if (fundamental.status == "STALE") final -= 3.0
         if (institutional.bias == "CROWDED_BULLISH") final -= 8.0
         if (candidate.signal == "VETO" || candidate.setupType == "NO_VALID_SETUP") final = minOf(final, 49.0)
         if (candidate.executionQuoteQuality == "LOW") final = minOf(final, 59.0)
@@ -66,7 +77,8 @@ object DecisionOverlayEngine {
 
         val breakdown = listOf(
             base.scoreBreakdown,
-            "fundamental=${round2(fundamental.score)}:${fundamental.coverage}",
+            "fundamental=${round2(fundamental.score)}:${fundamental.status}:${fundamental.earningsRiskStatus}",
+            "fundamental_reasons=${fundamental.reasons.joinToString("|")}",
             "macro=${round2(context.macroScore)}:${context.macroRegime}:${context.confidence}:20d_60d",
             "risk_appetite=${context.riskAppetite}",
             "rates=${context.ratesRegime}",
@@ -84,7 +96,7 @@ object DecisionOverlayEngine {
             finalTradeScore = round2(final),
             macroRegime = context.macroRegime,
             optionsBias = institutional.bias,
-            fundamentalCoverage = fundamental.coverage,
+            fundamentalCoverage = fundamental.status,
             optionsCoverage = institutional.coverage,
             confidencePenalty = round2(confidencePenalty),
             breakdown = breakdown,
@@ -94,25 +106,31 @@ object DecisionOverlayEngine {
             eventRisk = context.eventRisk,
             sectorRegime = context.sectorRegime,
             macroConfidence = context.confidence,
-            macroCoveragePct = context.coveragePct
+            macroCoveragePct = context.coveragePct,
+            earningsRiskStatus = fundamental.earningsRiskStatus,
+            fundamentalReasons = fundamental.reasons
         )
     }
 
-    private data class FundamentalResult(val score: Double, val coverage: String)
-
-    private fun fundamentalScore(e: CandidateEnrichmentEntity?): FundamentalResult {
-        if (e == null || e.fundamentalsStatus == "UNAVAILABLE") return FundamentalResult(50.0, "UNKNOWN")
-        val values = listOf(e.revenueGrowthPct, e.grossMarginPct, e.operatingMarginPct, e.profitMarginPct, e.debtToEquity, e.priceToSales)
-        val available = values.count { it != null }
-        if (available == 0) return FundamentalResult(50.0, "UNKNOWN")
-        var score = 50.0
-        e.revenueGrowthPct?.let { score += when { it >= 20 -> 12.0; it >= 8 -> 7.0; it < 0 -> -12.0; else -> 1.0 } }
-        e.operatingMarginPct?.let { score += when { it >= 20 -> 10.0; it >= 10 -> 5.0; it < 0 -> -12.0; else -> 0.0 } }
-        e.profitMarginPct?.let { score += when { it >= 15 -> 8.0; it >= 5 -> 4.0; it < 0 -> -10.0; else -> 0.0 } }
-        e.debtToEquity?.let { score += when { it <= 50 -> 6.0; it <= 150 -> 1.0; it > 300 -> -10.0; else -> -4.0 } }
-        e.priceToSales?.let { score += when { it <= 3 -> 5.0; it >= 15 -> -6.0; else -> 0.0 } }
-        val coverage = if (available >= 5) "COMPLETE" else "PARTIAL"
-        return FundamentalResult(score.coerceIn(0.0, 100.0), coverage)
+    private fun temporalFundamental(
+        ticker: String,
+        enrichment: CandidateEnrichmentEntity?
+    ): FundamentalAssessmentEngine.Result {
+        if (enrichment == null || enrichment.fundamentalsStatus !in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL")) {
+            return FundamentalAssessmentEngine.Result(50.0, 0.0, "EMPTY", "UNKNOWN", listOf("fundamentals_unavailable"))
+        }
+        val metrics = FundamentalSnapshotRegistry.get(ticker)?.metrics ?: FundamentalMetrics(
+            marketCap = enrichment.marketCap,
+            trailingPe = enrichment.trailingPe,
+            priceToSales = enrichment.priceToSales,
+            epsTrailing = enrichment.epsTrailing,
+            revenueGrowthPct = enrichment.revenueGrowthPct,
+            grossMarginPct = enrichment.grossMarginPct,
+            operatingMarginPct = enrichment.operatingMarginPct,
+            profitMarginPct = enrichment.profitMarginPct,
+            debtToEquity = enrichment.debtToEquity
+        )
+        return FundamentalAssessmentEngine.assess(metrics, enrichment.capturedAtUtc)
     }
 
     private data class InstitutionalResult(val score: Double, val bias: String, val coverage: String)

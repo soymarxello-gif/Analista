@@ -9,7 +9,10 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 class YahooFinanceClient(
     context: Context,
@@ -138,9 +141,15 @@ class YahooFinanceClient(
 
     suspend fun fundamentals(ticker: String): FundamentalMetrics = withContext(Dispatchers.IO) {
         val safeTicker = yahooTicker(ticker)
-        val modules = "defaultKeyStatistics,financialData,summaryDetail"
+        val modules = listOf(
+            "defaultKeyStatistics", "financialData", "summaryDetail", "assetProfile",
+            "incomeStatementHistoryQuarterly", "cashflowStatementHistoryQuarterly",
+            "balanceSheetHistoryQuarterly", "calendarEvents"
+        ).joinToString(",")
         val body = getJson("https://query1.finance.yahoo.com/v10/finance/quoteSummary/$safeTicker?modules=$modules")
-        parseFundamentals(body, safeTicker)
+        val metrics = parseFundamentals(body, safeTicker)
+        FundamentalSnapshotRegistry.record(safeTicker, metrics)
+        metrics
     }
 
     suspend fun options(ticker: String): OptionsMetrics = withContext(Dispatchers.IO) {
@@ -159,7 +168,11 @@ class YahooFinanceClient(
         }
     }
 
-    internal fun parseFundamentals(json: String, ticker: String): FundamentalMetrics {
+    internal fun parseFundamentals(
+        json: String,
+        ticker: String,
+        nowUtcMillis: Long = System.currentTimeMillis()
+    ): FundamentalMetrics {
         val root = JSONObject(json)
         val response = root.optJSONObject("quoteSummary") ?: throw IOException("Missing quoteSummary for $ticker")
         if (!response.isNull("error")) throw IOException("Yahoo fundamentals error for $ticker")
@@ -168,16 +181,85 @@ class YahooFinanceClient(
         val stats = result.optJSONObject("defaultKeyStatistics") ?: JSONObject()
         val financial = result.optJSONObject("financialData") ?: JSONObject()
         val summary = result.optJSONObject("summaryDetail") ?: JSONObject()
+        val profile = result.optJSONObject("assetProfile") ?: JSONObject()
+        val income = statements(result, "incomeStatementHistoryQuarterly", "incomeStatementHistory")
+        val cashFlow = statements(result, "cashflowStatementHistoryQuarterly", "cashflowStatements")
+        val balance = statements(result, "balanceSheetHistoryQuarterly", "balanceSheetStatements")
+        val latestIncome = income.getOrNull(0)
+        val priorIncome = income.getOrNull(1)
+        val yearAgoIncome = income.getOrNull(4)
+
+        val latestRevenue = latestIncome?.let { rawNumber(it, "totalRevenue") }
+        val priorRevenue = priorIncome?.let { rawNumber(it, "totalRevenue") }
+        val yearAgoRevenue = yearAgoIncome?.let { rawNumber(it, "totalRevenue") }
+        val latestEps = latestIncome?.let { rawNumber(it, "dilutedEPS") ?: rawNumber(it, "basicEPS") }
+        val priorEps = priorIncome?.let { rawNumber(it, "dilutedEPS") ?: rawNumber(it, "basicEPS") }
+        val yearAgoEps = yearAgoIncome?.let { rawNumber(it, "dilutedEPS") ?: rawNumber(it, "basicEPS") }
+
+        val revenueYoy = pctChange(latestRevenue, yearAgoRevenue)
+            ?: rawDouble(financial, "revenueGrowth")?.times(100.0)
+        val epsYoy = pctChange(latestEps, yearAgoEps)
+        val latestGrossMargin = margin(latestIncome, "grossProfit", latestRevenue)
+            ?: rawDouble(financial, "grossMargins")?.times(100.0)
+        val priorGrossMargin = margin(priorIncome, "grossProfit", priorRevenue)
+        val latestOperatingMargin = margin(latestIncome, "operatingIncome", latestRevenue)
+            ?: rawDouble(financial, "operatingMargins")?.times(100.0)
+        val priorOperatingMargin = margin(priorIncome, "operatingIncome", priorRevenue)
+        val latestNetMargin = margin(latestIncome, "netIncome", latestRevenue)
+            ?: rawDouble(financial, "profitMargins")?.times(100.0)
+        val priorNetMargin = margin(priorIncome, "netIncome", priorRevenue)
+
+        val totalDebt = rawDouble(financial, "totalDebt")
+            ?: balance.firstOrNull()?.let { rawNumber(it, "totalDebt") }
+        val ebitda = rawDouble(financial, "ebitda")
+        val latestEbit = latestIncome?.let { rawNumber(it, "ebit") ?: rawNumber(it, "operatingIncome") }
+        val interestExpense = latestIncome?.let { rawNumber(it, "interestExpense") }?.let(::abs)
+        val latestCashFlow = cashFlow.firstOrNull()
+        val freeCashFlow = rawDouble(financial, "freeCashflow") ?: run {
+            val operating = latestCashFlow?.let { rawNumber(it, "totalCashFromOperatingActivities") }
+            val capex = latestCashFlow?.let { rawNumber(it, "capitalExpenditures") }
+            if (operating != null && capex != null) operating + capex else null
+        }
+        val latestStatementEpoch = listOfNotNull(
+            latestIncome?.let { rawLong(it, "endDate") },
+            latestCashFlow?.let { rawLong(it, "endDate") },
+            balance.firstOrNull()?.let { rawLong(it, "endDate") }
+        ).maxOrNull()
+        val earningsDateUtc = result.optJSONObject("calendarEvents")
+            ?.optJSONObject("earnings")
+            ?.optJSONArray("earningsDate")
+            ?.optJSONObject(0)
+            ?.let { rawLong(it, "raw") ?: it.optLong("raw", 0L).takeIf { value -> value > 0L } }
+            ?.times(1_000L)
+        val dataAgeDays = latestStatementEpoch?.let { epoch ->
+            ChronoUnit.DAYS.between(Instant.ofEpochSecond(epoch), Instant.ofEpochMilli(nowUtcMillis)).coerceAtLeast(0L)
+        }
+
         return FundamentalMetrics(
             marketCap = rawLong(summary, "marketCap"),
             trailingPe = rawDouble(summary, "trailingPE"),
             priceToSales = rawDouble(summary, "priceToSalesTrailing12Months"),
             epsTrailing = rawDouble(stats, "trailingEps"),
             revenueGrowthPct = rawDouble(financial, "revenueGrowth")?.times(100.0),
-            grossMarginPct = rawDouble(financial, "grossMargins")?.times(100.0),
-            operatingMarginPct = rawDouble(financial, "operatingMargins")?.times(100.0),
-            profitMarginPct = rawDouble(financial, "profitMargins")?.times(100.0),
-            debtToEquity = rawDouble(financial, "debtToEquity")
+            grossMarginPct = latestGrossMargin,
+            operatingMarginPct = latestOperatingMargin,
+            profitMarginPct = latestNetMargin,
+            debtToEquity = rawDouble(financial, "debtToEquity"),
+            revenueYoyPct = revenueYoy,
+            revenueTrend = trend(latestRevenue, priorRevenue, revenueYoy),
+            epsYoyPct = epsYoy,
+            epsTrend = trend(latestEps, priorEps, epsYoy),
+            grossMarginDeltaPct = delta(latestGrossMargin, priorGrossMargin),
+            operatingMarginDeltaPct = delta(latestOperatingMargin, priorOperatingMargin),
+            netMarginDeltaPct = delta(latestNetMargin, priorNetMargin),
+            debtToEbitda = if (totalDebt != null && ebitda != null && ebitda > 0.0) totalDebt / ebitda else null,
+            interestCoverage = if (latestEbit != null && interestExpense != null && interestExpense > 0.0) latestEbit / interestExpense else null,
+            freeCashFlow = freeCashFlow,
+            sectorPriceToSalesMedian = null,
+            earningsDateUtc = earningsDateUtc,
+            earningsSessions = null,
+            dataAgeDays = dataAgeDays,
+            sector = profile.optString("sector").takeIf { it.isNotBlank() }
         )
     }
 
@@ -205,14 +287,46 @@ class YahooFinanceClient(
         )
     }
 
-    private fun rawDouble(parent: JSONObject, key: String): Double? {
-        val value = parent.optJSONObject(key) ?: return null
-        return if (value.has("raw") && !value.isNull("raw")) value.optDouble("raw").takeIf { it.isFinite() } else null
+    private fun statements(result: JSONObject, module: String, key: String): List<JSONObject> {
+        val array = result.optJSONObject(module)?.optJSONArray(key) ?: return emptyList()
+        return (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+            .sortedByDescending { rawLong(it, "endDate") ?: 0L }
     }
 
+    private fun margin(statement: JSONObject?, numeratorKey: String, revenue: Double?): Double? {
+        val numerator = statement?.let { rawNumber(it, numeratorKey) }
+        return if (numerator != null && revenue != null && revenue != 0.0) numerator / revenue * 100.0 else null
+    }
+
+    private fun pctChange(latest: Double?, prior: Double?): Double? =
+        if (latest != null && prior != null && abs(prior) > 0.000001) (latest / abs(prior) - 1.0) * 100.0 else null
+
+    private fun delta(latest: Double?, prior: Double?): Double? =
+        if (latest != null && prior != null) latest - prior else null
+
+    private fun trend(latest: Double?, prior: Double?, yoy: Double?): String? = when {
+        latest == null || prior == null -> null
+        latest > prior && (yoy == null || yoy >= 0.0) -> "IMPROVING"
+        latest < prior && (yoy == null || yoy < 0.0) -> "DETERIORATING"
+        else -> "MIXED"
+    }
+
+    private fun rawNumber(parent: JSONObject, key: String): Double? {
+        val wrapped = parent.optJSONObject(key)
+        if (wrapped != null && wrapped.has("raw") && !wrapped.isNull("raw")) {
+            return wrapped.optDouble("raw").takeIf { it.isFinite() }
+        }
+        return if (parent.has(key) && !parent.isNull(key)) parent.optDouble(key).takeIf { it.isFinite() } else null
+    }
+
+    private fun rawDouble(parent: JSONObject, key: String): Double? = rawNumber(parent, key)
+
     private fun rawLong(parent: JSONObject, key: String): Long? {
-        val value = parent.optJSONObject(key) ?: return null
-        return if (value.has("raw") && !value.isNull("raw")) value.optLong("raw").takeIf { it > 0L } else null
+        val wrapped = parent.optJSONObject(key)
+        if (wrapped != null && wrapped.has("raw") && !wrapped.isNull("raw")) {
+            return wrapped.optLong("raw").takeIf { it > 0L }
+        }
+        return if (parent.has(key) && !parent.isNull(key)) parent.optLong(key).takeIf { it > 0L } else null
     }
 
     private fun yahooTicker(ticker: String): String {
