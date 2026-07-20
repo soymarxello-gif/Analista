@@ -4,8 +4,6 @@ import com.analista.mobile.domain.FundamentalAssessmentEngine
 import com.analista.mobile.domain.LiveUniverseSnapshotAssembler
 
 class RunDatasetCaptureService(private val store: RunDatasetStore) {
-    const val placeholder: Int get() = 0
-
     suspend fun capture(
         runId: String,
         effectiveDate: String,
