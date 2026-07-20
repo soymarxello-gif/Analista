@@ -41,6 +41,7 @@ class YahooFinanceClient(
                         cache.writeText(body)
                         val source = "Yahoo/$host"
                         HistorySourceRegistry.record(safeTicker, source)
+                        MarketHistoryRegistry.record(safeTicker, bars)
                         return@withContext FetchResult(bars, source, false, retries)
                     }
                 } catch (error: Throwable) {
@@ -55,7 +56,9 @@ class YahooFinanceClient(
         if (cache.exists() && System.currentTimeMillis() - cache.lastModified() <= CACHE_MAX_AGE_MS) {
             val source = "Yahoo/cache"
             HistorySourceRegistry.record(safeTicker, source)
-            return@withContext FetchResult(parseChart(cache.readText(), safeTicker), source, true, retries)
+            val bars = parseChart(cache.readText(), safeTicker)
+            MarketHistoryRegistry.record(safeTicker, bars)
+            return@withContext FetchResult(bars, source, true, retries)
         }
         throw IOException(lastError?.message ?: "No data for $safeTicker", lastError)
     }
@@ -209,7 +212,7 @@ class YahooFinanceClient(
 
     private fun rawLong(parent: JSONObject, key: String): Long? {
         val value = parent.optJSONObject(key) ?: return null
-        return if (value.has("raw") && !value.isNull("raw")) value.optLong("raw").takeIf { it > 0 } else null
+        return if (value.has("raw") && !value.isNull("raw")) value.optLong("raw").takeIf { it > 0L } else null
     }
 
     private fun JSONObject.optNullableDouble(key: String): Double? =
