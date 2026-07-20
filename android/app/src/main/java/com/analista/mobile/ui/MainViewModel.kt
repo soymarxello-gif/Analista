@@ -10,9 +10,12 @@ import com.analista.mobile.data.CandidateAnalysisEntity
 import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CandidateTradePlanEntity
+import com.analista.mobile.data.FinalDecisionEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.RankingComparisonEntity
+import com.analista.mobile.data.ReplayResultEntity
 import com.analista.mobile.data.ReproducibilityManifestEntity
+import com.analista.mobile.data.RunDatasetArtifactEntity
 import com.analista.mobile.data.RunDefinitionEntity
 import com.analista.mobile.data.ScanRepository
 import com.analista.mobile.data.ScanRunEntity
@@ -47,8 +50,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val analysis: StateFlow<List<CandidateAnalysisEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeAnalysis(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val finalDecisions: StateFlow<List<FinalDecisionEntity>> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeFinalDecisions(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val tradePlans: StateFlow<List<CandidateTradePlanEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeTradePlans(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val datasetArtifacts: StateFlow<List<RunDatasetArtifactEntity>> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeRunDatasetArtifacts(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val reproducibilityManifests: StateFlow<List<ReproducibilityManifestEntity>> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeReproducibilityManifests(id) }
@@ -59,6 +68,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val rankingComparison: StateFlow<RankingComparisonEntity?> = selectedRunId
         .flatMapLatest { id -> if (id == null) flowOf(null) else dao.observeRankingComparison(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val replayResult: StateFlow<ReplayResultEntity?> = selectedRunId
+        .flatMapLatest { id -> if (id == null) flowOf(null) else app.replayService.observe(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val replayDiagnostics: StateFlow<ReplayDiagnosticsPresenter.Model> = replayResult
+        .map(ReplayDiagnosticsPresenter::present)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            ReplayDiagnosticsPresenter.present(null)
+        )
     val rankingDiagnostics: StateFlow<RankingDiagnosticsPresenter.Model> = rankingComparison
         .map(RankingDiagnosticsPresenter::present)
         .stateIn(
@@ -67,7 +86,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             RankingDiagnosticsPresenter.present(null)
         )
     val reproducibilitySummary: StateFlow<ReproducibilityDiagnosticsEngine.Summary> =
-        combine(reproducibilityManifests, rankingDiagnostics, runDefinition) { manifests, ranking, definition ->
+        combine(
+            reproducibilityManifests,
+            rankingDiagnostics,
+            runDefinition,
+            replayDiagnostics
+        ) { manifests, ranking, definition, replay ->
             val base = ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, manifests)
             val definitionLabels = if (definition == null) {
                 setOf("Definición: NO_DATA")
@@ -79,15 +103,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
             base.copy(
-                providers = base.providers + ranking.compactLabel + definitionLabels,
-                status = "${base.status} · ${ranking.status} · ${if (definition == null) "NO_DEFINITION" else "DEFINED"}"
+                providers = base.providers + ranking.compactLabel + definitionLabels + "Replay ${replay.status}",
+                status = "${base.status} · ${ranking.status} · ${if (definition == null) "NO_DEFINITION" else "DEFINED"} · REPLAY_${replay.status}"
             )
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, emptyList()).copy(
-                providers = setOf(RankingDiagnosticsPresenter.present(null).compactLabel, "Definición: NO_DATA"),
-                status = "INCOMPLETE · NO_DATA · NO_DEFINITION"
+                providers = setOf(
+                    RankingDiagnosticsPresenter.present(null).compactLabel,
+                    "Definición: NO_DATA",
+                    "Replay NO_DATA"
+                ),
+                status = "INCOMPLETE · NO_DATA · NO_DEFINITION · REPLAY_NO_DATA"
             )
         )
     val outcomes: StateFlow<List<BacktestOutcomeEntity>> = repository.observeOutcomes()
@@ -95,6 +123,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val tradeOutcomes: StateFlow<List<TradeOutcomeEntity>> = repository.observeTradeOutcomes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val running = MutableStateFlow(false)
+    val replayRunning = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)
     val alpacaConfigured = MutableStateFlow(repository.alpacaCredentials() != null)
     val alpacaFeed = MutableStateFlow(repository.alpacaCredentials()?.feed ?: "iex")
@@ -117,9 +146,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             running.value = true
             error.value = null
             runCatching { repository.runScan() }
-                .onSuccess { selectedRunId.value = it.runId }
-                .onFailure { error.value = it.message ?: "Error desconocido" }
+                .onSuccess { run ->
+                    selectedRunId.value = run.runId
+                    replayRunning.value = true
+                    app.replayService.replay(run.runId)
+                    replayRunning.value = false
+                }
+                .onFailure {
+                    replayRunning.value = false
+                    error.value = it.message ?: "Error desconocido"
+                }
             running.value = false
+        }
+    }
+
+    fun replaySelected() {
+        val runId = selectedRunId.value ?: return
+        if (replayRunning.value) return
+        viewModelScope.launch {
+            replayRunning.value = true
+            error.value = null
+            runCatching { app.replayService.replay(runId) }
+                .onFailure { error.value = it.message ?: "Error de replay" }
+            replayRunning.value = false
         }
     }
 
