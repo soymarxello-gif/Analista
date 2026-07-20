@@ -7,7 +7,7 @@ import org.junit.Test
 
 class ScanReproducibilityPolicyTest {
     @Test
-    fun `normaliza configuración y procedencia yahoo`() {
+    fun `normaliza configuración procedencia y calendario`() {
         val result = ScanReproducibilityPolicy.resolve(
             ScanReproducibilityPolicy.RuntimeInput(
                 dataQualityStatus = " high ",
@@ -19,6 +19,7 @@ class ScanReproducibilityPolicyTest {
 
         assertEquals("1.0000", result.configuration["riskPct"])
         assertEquals("2.0000", result.configuration["minRiskReward"])
+        assertEquals(NyseSessionCalendar.VERSION, result.configuration["calendarVersion"])
         assertEquals("HIGH", result.source.providerStatus)
         assertEquals("YAHOO", result.source.provider)
         assertFalse(result.source.fallbackUsed)
