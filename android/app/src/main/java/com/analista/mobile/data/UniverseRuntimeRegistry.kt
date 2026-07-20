@@ -4,6 +4,7 @@ import com.analista.mobile.domain.UniverseSelectionEngine
 import java.util.concurrent.ConcurrentHashMap
 
 object UniverseObservationRegistry {
+    const val VERSION = "universe-observation-registry-1"
     private val observations = ConcurrentHashMap<String, UniverseSelectionEngine.Input>()
 
     fun record(input: UniverseSelectionEngine.Input) {
@@ -34,6 +35,7 @@ object UniverseObservationRegistry {
 }
 
 object RunUniverseRegistry {
+    const val VERSION = "run-universe-registry-1"
     private val universes = ConcurrentHashMap<String, List<String>>()
 
     fun record(runId: String, universe: List<String>) {
