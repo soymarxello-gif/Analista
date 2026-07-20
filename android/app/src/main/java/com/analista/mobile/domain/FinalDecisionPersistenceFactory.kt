@@ -119,8 +119,11 @@ object FinalDecisionPersistenceFactory {
                 stopPrice = plan.structuralStop,
                 targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
-                engineVersion = "$engineVersion+$decisionBundle+${QuoteFreshnessEngine.VERSION}",
-                createdAtUtc = calculatedAtUtc
+                engineVersion = "$engineVersion+$decisionBundle+${QuoteFreshnessEngine.VERSION}+${BacktestEngine.VERSION}",
+                createdAtUtc = calculatedAtUtc,
+                shares = plan.shares,
+                positionValue = plan.positionValue,
+                riskBudget = plan.riskBudget
             )
         } else null
 
