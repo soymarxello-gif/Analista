@@ -1,7 +1,7 @@
 package com.analista.mobile.domain
 
 object FinalDecisionEngine {
-    const val VERSION = "final-decision-2"
+    const val VERSION = "final-decision-3"
 
     data class Thresholds(
         val minimumReadyScore: Double = 65.0,
@@ -22,6 +22,7 @@ object FinalDecisionEngine {
         val liveTriggerConfirmed: Boolean,
         val actionability: String,
         val executionQuoteQuality: String,
+        val executionFreshness: String = "UNKNOWN",
         val dataQualityAllowsExecution: Boolean,
         val failedBreakout: Boolean,
         val hardVetoReasons: List<String> = emptyList(),
@@ -42,6 +43,7 @@ object FinalDecisionEngine {
     fun decide(input: Input, thresholds: Thresholds = Thresholds()): Decision {
         require(input.preliminarySignal in TradingPolicy.allowedSignals)
         require(input.finalTradeScore in 0.0..100.0)
+        require(input.executionFreshness in setOf("FRESH", "DELAYED_ACCEPTABLE", "STALE", "UNKNOWN"))
         require(thresholds.minimumReadyScore in 0.0..100.0)
         require(thresholds.minimumConfirmedScore in thresholds.minimumReadyScore..100.0)
 
@@ -77,12 +79,20 @@ object FinalDecisionEngine {
                 penalties += "execution_quote_unconfirmed"
                 "WATCHLIST"
             }
+            input.executionFreshness in setOf("STALE", "UNKNOWN") -> {
+                penalties += if (input.executionFreshness == "STALE") "quote_stale" else "quote_freshness_unknown"
+                "WATCHLIST"
+            }
             input.institutionalConflict == "HIGH" -> {
                 penalties += "institutional_conflict_high"
                 "WATCHLIST"
             }
             input.finalTradeScore < thresholds.minimumReadyScore -> {
                 penalties += "final_trade_score_below_ready_threshold"
+                "WATCHLIST"
+            }
+            input.liveTriggerConfirmed && input.executionFreshness != "FRESH" -> {
+                penalties += "quote_not_fresh_for_confirmation"
                 "WATCHLIST"
             }
             input.liveTriggerConfirmed && input.actionability == "ACTIONABLE_REVIEW" &&
@@ -95,10 +105,16 @@ object FinalDecisionEngine {
         }
 
         val confidence = confidence(input)
+        val eligibleFreshness = when (finalSignal) {
+            "TRIGGER_CONFIRMED" -> input.executionFreshness == "FRESH"
+            "READY_WAIT_TRIGGER" -> input.executionFreshness in setOf("FRESH", "DELAYED_ACCEPTABLE")
+            else -> false
+        }
         val eligible = finalSignal in setOf("READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED") &&
             input.riskPlanValid &&
             input.dataQualityAllowsExecution &&
             input.executionQuoteQuality != "LOW" &&
+            eligibleFreshness &&
             !input.failedBreakout &&
             input.institutionalConflict != "HIGH" &&
             vetoReasons.isEmpty()
@@ -107,6 +123,7 @@ object FinalDecisionEngine {
         if (finalSignal == "TRIGGER_CONFIRMED") {
             require(input.liveTriggerConfirmed)
             require(input.actionability == "ACTIONABLE_REVIEW")
+            require(input.executionFreshness == "FRESH")
             require(input.finalTradeScore >= thresholds.minimumConfirmedScore)
         }
         if (finalSignal == "READY_WAIT_TRIGGER") require(!input.liveTriggerConfirmed)
@@ -130,7 +147,9 @@ object FinalDecisionEngine {
         ).map { it.trim().uppercase() }
         return when {
             !input.dataQualityAllowsExecution || input.executionQuoteQuality == "LOW" -> "LOW"
+            input.executionFreshness in setOf("STALE", "UNKNOWN") -> "LOW"
             coverage.any { it in setOf("UNKNOWN", "EMPTY", "ERROR", "UNAVAILABLE", "STALE") } -> "LOW"
+            input.executionFreshness == "DELAYED_ACCEPTABLE" -> "MEDIUM"
             coverage.any { it in setOf("PARTIAL", "AVAILABLE_PARTIAL", "MEDIUM") } -> "MEDIUM"
             else -> "HIGH"
         }

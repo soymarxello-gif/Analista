@@ -20,6 +20,7 @@ class FinalDecisionEngineTest {
         liveTriggerConfirmed: Boolean = false,
         actionability: String = "WAIT_TRIGGER",
         executionQuoteQuality: String = "HIGH",
+        executionFreshness: String = "FRESH",
         dataQualityAllowsExecution: Boolean = true,
         failedBreakout: Boolean = false,
         hardVetoReasons: List<String> = emptyList()
@@ -37,6 +38,7 @@ class FinalDecisionEngineTest {
         liveTriggerConfirmed = liveTriggerConfirmed,
         actionability = actionability,
         executionQuoteQuality = executionQuoteQuality,
+        executionFreshness = executionFreshness,
         dataQualityAllowsExecution = dataQualityAllowsExecution,
         failedBreakout = failedBreakout,
         hardVetoReasons = hardVetoReasons
@@ -93,7 +95,7 @@ class FinalDecisionEngineTest {
     }
 
     @Test
-    fun confirmedSignalRequiresLiveTriggerAndActionableExecution() {
+    fun confirmedSignalRequiresFreshLiveTriggerAndActionableExecution() {
         val result = FinalDecisionEngine.decide(
             input(
                 preliminarySignal = "TRIGGER_CONFIRMED",
@@ -104,6 +106,35 @@ class FinalDecisionEngineTest {
         )
         assertEquals("TRIGGER_CONFIRMED", result.finalSignal)
         assertTrue(result.eligibleForContract)
+    }
+
+    @Test
+    fun delayedQuoteCanWaitButCannotConfirm() {
+        val waiting = FinalDecisionEngine.decide(input(executionFreshness = "DELAYED_ACCEPTABLE"))
+        assertEquals("READY_WAIT_TRIGGER", waiting.finalSignal)
+        assertTrue(waiting.eligibleForContract)
+        assertEquals("MEDIUM", waiting.confidence)
+
+        val triggered = FinalDecisionEngine.decide(
+            input(
+                preliminarySignal = "TRIGGER_CONFIRMED",
+                liveTriggerConfirmed = true,
+                actionability = "ACTIONABLE_REVIEW",
+                executionFreshness = "DELAYED_ACCEPTABLE"
+            )
+        )
+        assertEquals("WATCHLIST", triggered.finalSignal)
+        assertFalse(triggered.eligibleForContract)
+    }
+
+    @Test
+    fun staleOrUnknownQuoteBlocksEveryContract() {
+        listOf("STALE", "UNKNOWN").forEach { freshness ->
+            val result = FinalDecisionEngine.decide(input(executionFreshness = freshness))
+            assertEquals("WATCHLIST", result.finalSignal)
+            assertFalse(result.eligibleForContract)
+            assertEquals("LOW", result.confidence)
+        }
     }
 
     @Test

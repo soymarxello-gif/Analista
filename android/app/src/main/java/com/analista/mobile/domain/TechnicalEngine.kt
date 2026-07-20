@@ -52,6 +52,8 @@ object TechnicalEngine {
         if (relativeVolume >= 1.2) { score += 15; reasons += "volume_confirmation" }
 
         val quote = TradingPolicy.assessQuote(context.quote, close)
+        val freshness = QuoteFreshnessEngine.assess(context.quote, context.analysisTimestampUtc)
+        penalties += freshness.reasons
         val bid = context.quote?.bid
         val ask = context.quote?.ask
         val livePremarket = context.quote?.preMarketPrice
@@ -63,7 +65,8 @@ object TechnicalEngine {
         val plannedTrigger = prior20High + max(0.25 * atr, prior20High * 0.005)
         val maximumEntry = plannedTrigger + 0.50 * atr
         val priorSessionBreakout = close > prior20High && relativeVolume >= 1.2
-        val liveTriggerConfirmed = executionPrice?.let { it >= plannedTrigger && it <= maximumEntry } ?: false
+        val livePriceInTriggerWindow = executionPrice?.let { it >= plannedTrigger && it <= maximumEntry } ?: false
+        val liveTriggerConfirmed = livePriceInTriggerWindow && freshness.permitsConfirmation
         val breakoutHolding = priorSessionBreakout && executionPrice?.let { it >= plannedTrigger } == true
         val failedBreakout = priorSessionBreakout && executionPrice?.let { it < prior20High } == true
         val triggerDistancePct = executionPrice?.let { (it / plannedTrigger - 1.0) * 100.0 }
@@ -79,6 +82,9 @@ object TechnicalEngine {
             !context.executionDataAllowed -> "STALE_OR_ILLIQUID_DATA"
             quote.quality == "LOW" -> "QUOTE_UNCONFIRMED"
             executionPrice == null -> "QUOTE_MISSING"
+            freshness.status == "STALE" -> "QUOTE_STALE"
+            freshness.status == "UNKNOWN" -> "QUOTE_FRESHNESS_UNKNOWN"
+            freshness.status == "DELAYED_ACCEPTABLE" && livePriceInTriggerWindow -> "QUOTE_DELAYED"
             gapAtr != null && gapAtr > 1.5 -> "GAP_EXCESSIVE"
             executionPrice > maximumEntry -> "ABOVE_MAX_ENTRY"
             failedBreakout -> "FAILED_BREAKOUT"
@@ -91,6 +97,9 @@ object TechnicalEngine {
         if (actionability == "FAILED_BREAKOUT") penalties += "failed_breakout"
         if (actionability == "DATA_UNUSABLE") penalties += "execution_data_unusable"
         if (actionability == "STALE_OR_ILLIQUID_DATA") penalties += "execution_data_unconfirmed"
+        if (actionability == "QUOTE_STALE") penalties += "quote_stale_blocks_execution"
+        if (actionability == "QUOTE_FRESHNESS_UNKNOWN") penalties += "quote_freshness_unknown"
+        if (actionability == "QUOTE_DELAYED") penalties += "quote_delayed_blocks_confirmation"
 
         val overextended = rsi > 75 || close > sma20 + 2.5 * atr
         if (overextended) reasons += "overextended"
@@ -115,6 +124,10 @@ object TechnicalEngine {
         if (!context.executionDataAllowed && signal in setOf("TRIGGER_CONFIRMED", "READY_WAIT_TRIGGER")) {
             signal = "WATCHLIST"
             penalties += "data_quality_blocks_execution"
+        }
+        if (!freshness.permitsWaitingContract && signal in setOf("TRIGGER_CONFIRMED", "READY_WAIT_TRIGGER")) {
+            signal = "WATCHLIST"
+            penalties += "quote_freshness_blocks_contract"
         }
         if (signal == "TRIGGER_CONFIRMED" && actionability != "ACTIONABLE_REVIEW") {
             signal = "WATCHLIST"
@@ -158,7 +171,12 @@ object TechnicalEngine {
             breakoutHolding = breakoutHolding,
             failedBreakout = failedBreakout,
             executionPrice = executionPrice?.let(::round2),
-            triggerDistancePct = triggerDistancePct?.let(::round2)
+            triggerDistancePct = triggerDistancePct?.let(::round2),
+            quoteFreshnessStatus = freshness.status,
+            quoteAgeSeconds = freshness.ageSeconds,
+            quoteProviderTimestampUtc = context.quote?.providerTimestampUtc,
+            quoteRetrievedAtUtc = context.quote?.retrievedAtUtc,
+            marketSession = freshness.marketSession
         )
     }
 

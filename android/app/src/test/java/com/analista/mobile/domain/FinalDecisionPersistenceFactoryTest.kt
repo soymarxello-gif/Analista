@@ -13,6 +13,7 @@ class FinalDecisionPersistenceFactoryTest {
         signal: String = "READY_WAIT_TRIGGER",
         liveTrigger: Boolean = false,
         quoteQuality: String = "HIGH",
+        freshness: String = "FRESH",
         failedBreakout: Boolean = false,
         actionability: String = "WAIT_TRIGGER"
     ) = ScanCandidate(
@@ -26,7 +27,8 @@ class FinalDecisionPersistenceFactoryTest {
         actionabilityAtExecution = actionability,
         priorSessionBreakout = true, liveTriggerConfirmed = liveTrigger,
         breakoutHolding = liveTrigger, failedBreakout = failedBreakout,
-        executionPrice = if (liveTrigger) 101.5 else 100.5
+        executionPrice = if (liveTrigger) 101.5 else 100.5,
+        quoteFreshnessStatus = freshness
     )
 
     private fun analysis(score: Double = 80.0) = CandidateAnalysisEntity(
@@ -84,8 +86,17 @@ class FinalDecisionPersistenceFactoryTest {
         val result = create()
         assertEquals("READY_WAIT_TRIGGER", result.decision.finalSignal)
         assertTrue(result.decision.eligibleForContract)
+        assertEquals("FRESH", result.decision.executionFreshness)
         assertEquals("READY_WAIT_TRIGGER", result.contract?.signal)
         assertEquals(101.0, result.contract?.triggerPrice ?: 0.0, 0.0)
+    }
+
+    @Test
+    fun staleDecisionIsPersistedButNeverCreatesContract() {
+        val result = create(candidate = candidate(freshness = "STALE"))
+        assertEquals("STALE", result.decision.executionFreshness)
+        assertEquals("WATCHLIST", result.decision.finalSignal)
+        assertNull(result.contract)
     }
 
     @Test
@@ -104,7 +115,7 @@ class FinalDecisionPersistenceFactoryTest {
     }
 
     @Test
-    fun liveTriggerCanCreateConfirmedContractOnlyWhenActionable() {
+    fun liveTriggerCanCreateConfirmedContractOnlyWhenFreshAndActionable() {
         val result = create(candidate = candidate(
             signal = "TRIGGER_CONFIRMED", liveTrigger = true,
             actionability = "ACTIONABLE_REVIEW"

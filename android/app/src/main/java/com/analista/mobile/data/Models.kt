@@ -145,7 +145,10 @@ data class MarketQuote(
     val marketCap: Long?,
     val quoteType: String?,
     val marketState: String? = null,
-    val capturedAtUtc: Long = System.currentTimeMillis()
+    val capturedAtUtc: Long = System.currentTimeMillis(),
+    val providerTimestampUtc: Long? = capturedAtUtc,
+    val retrievedAtUtc: Long = System.currentTimeMillis(),
+    val provider: String = "UNKNOWN"
 )
 
 data class TradeContext(
@@ -158,7 +161,8 @@ data class TradeContext(
     val dataQualityReasons: List<String> = emptyList(),
     val averageDollarVolume20: Double? = null,
     val sessionsOld: Int = 0,
-    val executionDataAllowed: Boolean = true
+    val executionDataAllowed: Boolean = true,
+    val analysisTimestampUtc: Long = System.currentTimeMillis()
 )
 
 data class ScanCandidate(
@@ -206,7 +210,12 @@ data class ScanCandidate(
     val breakoutHolding: Boolean = false,
     val failedBreakout: Boolean = false,
     val executionPrice: Double? = null,
-    val triggerDistancePct: Double? = null
+    val triggerDistancePct: Double? = null,
+    val quoteFreshnessStatus: String = "UNKNOWN",
+    val quoteAgeSeconds: Long? = null,
+    val quoteProviderTimestampUtc: Long? = null,
+    val quoteRetrievedAtUtc: Long? = null,
+    val marketSession: String = "UNKNOWN"
 )
 
 data class FundamentalMetrics(

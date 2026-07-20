@@ -50,6 +50,7 @@ object FinalDecisionPersistenceFactory {
                 liveTriggerConfirmed = candidate.liveTriggerConfirmed,
                 actionability = candidate.actionabilityAtExecution,
                 executionQuoteQuality = candidate.executionQuoteQuality,
+                executionFreshness = candidate.quoteFreshnessStatus,
                 dataQualityAllowsExecution = dataQualityAllowsExecution,
                 failedBreakout = candidate.failedBreakout,
                 hardVetoReasons = candidate.allVetoReasons,
@@ -71,7 +72,7 @@ object FinalDecisionPersistenceFactory {
             macroRegime = overlay.macroRegime,
             fundamentalCoverage = overlay.fundamentalCoverage,
             institutionalCoverage = overlay.optionsCoverage,
-            executionFreshness = "UNASSESSED",
+            executionFreshness = candidate.quoteFreshnessStatus,
             decisionVersion = evaluated.decisionVersion,
             calculatedAtUtc = calculatedAtUtc
         )
@@ -89,7 +90,7 @@ object FinalDecisionPersistenceFactory {
                 stopPrice = plan.structuralStop,
                 targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
-                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}",
+                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}",
                 createdAtUtc = calculatedAtUtc
             )
         } else null
