@@ -1,7 +1,9 @@
 package com.analista.mobile.domain
 
+import com.analista.mobile.data.YahooOptionChainParser
+
 object ScanReproducibilityPolicy {
-    const val VERSION = "scan-repro-policy-4"
+    const val VERSION = "scan-repro-policy-5"
     const val HISTORY_PROVIDER = "YAHOO"
     const val HISTORY_HOST = "query1.finance.yahoo.com"
 
@@ -34,6 +36,7 @@ object ScanReproducibilityPolicy {
             "aggressiveStopPolicyVersion" to AggressiveStopPolicy.VERSION,
             "macroRegimeVersion" to MacroRegimeEngine.VERSION,
             "fundamentalAssessmentVersion" to FundamentalAssessmentEngine.VERSION,
+            "optionChainParserVersion" to YahooOptionChainParser.VERSION,
             "riskPct" to canonical(input.riskPct),
             "maxPositionPct" to canonical(input.maxPositionPct),
             "minRiskReward" to canonical(input.minRiskReward),
