@@ -42,6 +42,7 @@ import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CandidateTradePlanEntity
+import com.analista.mobile.data.FinalDecisionEntity
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanRunEntity
 import com.analista.mobile.data.TradeOutcomeEntity
@@ -68,6 +69,7 @@ class MainActivity : ComponentActivity() {
         val candidates by vm.candidates.collectAsState()
         val macro by vm.macro.collectAsState()
         val enrichment by vm.enrichment.collectAsState()
+        val finalDecisions by vm.finalDecisions.collectAsState()
         val tradePlans by vm.tradePlans.collectAsState()
         val outcomes by vm.outcomes.collectAsState()
         val tradeOutcomes by vm.tradeOutcomes.collectAsState()
@@ -95,7 +97,18 @@ class MainActivity : ComponentActivity() {
             }
         ) { padding ->
             when (tab) {
-                0 -> SummaryScreen(runs, candidates, enrichment, tradePlans, macro, running, error, vm::runNow, Modifier.padding(padding))
+                0 -> SummaryScreen(
+                    runs = runs,
+                    candidates = candidates,
+                    enrichment = enrichment,
+                    finalDecisions = finalDecisions,
+                    tradePlans = tradePlans,
+                    macro = macro,
+                    running = running,
+                    error = error,
+                    runNow = vm::runNow,
+                    modifier = Modifier.padding(padding)
+                )
                 1 -> HistoryScreen(runs, vm::selectRun, Modifier.padding(padding))
                 2 -> BacktestScreen(tradeOutcomes, outcomes, Modifier.padding(padding))
                 else -> DiagnosticsScreen(vm, Modifier.padding(padding))
@@ -108,6 +121,7 @@ class MainActivity : ComponentActivity() {
         runs: List<ScanRunEntity>,
         candidates: List<CandidateEntity>,
         enrichment: List<CandidateEnrichmentEntity>,
+        finalDecisions: List<FinalDecisionEntity>,
         tradePlans: List<CandidateTradePlanEntity>,
         macro: List<MarketSnapshotEntity>,
         running: Boolean,
@@ -122,7 +136,9 @@ class MainActivity : ComponentActivity() {
                         Text("Ejecución local autónoma", fontWeight = FontWeight.Bold)
                         Text("NYSE · 09:20 America/New_York · Alpaca/Yahoo")
                         Text("Próxima ejecución: ${formatTime(ScanScheduler.nextTrigger(this@MainActivity))}")
-                        Button(onClick = runNow, enabled = !running) { Text(if (running) "Ejecutando…" else "Ejecutar ahora") }
+                        Button(onClick = runNow, enabled = !running) {
+                            Text(if (running) "Ejecutando y verificando…" else "Ejecutar ahora")
+                        }
                         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     }
                 }
@@ -135,9 +151,15 @@ class MainActivity : ComponentActivity() {
             item { Text("Candidatos", style = MaterialTheme.typography.titleLarge) }
             if (candidates.isEmpty()) item { Text("Aún no hay resultados para esta ejecución.") }
             val enrichmentByTicker = enrichment.associateBy { it.ticker }
+            val decisionByTicker = finalDecisions.associateBy { it.ticker }
             val planByTicker = tradePlans.associateBy { it.ticker }
             items(candidates, key = { it.id }) { candidate ->
-                CandidateCard(candidate, enrichmentByTicker[candidate.ticker], planByTicker[candidate.ticker])
+                CandidateCard(
+                    candidate = candidate,
+                    enrichment = enrichmentByTicker[candidate.ticker],
+                    plan = planByTicker[candidate.ticker],
+                    decision = decisionByTicker[candidate.ticker]
+                )
             }
         }
     }
@@ -159,11 +181,14 @@ class MainActivity : ComponentActivity() {
         modifier: Modifier
     ) {
         val triggered = tradeOutcomes.count { it.triggered }
-        val targets = tradeOutcomes.count { it.firstExitEvent == "TARGET" }
-        val stops = tradeOutcomes.count { it.firstExitEvent == "STOP" }
+        val targets = tradeOutcomes.count { it.exitReason in setOf("TARGET", "GAP_TARGET") }
+        val stops = tradeOutcomes.count { it.exitReason in setOf("STOP", "GAP_STOP") }
+        val expired = tradeOutcomes.count { it.exitReason == "EXPIRED" }
         val ambiguous = tradeOutcomes.count { it.ambiguousSameBar }
-        val closed = tradeOutcomes.filter { it.firstExitEvent in setOf("TARGET", "STOP") }
-        val hitRate = if (closed.isEmpty()) 0.0 else targets * 100.0 / closed.size
+        val closed = tradeOutcomes.filter { it.tradeReturnR != null }
+        val hitRate = if (closed.isEmpty()) 0.0 else closed.count { (it.tradeReturnR ?: 0.0) > 0.0 } * 100.0 / closed.size
+        val expectancy = closed.mapNotNull { it.tradeReturnR }.average().takeIf { !it.isNaN() } ?: 0.0
+        val netPnl = closed.mapNotNull { it.netPnl }.sum()
         val avgMfe = tradeOutcomes.mapNotNull { it.mfePct }.average().takeIf { !it.isNaN() } ?: 0.0
         val avgMae = tradeOutcomes.mapNotNull { it.maePct }.average().takeIf { !it.isNaN() } ?: 0.0
         LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -172,11 +197,12 @@ class MainActivity : ComponentActivity() {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("Contratos evaluados: ${tradeOutcomes.size}")
-                        Text("Activados: $triggered · objetivos: $targets · stops: $stops")
-                        Text("Tasa objetivo sobre cierres: ${"%.1f".format(hitRate)}%")
+                        Text("Activados: $triggered · objetivos: $targets · stops: $stops · expirados: $expired")
+                        Text("Hit rate: ${"%.1f".format(hitRate)}% · expectancy ${"%.2f".format(expectancy)}R")
+                        Text("P&L neto registrado: $${"%.2f".format(netPnl)}")
                         Text("MFE medio: ${"%.2f".format(avgMfe)}% · MAE medio: ${"%.2f".format(avgMae)}%")
-                        if (ambiguous > 0) Text("Resultados ambiguos misma barra: $ambiguous")
-                        Text("Las señales se evalúan sólo con barras posteriores a la decisión.", style = MaterialTheme.typography.bodySmall)
+                        if (ambiguous > 0) Text("Resultados ambiguos sin secuencia intradía: $ambiguous")
+                        Text("Gaps, slippage y costes se aplican al fill; los markouts permanecen separados.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -185,14 +211,20 @@ class MainActivity : ComponentActivity() {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("${outcome.ticker} · ${outcome.status}", fontWeight = FontWeight.Bold)
-                        Text("Trigger: ${if (outcome.triggered) "sí" else "no"} · salida: ${outcome.firstExitEvent}")
-                        Text("Fill ${outcome.entryFill ?: "—"} · sesiones ${outcome.holdingSessions}")
+                        Text("Trigger: ${if (outcome.triggered) "sí" else "no"} · salida: ${outcome.exitReason}")
+                        Text("Entrada ${outcome.entryFill ?: "—"} · salida ${outcome.exitFill ?: "—"} · sesiones ${outcome.holdingSessions}")
+                        Text("Resultado ${fmt(outcome.tradeReturnPct)} · ${outcome.tradeReturnR?.let { "%.2fR".format(it) } ?: "—"}")
+                        if (outcome.netPnl != null) {
+                            Text("P&L bruto $${"%.2f".format(outcome.grossPnl)} · costes $${"%.2f".format(outcome.totalCosts)} · neto $${"%.2f".format(outcome.netPnl)}")
+                        }
                         Text("1D ${fmt(outcome.return1dPct)} · 5D ${fmt(outcome.return5dPct)} · 20D ${fmt(outcome.return20dPct)}")
-                        Text("MFE ${fmt(outcome.mfePct)} · MAE ${fmt(outcome.maePct)}", style = MaterialTheme.typography.bodySmall)
+                        Text("MFE ${fmt(outcome.mfePct)} · MAE ${fmt(outcome.maePct)} · ${outcome.costModelVersion}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
-            if (legacyOutcomes.isNotEmpty()) item { Text("Seguimiento legacy conservado: ${legacyOutcomes.size}", style = MaterialTheme.typography.bodySmall) }
+            if (legacyOutcomes.isNotEmpty()) item {
+                Text("Seguimiento legacy conservado: ${legacyOutcomes.size}", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 
@@ -204,6 +236,9 @@ class MainActivity : ComponentActivity() {
         val status by vm.alpacaStatus.collectAsState()
         val testing by vm.testingAlpaca.collectAsState()
         val reproducibility by vm.reproducibilitySummary.collectAsState()
+        val replay by vm.replayDiagnostics.collectAsState()
+        val replayRunning by vm.replayRunning.collectAsState()
+        val artifacts by vm.datasetArtifacts.collectAsState()
         var apiKey by remember { mutableStateOf("") }
         var secretKey by remember { mutableStateOf("") }
         LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -218,7 +253,9 @@ class MainActivity : ComponentActivity() {
                         Text("Último fin automático: ${formatTime(d.lastAutomaticFinishMillis)}")
                         Text("Estado automático: ${d.lastAutomaticStatus}")
                         if (!d.exactAlarmGranted) {
-                            Button(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) { Text("Habilitar alarma exacta") }
+                            Button(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) {
+                                Text("Habilitar alarma exacta")
+                            }
                         }
                     }
                 }
@@ -232,7 +269,21 @@ class MainActivity : ComponentActivity() {
                         Text("Configuraciones: ${reproducibility.uniqueConfigurationHashes} · universos: ${reproducibility.uniqueUniverseHashes}")
                         Text("Proveedores: ${reproducibility.providers.joinToString().ifBlank { "sin datos" }}")
                         Text("Fallbacks: ${reproducibility.fallbackCount} · cache: ${reproducibility.cacheHitCount} · inválidos: ${reproducibility.invalidManifestCount}")
-                        Text("COMPLETE exige cobertura total, hashes consistentes y cero manifiestos inválidos.", style = MaterialTheme.typography.bodySmall)
+                        Text("Artefactos normalizados: ${artifacts.size} · tipos ${artifacts.map { it.datasetType }.distinct().size}")
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("Replay determinista", fontWeight = FontWeight.Bold)
+                        Text("Estado: ${replay.status} · cobertura ${replay.coverageLabel}")
+                        Text("Coincidencias completas: ${replay.matchLabel} · discrepancias: ${replay.mismatchLabel} · faltantes: ${replay.missingLabel}")
+                        DiagnosticLine("Corrida reproducible", replay.trustworthy)
+                        replay.reasons.take(5).forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
+                        Button(onClick = vm::replaySelected, enabled = !replayRunning) {
+                            Text(if (replayRunning) "Reproduciendo…" else "Reproducir corrida seleccionada")
+                        }
                     }
                 }
             }
@@ -244,7 +295,14 @@ class MainActivity : ComponentActivity() {
                         Text("Las claves se cifran con Android Keystore y no se incluyen en reportes ni logs.", style = MaterialTheme.typography.bodySmall)
                         if (!configured) {
                             OutlinedTextField(apiKey, { apiKey = it }, label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(secretKey, { secretKey = it }, label = { Text("Secret Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(
+                                secretKey,
+                                { secretKey = it },
+                                label = { Text("Secret Key") },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                             Button(
                                 onClick = { vm.saveAndTestAlpaca(apiKey, secretKey, "iex") },
                                 enabled = !testing && apiKey.isNotBlank() && secretKey.isNotBlank()
@@ -299,23 +357,36 @@ class MainActivity : ComponentActivity() {
     private fun CandidateCard(
         candidate: CandidateEntity,
         enrichment: CandidateEnrichmentEntity?,
-        plan: CandidateTradePlanEntity?
+        plan: CandidateTradePlanEntity?,
+        decision: FinalDecisionEntity?
     ) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(candidate.ticker, fontWeight = FontWeight.Bold)
-                    Text("${signalLabel(candidate.signal)} · ${candidate.score}")
+                    Text("${signalLabel(decision?.finalSignal ?: candidate.signal)} · ${decision?.finalTradeScore ?: candidate.score}")
                 }
+                decision?.let {
+                    Text("Técnica: ${signalLabel(it.preliminarySignal)} · Final: ${signalLabel(it.finalSignal)}", fontWeight = FontWeight.Bold)
+                    Text("Contrato: ${if (it.eligibleForContract) "elegible para revisión manual" else "bloqueado"} · confianza ${it.confidence}")
+                    Text("Macro ${it.macroRegime} · Fundamental ${it.fundamentalCoverage} · Institucional ${it.institutionalCoverage}")
+                    Text("Frescura de ejecución: ${it.executionFreshness} · motor ${it.decisionVersion}", style = MaterialTheme.typography.bodySmall)
+                    it.vetoReasons.split(',').filter { reason -> reason.isNotBlank() }.take(3)
+                        .forEach { reason -> Text("Veto: ${reasonLabel(reason)}", style = MaterialTheme.typography.bodySmall) }
+                    it.penaltyReasons.split(',').filter { reason -> reason.isNotBlank() }.take(4)
+                        .forEach { reason -> Text("Penalización: ${reasonLabel(reason)}", style = MaterialTheme.typography.bodySmall) }
+                } ?: Text("Decisión final aún no disponible.", style = MaterialTheme.typography.bodySmall)
                 Text("Cierre ${candidate.close} · RSI ${candidate.rsi14} · RVOL ${candidate.relativeVolume}")
                 Text("SMA20 ${candidate.sma20} · SMA50 ${candidate.sma50} · ATR ${candidate.atr14}")
+                Text("Quote ${candidate.quoteStatus}/${candidate.executionQuoteQuality} · acción ${candidate.actionabilityAtExecution}")
+                Text("Trigger ${candidate.plannedTrigger ?: "—"} · máximo ${candidate.maximumEntry ?: "—"} · spread ${fmt(candidate.spreadPct)}")
                 plan?.let {
                     Text("Plan estructural ${if (it.riskPlanValid) "válido" else "no válido"}", fontWeight = FontWeight.Bold)
                     Text("Entrada ${it.plannedEntry} · Stop ${it.structuralStop} (${it.stopType}) · Objetivo ${it.structuralTarget}")
                     Text("R/R ${it.structuralRr} · Riesgo ${it.riskPct}% · Recompensa ${it.rewardPct}%")
                     Text("Sizing ${it.shares} acciones · Posición $${"%.2f".format(it.positionValue)} · Riesgo $${"%.2f".format(it.riskBudget)}")
                     Text("Estructura ${it.structureScore} · RS SPY ${it.relativeStrengthStatus} (${it.relativeStrengthScore})")
-                    Text("Ranking legacy #${it.legacyRank} · operativo #${it.tradeRank} · Δ ${rankDeltaLabel(it.rankDelta)}")
+                    Text("Ranking legacy #${it.legacyRank} · shadow #${it.tradeRank} · Δ ${rankDeltaLabel(it.rankDelta)}")
                     Text("Score operativo auditado ${it.auditedTradeScore}", style = MaterialTheme.typography.bodySmall)
                 } ?: Text("Plan operativo aún no disponible.", style = MaterialTheme.typography.bodySmall)
                 enrichment?.let {
@@ -333,21 +404,19 @@ class MainActivity : ComponentActivity() {
                         Text("Put/Call OI $value · Calls ${it.optionsNearCallOi ?: 0} · Puts ${it.optionsNearPutOi ?: 0}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                candidate.reason.split(",").filter { it.isNotBlank() }
+                candidate.reason.split(',').filter { it.isNotBlank() }.take(6)
                     .forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
             }
         }
     }
 
-    private fun rankDeltaLabel(delta: Int): String = when {
-        delta > 0 -> "+$delta"
-        else -> delta.toString()
-    }
+    private fun rankDeltaLabel(delta: Int): String = if (delta > 0) "+$delta" else delta.toString()
 
     private fun signalLabel(signal: String) = when (signal) {
-        "TRIGGER_CONFIRMED" -> "Entrada confirmada"
+        "TRIGGER_CONFIRMED" -> "Trigger confirmado"
         "READY_WAIT_TRIGGER" -> "Esperar activación"
         "WATCHLIST" -> "En observación"
+        "VETO" -> "Vetado"
         else -> "Evitar"
     }
 
@@ -358,8 +427,14 @@ class MainActivity : ComponentActivity() {
         "macd_bullish" to "MACD alcista",
         "stochastic_confirmed" to "Estocástico confirmado",
         "volume_confirmation" to "Volumen relativo confirmado",
-        "breakout_confirmed" to "Ruptura confirmada con volumen",
-        "overextended" to "Precio sobreextendido"
+        "live_trigger_confirmed" to "Trigger actual confirmado",
+        "failed_breakout" to "Ruptura fallida",
+        "overextended" to "Precio sobreextendido",
+        "institutional_conflict_high" to "Conflicto institucional alto",
+        "risk_plan_invalid" to "Plan de riesgo inválido",
+        "replay_mismatches_detected" to "El replay detectó discrepancias",
+        "missing_replay_datasets" to "Faltan datasets para reproducir",
+        "replay_not_executed" to "Replay aún no ejecutado"
     )[reason] ?: reason.replace("_", " ")
 
     private fun fmt(value: Double?): String = value?.let { "${"%.2f".format(it)}%" } ?: "—"
