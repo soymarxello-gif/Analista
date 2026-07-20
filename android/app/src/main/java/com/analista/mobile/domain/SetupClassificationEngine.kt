@@ -59,7 +59,7 @@ object SetupClassificationEngine {
 
         return when {
             failedBreakout -> assessment(
-                type = "FAILED_BREAKOUT", valid = false, score = 10.0,
+                type = "FAILED_BREAKOUT", valid = true, score = 10.0,
                 triggerType = "NONE", invalidationType = "LOST_PRIOR_RESISTANCE", trigger = null,
                 reasons = listOf("prior_breakout_lost", "execution_below_resistance")
             )
