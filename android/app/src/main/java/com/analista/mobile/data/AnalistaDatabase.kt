@@ -22,11 +22,13 @@ import androidx.room.RoomDatabase
         OptionAssessmentEntity::class,
         UniverseSnapshotEntity::class,
         UniverseMemberEntity::class,
-        RunDatasetArtifactEntity::class
+        RunDatasetArtifactEntity::class,
+        ReplayResultEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 abstract class AnalistaDatabase : RoomDatabase() {
     abstract fun dao(): AnalistaDao
+    abstract fun replayDao(): ReplayDao
 }
