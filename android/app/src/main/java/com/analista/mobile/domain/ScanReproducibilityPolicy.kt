@@ -1,13 +1,7 @@
 package com.analista.mobile.domain
 
-import com.analista.mobile.data.ProviderMatrixPolicy
-import com.analista.mobile.data.RunUniverseRegistry
-import com.analista.mobile.data.UniverseObservationRegistry
-import com.analista.mobile.data.YahooFinanceClient
-import com.analista.mobile.data.YahooOptionChainParser
-
 object ScanReproducibilityPolicy {
-    const val VERSION = "scan-repro-policy-13"
+    const val VERSION = "scan-repro-policy-14"
     const val HISTORY_PROVIDER = "YAHOO"
     const val HISTORY_HOST = "query1.finance.yahoo.com"
 
@@ -30,35 +24,19 @@ object ScanReproducibilityPolicy {
     fun resolve(input: RuntimeInput, retrievedAtUtc: Long): PolicyResult {
         require(input.retries >= 0) { "retries negativo" }
         require(retrievedAtUtc > 0L) { "retrievedAtUtc inválido" }
+        require(input.riskPct > 0.0)
+        require(input.maxPositionPct > 0.0)
+        require(input.minRiskReward > 0.0)
+        require(input.minStopAtr > 0.0)
+        require(input.targetSessions in 4..21)
         val normalizedStatus = input.dataQualityStatus.trim().uppercase().ifBlank { "UNKNOWN" }
-        val configuration = sortedMapOf(
-            "policyVersion" to VERSION,
-            "calendarVersion" to NyseSessionCalendar.VERSION,
-            "quoteFreshnessVersion" to QuoteFreshnessEngine.VERSION,
-            "setupClassifierVersion" to SetupClassificationEngine.VERSION,
-            "structureRiskVersion" to StructureRiskEngine.VERSION,
-            "aggressiveStopPolicyVersion" to AggressiveStopPolicy.VERSION,
-            "macroRegimeVersion" to MacroRegimeEngine.VERSION,
-            "fundamentalAssessmentVersion" to FundamentalAssessmentEngine.VERSION,
-            "optionChainParserVersion" to YahooOptionChainParser.VERSION,
-            "optionMetricsVersion" to OptionMetricsEngine.VERSION,
-            "institutionalContrarianVersion" to InstitutionalContrarianEngine.VERSION,
-            "optionAssessmentPersistenceVersion" to OptionAssessmentPersistenceFactory.VERSION,
-            "decisionOverlayVersion" to DecisionOverlayEngine.ENGINE_VERSION,
-            "providerMatrixVersion" to ProviderMatrixPolicy.VERSION,
-            "universeSelectionVersion" to UniverseSelectionEngine.VERSION,
-            "liveUniverseAssemblerVersion" to LiveUniverseSnapshotAssembler.VERSION,
-            "runUniverseRegistryVersion" to RunUniverseRegistry.VERSION,
-            "universeObservationRegistryVersion" to UniverseObservationRegistry.VERSION,
-            "universeMode" to UniverseSelectionEngine.MODE,
-            "minimumUniverseDollarVolume" to canonical(UniverseSelectionEngine.MIN_AVERAGE_DOLLAR_VOLUME),
-            "maximumUniverseSpreadPct" to canonical(UniverseSelectionEngine.MAX_SPREAD_PCT),
-            "optionExpiryLimit" to YahooFinanceClient.MAX_OPTION_EXPIRIES.toString(),
-            "riskPct" to canonical(input.riskPct),
-            "maxPositionPct" to canonical(input.maxPositionPct),
-            "minRiskReward" to canonical(input.minRiskReward),
-            "minStopAtr" to canonical(input.minStopAtr),
-            "targetSessions" to input.targetSessions.toString()
+        val configuration = CanonicalEngineConfiguration.create(
+            policyVersion = VERSION,
+            riskPct = input.riskPct,
+            maxPositionPct = input.maxPositionPct,
+            minRiskReward = input.minRiskReward,
+            minStopAtr = input.minStopAtr,
+            targetSessions = input.targetSessions
         )
         return PolicyResult(
             configuration = configuration,
@@ -72,6 +50,4 @@ object ScanReproducibilityPolicy {
             )
         )
     }
-
-    private fun canonical(value: Double): String = java.lang.String.format(java.util.Locale.US, "%.4f", value)
 }
