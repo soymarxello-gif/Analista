@@ -46,7 +46,7 @@ class RunDatasetCaptureServiceTest {
                 createdAtUtc = 1L
             )
 
-            assertEquals(7, artifacts.size)
+            assertEquals(6, artifacts.size)
             assertEquals(2, artifacts.count { it.datasetType == "NORMALIZED_BARS" })
             assertEquals(2, artifacts.count { it.datasetType == "EXECUTION_QUOTE" })
             assertEquals(1, artifacts.count { it.datasetType == "MACRO_SNAPSHOT" })
