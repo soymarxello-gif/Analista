@@ -4,7 +4,7 @@ import com.analista.mobile.data.YahooFinanceClient
 import com.analista.mobile.data.YahooOptionChainParser
 
 object ScanReproducibilityPolicy {
-    const val VERSION = "scan-repro-policy-9"
+    const val VERSION = "scan-repro-policy-10"
     const val HISTORY_PROVIDER = "YAHOO"
     const val HISTORY_HOST = "query1.finance.yahoo.com"
 
@@ -41,6 +41,7 @@ object ScanReproducibilityPolicy {
             "optionMetricsVersion" to OptionMetricsEngine.VERSION,
             "institutionalContrarianVersion" to InstitutionalContrarianEngine.VERSION,
             "optionAssessmentPersistenceVersion" to OptionAssessmentPersistenceFactory.VERSION,
+            "decisionOverlayVersion" to DecisionOverlayEngine.ENGINE_VERSION,
             "optionExpiryLimit" to YahooFinanceClient.MAX_OPTION_EXPIRIES.toString(),
             "riskPct" to canonical(input.riskPct),
             "maxPositionPct" to canonical(input.maxPositionPct),
