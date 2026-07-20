@@ -21,7 +21,8 @@ data class SignalContractEntity(
     val targetPrice: Double,
     val expirationSessions: Int,
     val engineVersion: String,
-    val createdAtUtc: Long
+    val createdAtUtc: Long,
+    val shares: Int = 1
 )
 
 @Entity(
@@ -47,5 +48,16 @@ data class TradeOutcomeEntity(
     val maePct: Double?,
     val holdingSessions: Int,
     val ambiguousSameBar: Boolean,
-    val status: String
+    val status: String,
+    val exitPrice: Double? = null,
+    val exitTimestampUtc: Long? = null,
+    val exitReason: String = "NONE",
+    val entrySlippagePct: Double? = null,
+    val exitSlippagePct: Double? = null,
+    val commissionUsd: Double = 0.0,
+    val grossPnlUsd: Double? = null,
+    val netPnlUsd: Double? = null,
+    val tradeReturnPct: Double? = null,
+    val returnR: Double? = null,
+    val costModelVersion: String = "NONE"
 )
