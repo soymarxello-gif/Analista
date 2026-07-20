@@ -1,7 +1,7 @@
 package com.analista.mobile.domain
 
 object ScanReproducibilityPolicy {
-    const val VERSION = "scan-repro-policy-1"
+    const val VERSION = "scan-repro-policy-2"
     const val HISTORY_PROVIDER = "YAHOO"
     const val HISTORY_HOST = "query1.finance.yahoo.com"
 
@@ -27,6 +27,7 @@ object ScanReproducibilityPolicy {
         val normalizedStatus = input.dataQualityStatus.trim().uppercase().ifBlank { "UNKNOWN" }
         val configuration = sortedMapOf(
             "policyVersion" to VERSION,
+            "calendarVersion" to NyseSessionCalendar.VERSION,
             "riskPct" to canonical(input.riskPct),
             "maxPositionPct" to canonical(input.maxPositionPct),
             "minRiskReward" to canonical(input.minRiskReward),
