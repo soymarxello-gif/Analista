@@ -45,6 +45,9 @@ object FinalDecisionPersistenceFactory {
                 executionQuoteQuality = candidate.executionQuoteQuality
             )
         )
+        val resolvedMacroConfidence = overlay.macroConfidence
+            .takeUnless { it == "UNKNOWN" }
+            ?: macroConfidence
 
         val evaluated = FinalDecisionEngine.decide(
             FinalDecisionEngine.Input(
@@ -53,7 +56,7 @@ object FinalDecisionPersistenceFactory {
                 setupType = candidate.setupType,
                 setupValid = candidate.setupType != "NO_VALID_SETUP",
                 macroRegime = overlay.macroRegime,
-                macroConfidence = macroConfidence,
+                macroConfidence = resolvedMacroConfidence,
                 fundamentalCoverage = overlay.fundamentalCoverage,
                 institutionalCoverage = overlay.optionsCoverage,
                 institutionalConflict = institutionalConflict,
@@ -84,7 +87,7 @@ object FinalDecisionPersistenceFactory {
             fundamentalCoverage = overlay.fundamentalCoverage,
             institutionalCoverage = overlay.optionsCoverage,
             executionFreshness = candidate.quoteFreshnessStatus,
-            decisionVersion = "${evaluated.decisionVersion}+${AggressiveStopPolicy.VERSION}",
+            decisionVersion = "${evaluated.decisionVersion}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}",
             calculatedAtUtc = calculatedAtUtc
         )
 
@@ -101,7 +104,7 @@ object FinalDecisionPersistenceFactory {
                 stopPrice = plan.structuralStop,
                 targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
-                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}+${AggressiveStopPolicy.VERSION}",
+                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}",
                 createdAtUtc = calculatedAtUtc
             )
         } else null
