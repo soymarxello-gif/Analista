@@ -11,6 +11,7 @@ class ProviderMatrixTest {
         ProviderMatrixRegistry.clear()
         FundamentalSnapshotRegistry.clear()
         OptionChainRegistry.clear()
+        HistorySourceRegistry.clear()
     }
 
     @Test
