@@ -2,6 +2,9 @@ package com.analista.mobile.domain
 
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CanonicalAnalysis
+import com.analista.mobile.data.FundamentalMetrics
+import com.analista.mobile.data.FundamentalSnapshotRegistry
+import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.OptionChainRegistry
 import com.analista.mobile.data.OptionChainSnapshot
@@ -17,6 +20,8 @@ class DecisionOverlayEngineTest {
     @Before
     fun clearRegistries() {
         OptionChainRegistry.clear()
+        FundamentalSnapshotRegistry.clear()
+        MarketHistoryRegistry.clear()
     }
 
     @Test
@@ -50,6 +55,26 @@ class DecisionOverlayEngineTest {
         assertEquals("HIGH", result.institutionalConflict)
         assertTrue(result.finalTradeScore <= 59.0)
         assertTrue(result.institutionalReasons.contains("institutional_conflict_high"))
+    }
+
+    @Test
+    fun pureResolvedPathMatchesLegacyRuntimePath() {
+        val enrichment = enrichment(putCall = 0.90)
+        val runtime = DecisionOverlayEngine.apply(candidate(), base(), macro(), enrichment)
+        val replay = DecisionOverlayEngine.applyResolved(
+            candidate = candidate(),
+            base = base(),
+            macro = macro(),
+            inputs = DecisionOverlayEngine.ResolvedInputs(
+                macroHistories = emptyMap(),
+                fundamentalMetrics = fundamental(enrichment),
+                fundamentalAvailable = true,
+                fundamentalCapturedAtUtc = enrichment.capturedAtUtc,
+                optionChain = null,
+                legacyEnrichment = enrichment
+            )
+        )
+        assertEquals(runtime, replay)
     }
 
     @Test
@@ -110,6 +135,18 @@ class DecisionOverlayEngineTest {
         debtToEquity = 60.0, optionsPutCallOi = putCall, optionsNearCallOi = 1000,
         optionsNearPutOi = 900, optionsExpiry = 1_800_000_000,
         fundamentalsStatus = "AVAILABLE_COMPLETE", optionsStatus = "AVAILABLE_COMPLETE", capturedAtUtc = 1L
+    )
+
+    private fun fundamental(e: CandidateEnrichmentEntity) = FundamentalMetrics(
+        marketCap = e.marketCap,
+        trailingPe = e.trailingPe,
+        priceToSales = e.priceToSales,
+        epsTrailing = e.epsTrailing,
+        revenueGrowthPct = e.revenueGrowthPct,
+        grossMarginPct = e.grossMarginPct,
+        operatingMarginPct = e.operatingMarginPct,
+        profitMarginPct = e.profitMarginPct,
+        debtToEquity = e.debtToEquity
     )
 
     private fun base(final: Double = 70.0) = CanonicalAnalysis(
