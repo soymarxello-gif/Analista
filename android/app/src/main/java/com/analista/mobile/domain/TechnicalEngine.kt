@@ -62,17 +62,19 @@ object TechnicalEngine {
         val spreadPct = if (bid != null && ask != null && bid > 0 && ask > bid) {
             (ask - bid) / ((ask + bid) / 2.0) * 100.0
         } else null
-        UniverseObservationRegistry.record(
-            UniverseSelectionEngine.Input(
-                ticker = ticker,
-                instrumentType = context.quoteType,
-                price = close,
-                marketCap = context.marketCap,
-                averageDollarVolume20 = context.averageDollarVolume20,
-                spreadPct = spreadPct,
-                capturedAtUtc = context.analysisTimestampUtc
+        if (context.recordUniverseObservation) {
+            UniverseObservationRegistry.record(
+                UniverseSelectionEngine.Input(
+                    ticker = ticker,
+                    instrumentType = context.quoteType,
+                    price = close,
+                    marketCap = context.marketCap,
+                    averageDollarVolume20 = context.averageDollarVolume20,
+                    spreadPct = spreadPct,
+                    capturedAtUtc = context.analysisTimestampUtc
+                )
             )
-        )
+        }
         val openingGapPct = livePremarket?.let { (it / close - 1.0) * 100.0 }
 
         val classified = SetupClassificationEngine.classify(
