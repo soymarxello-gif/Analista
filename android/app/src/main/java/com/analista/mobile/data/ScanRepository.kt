@@ -35,7 +35,8 @@ class ScanRepository(
     private val dao: AnalistaDao,
     private val yahoo: YahooFinanceClient,
     private val marketData: MarketDataGateway,
-    private val tickers: List<String> = DEFAULT_TICKERS
+    private val tickers: List<String> = DEFAULT_TICKERS,
+    private val datasetCapture: RunDatasetCaptureService? = null
 ) {
     suspend fun runScan(): ScanRunEntity = coroutineScope {
         val started = System.currentTimeMillis()
@@ -288,6 +289,15 @@ class ScanRepository(
         }
         val finalDecisions = finalized.map { it.decision }
         val contracts = finalized.mapNotNull { it.contract }
+        val datasetArtifacts = datasetCapture?.capture(
+            runId = runId,
+            effectiveDate = marketDate,
+            tickers = tickers,
+            barsByTicker = barsByTicker,
+            quotesByTicker = quoteBatch.quotes,
+            macroSnapshots = snapshots,
+            createdAtUtc = finished
+        ).orEmpty()
 
         dao.saveRun(run, rows, snapshots)
         if (analysisRows.isNotEmpty()) dao.insertAnalysis(analysisRows)
@@ -295,6 +305,7 @@ class ScanRepository(
         if (tradePlans.isNotEmpty()) dao.insertTradePlans(tradePlans)
         if (finalDecisions.isNotEmpty()) dao.insertFinalDecisions(finalDecisions)
         if (manifests.isNotEmpty()) dao.insertReproducibilityManifests(manifests)
+        if (datasetArtifacts.isNotEmpty()) dao.insertRunDatasetArtifacts(datasetArtifacts)
         if (contracts.isNotEmpty()) dao.insertSignalContracts(contracts)
         evaluateSignalContracts(barsByTicker)
         updateBacktestOutcomes(runId, rows)
@@ -408,6 +419,8 @@ class ScanRepository(
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>> = dao.observeAnalysis(runId)
     fun observeFinalDecisions(runId: String): Flow<List<FinalDecisionEntity>> = dao.observeFinalDecisions(runId)
     fun observeTradePlans(runId: String): Flow<List<CandidateTradePlanEntity>> = dao.observeTradePlans(runId)
+    fun observeRunDatasetArtifacts(runId: String): Flow<List<RunDatasetArtifactEntity>> =
+        dao.observeRunDatasetArtifacts(runId)
     fun observeReproducibilityManifests(runId: String): Flow<List<ReproducibilityManifestEntity>> =
         dao.observeReproducibilityManifests(runId)
 

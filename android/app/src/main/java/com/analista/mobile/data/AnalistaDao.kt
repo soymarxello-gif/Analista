@@ -46,6 +46,9 @@ interface AnalistaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUniverseMembers(rows: List<UniverseMemberEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRunDatasetArtifacts(rows: List<RunDatasetArtifactEntity>)
+
     @Transaction
     suspend fun saveUniverseSnapshot(snapshot: UniverseSnapshotEntity, members: List<UniverseMemberEntity>) {
         require(members.all { it.snapshotId == snapshot.snapshotId })
@@ -185,6 +188,9 @@ interface AnalistaDao {
 
     @Query("SELECT * FROM universe_members WHERE snapshotId = :snapshotId ORDER BY ticker")
     fun observeUniverseMembers(snapshotId: String): Flow<List<UniverseMemberEntity>>
+
+    @Query("SELECT * FROM run_dataset_artifacts WHERE runId = :runId ORDER BY datasetType, ticker")
+    fun observeRunDatasetArtifacts(runId: String): Flow<List<RunDatasetArtifactEntity>>
 
     @Query("SELECT * FROM candidate_analysis WHERE runId = :runId ORDER BY finalTradeScore DESC")
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>>
