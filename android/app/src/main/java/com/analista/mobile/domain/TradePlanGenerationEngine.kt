@@ -51,11 +51,14 @@ object TradePlanGenerationEngine {
             val relativeStrength = input.benchmarkBars
                 ?.takeIf { input.bars.size >= 61 && it.size >= 61 }
                 ?.let { benchmark -> runCatching { RelativeStrengthEngine.compare(input.bars, benchmark) }.getOrNull() }
+            val resolvedSma50 = if (input.sma50 == input.sma20) {
+                input.bars.takeLast(50).map { it.close }.average()
+            } else input.sma50
             val riskPlan = StructureRiskEngine.plan(
                 entry = input.entry,
                 atr = input.atr,
                 sma20 = input.sma20,
-                sma50 = input.sma50,
+                sma50 = resolvedSma50,
                 swingLow = structure.swingLow,
                 support = structure.support,
                 nextResistance = structure.nextResistance,
