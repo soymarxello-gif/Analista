@@ -162,7 +162,8 @@ data class TradeContext(
     val averageDollarVolume20: Double? = null,
     val sessionsOld: Int = 0,
     val executionDataAllowed: Boolean = true,
-    val analysisTimestampUtc: Long = System.currentTimeMillis()
+    val analysisTimestampUtc: Long = System.currentTimeMillis(),
+    val recordUniverseObservation: Boolean = true
 )
 
 data class ScanCandidate(
