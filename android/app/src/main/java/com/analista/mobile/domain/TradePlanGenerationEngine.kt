@@ -3,7 +3,7 @@ package com.analista.mobile.domain
 import com.analista.mobile.data.PriceBar
 
 object TradePlanGenerationEngine {
-    const val ENGINE_VERSION = "trade-plan-generation-1"
+    const val ENGINE_VERSION = "trade-plan-generation-2"
 
     data class Input(
         val ticker: String,
@@ -16,6 +16,7 @@ object TradePlanGenerationEngine {
         val entry: Double,
         val atr: Double,
         val sma20: Double,
+        val sma50: Double = sma20,
         val equity: Double = 25_000.0,
         val riskPctOfEquity: Double = 0.01,
         val maxPositionPct: Double = 0.20
@@ -50,12 +51,19 @@ object TradePlanGenerationEngine {
             val relativeStrength = input.benchmarkBars
                 ?.takeIf { input.bars.size >= 61 && it.size >= 61 }
                 ?.let { benchmark -> runCatching { RelativeStrengthEngine.compare(input.bars, benchmark) }.getOrNull() }
+            val resolvedSma50 = if (input.sma50 == input.sma20) {
+                input.bars.takeLast(50).map { it.close }.average()
+            } else input.sma50
             val riskPlan = StructureRiskEngine.plan(
                 entry = input.entry,
                 atr = input.atr,
                 sma20 = input.sma20,
+                sma50 = resolvedSma50,
                 swingLow = structure.swingLow,
+                support = structure.support,
                 nextResistance = structure.nextResistance,
+                setupType = input.setupType,
+                bars = input.bars,
                 equity = input.equity,
                 riskPctOfEquity = input.riskPctOfEquity,
                 maxPositionPct = input.maxPositionPct
