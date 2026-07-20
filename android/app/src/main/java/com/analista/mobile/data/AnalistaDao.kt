@@ -9,10 +9,13 @@ import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
 import com.analista.mobile.domain.FundamentalAssessmentEngine
 import com.analista.mobile.domain.LiveRunDefinitionAssembler
+import com.analista.mobile.domain.LiveUniverseSnapshotAssembler
 import com.analista.mobile.domain.OptionAssessmentPersistenceFactory
 import com.analista.mobile.domain.RankingComparisonPersistenceFactory
 import com.analista.mobile.domain.TradePlanGenerationEngine
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
+import java.time.ZoneId
 
 @Dao
 interface AnalistaDao {
@@ -108,6 +111,13 @@ interface AnalistaDao {
         if (rows.isEmpty()) return
         val runId = rows.first().runId
         require(rows.all { it.runId == runId })
+        val createdAtUtc = System.currentTimeMillis()
+        val liveUniverse = LiveUniverseSnapshotAssembler.assemble(
+            runId = runId,
+            fallbackUniverse = ScanRepository.DEFAULT_TICKERS,
+            effectiveDate = LocalDate.now(ZoneId.of("America/New_York")).toString(),
+            createdAtUtc = createdAtUtc
+        )
         val engineBundleVersion = listOf(
             CanonicalAnalysisEngine.ENGINE_VERSION,
             DecisionOverlayEngine.ENGINE_VERSION,
@@ -115,12 +125,14 @@ interface AnalistaDao {
         ).joinToString("+")
         val definition = LiveRunDefinitionAssembler.assemble(
             runId = runId,
-            universe = ScanRepository.DEFAULT_TICKERS,
+            universe = liveUniverse.universe,
             manifests = rows,
             engineBundleVersion = engineBundleVersion,
-            createdAtUtc = System.currentTimeMillis()
+            createdAtUtc = createdAtUtc
         )
         insertReproducibilityBundle(rows, definition)
+        saveUniverseSnapshot(liveUniverse.bundle.snapshot, liveUniverse.bundle.members)
+        RunUniverseRegistry.remove(runId)
     }
 
     @Transaction

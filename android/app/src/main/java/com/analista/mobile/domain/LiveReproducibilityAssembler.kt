@@ -3,9 +3,10 @@ package com.analista.mobile.domain
 import com.analista.mobile.data.HistorySourceRegistry
 import com.analista.mobile.data.PriceBar
 import com.analista.mobile.data.ReproducibilityManifestEntity
+import com.analista.mobile.data.RunUniverseRegistry
 
 object LiveReproducibilityAssembler {
-    const val VERSION = "live-repro-assembler-2"
+    const val VERSION = "live-repro-assembler-3"
 
     data class TickerInput(
         val ticker: String,
@@ -19,9 +20,11 @@ object LiveReproducibilityAssembler {
     fun assemble(runId: String, universe: List<String>, inputs: List<TickerInput>): List<ReproducibilityManifestEntity> {
         require(runId.isNotBlank())
         require(universe.isNotEmpty())
-        val normalizedUniverse = universe.map { it.trim().uppercase() }.filter { it.isNotBlank() }.distinct().sorted()
+        val normalizedUniverse = universe.map { it.trim().uppercase().replace(".", "-") }
+            .filter { it.isNotBlank() }.distinct().sorted()
         require(normalizedUniverse.isNotEmpty())
-        require(inputs.map { it.ticker.trim().uppercase() }.distinct().size == inputs.size)
+        require(inputs.map { it.ticker.trim().uppercase().replace(".", "-") }.distinct().size == inputs.size)
+        RunUniverseRegistry.record(runId, normalizedUniverse)
         return ReproducibilityManifestFactory.createAll(inputs.map { item ->
             val policy = ScanReproducibilityPolicy.resolve(
                 ScanReproducibilityPolicy.RuntimeInput(item.dataQualityStatus, item.cacheHit, item.retries),

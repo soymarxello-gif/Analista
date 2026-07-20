@@ -1,11 +1,13 @@
 package com.analista.mobile.domain
 
 import com.analista.mobile.data.ProviderMatrixPolicy
+import com.analista.mobile.data.RunUniverseRegistry
+import com.analista.mobile.data.UniverseObservationRegistry
 import com.analista.mobile.data.YahooFinanceClient
 import com.analista.mobile.data.YahooOptionChainParser
 
 object ScanReproducibilityPolicy {
-    const val VERSION = "scan-repro-policy-12"
+    const val VERSION = "scan-repro-policy-13"
     const val HISTORY_PROVIDER = "YAHOO"
     const val HISTORY_HOST = "query1.finance.yahoo.com"
 
@@ -45,6 +47,9 @@ object ScanReproducibilityPolicy {
             "decisionOverlayVersion" to DecisionOverlayEngine.ENGINE_VERSION,
             "providerMatrixVersion" to ProviderMatrixPolicy.VERSION,
             "universeSelectionVersion" to UniverseSelectionEngine.VERSION,
+            "liveUniverseAssemblerVersion" to LiveUniverseSnapshotAssembler.VERSION,
+            "runUniverseRegistryVersion" to RunUniverseRegistry.VERSION,
+            "universeObservationRegistryVersion" to UniverseObservationRegistry.VERSION,
             "universeMode" to UniverseSelectionEngine.MODE,
             "minimumUniverseDollarVolume" to canonical(UniverseSelectionEngine.MIN_AVERAGE_DOLLAR_VOLUME),
             "maximumUniverseSpreadPct" to canonical(UniverseSelectionEngine.MAX_SPREAD_PCT),
