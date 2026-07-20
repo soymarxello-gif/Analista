@@ -120,7 +120,8 @@ object FinalDecisionPersistenceFactory {
                 targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
                 engineVersion = "$engineVersion+$decisionBundle+${QuoteFreshnessEngine.VERSION}",
-                createdAtUtc = calculatedAtUtc
+                createdAtUtc = calculatedAtUtc,
+                shares = plan.shares.coerceAtLeast(1)
             )
         } else null
 
