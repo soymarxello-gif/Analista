@@ -154,8 +154,19 @@ class YahooFinanceClient(
 
     suspend fun options(ticker: String): OptionsMetrics = withContext(Dispatchers.IO) {
         val safeTicker = yahooTicker(ticker)
-        val body = getJson("https://query2.finance.yahoo.com/v7/finance/options/$safeTicker")
-        parseOptions(body, safeTicker)
+        val baseUrl = "https://query2.finance.yahoo.com/v7/finance/options/$safeTicker"
+        val first = parseOptionChain(getJson(baseUrl), safeTicker)
+        val loadedExpiries = first.expiries.map { it.expiryEpochSeconds }.toSet()
+        val remaining = (MAX_OPTION_EXPIRIES - first.expiries.size).coerceAtLeast(0)
+        val additional = first.availableExpiries
+            .filterNot { it in loadedExpiries }
+            .take(remaining)
+            .mapNotNull { expiry ->
+                runCatching { parseOptionChain(getJson("$baseUrl?date=$expiry"), safeTicker) }.getOrNull()
+            }
+        val combined = mergeOptionChains(listOf(first) + additional)
+        OptionChainRegistry.record(combined)
+        combined.toLegacyMetrics()
     }
 
     private fun getJson(url: String): String {
@@ -263,28 +274,36 @@ class YahooFinanceClient(
         )
     }
 
-    internal fun parseOptions(json: String, ticker: String): OptionsMetrics {
-        val root = JSONObject(json)
-        val result = root.optJSONObject("optionChain")?.optJSONArray("result")?.optJSONObject(0)
-            ?: throw IOException("No options for $ticker")
-        val options = result.optJSONArray("options")?.optJSONObject(0)
-            ?: return OptionsMetrics(null, null, null, null)
-        val calls = options.optJSONArray("calls")
-        val puts = options.optJSONArray("puts")
-        fun sumOi(array: org.json.JSONArray?): Long {
-            if (array == null) return 0L
-            var total = 0L
-            for (i in 0 until array.length()) total += array.optJSONObject(i)?.optLong("openInterest", 0L) ?: 0L
-            return total
-        }
-        val callOi = sumOi(calls)
-        val putOi = sumOi(puts)
-        return OptionsMetrics(
-            putCallOi = if (callOi > 0) putOi.toDouble() / callOi else null,
-            nearCallOi = callOi.takeIf { it > 0 },
-            nearPutOi = putOi.takeIf { it > 0 },
-            expiry = options.optLong("expirationDate", 0L).takeIf { it > 0 }
+    internal fun parseOptionChain(
+        json: String,
+        ticker: String,
+        capturedAtUtc: Long = System.currentTimeMillis()
+    ): OptionChainSnapshot = YahooOptionChainParser.parse(json, ticker, capturedAtUtc)
+
+    internal fun mergeOptionChains(chains: List<OptionChainSnapshot>): OptionChainSnapshot {
+        require(chains.isNotEmpty()) { "option chains required" }
+        val tickers = chains.map { it.ticker }.toSet()
+        require(tickers.size == 1) { "option chains must belong to one ticker" }
+        val first = chains.first()
+        val expiries = chains.flatMap { it.expiries }
+            .distinctBy { it.expiryEpochSeconds }
+            .sortedBy { it.expiryEpochSeconds }
+        return OptionChainSnapshot(
+            ticker = first.ticker,
+            spot = chains.firstNotNullOfOrNull { it.spot },
+            expiries = expiries,
+            availableExpiries = chains.flatMap { it.availableExpiries }.distinct().sorted(),
+            capturedAtUtc = chains.maxOf { it.capturedAtUtc },
+            provider = first.provider,
+            providerHost = first.providerHost,
+            gammaStatus = if (chains.any { it.gammaStatus == "AVAILABLE" }) "AVAILABLE" else "UNKNOWN"
         )
+    }
+
+    internal fun parseOptions(json: String, ticker: String): OptionsMetrics {
+        val chain = parseOptionChain(json, ticker)
+        OptionChainRegistry.record(chain)
+        return chain.toLegacyMetrics()
     }
 
     private fun statements(result: JSONObject, module: String, key: String): List<JSONObject> {
@@ -340,5 +359,8 @@ class YahooFinanceClient(
     private fun JSONObject.optNullableLong(key: String): Long? =
         if (has(key) && !isNull(key)) optLong(key).takeIf { it > 0L } else null
 
-    companion object { private const val CACHE_MAX_AGE_MS = 72L * 60 * 60 * 1000 }
+    companion object {
+        private const val CACHE_MAX_AGE_MS = 72L * 60 * 60 * 1000
+        const val MAX_OPTION_EXPIRIES = 3
+    }
 }
