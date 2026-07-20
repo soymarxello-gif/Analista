@@ -125,7 +125,7 @@ object NormalizedDatasetDecoder {
                         coveragePct = requiredFiniteDouble(row, "coveragePct"),
                         status = requiredString(row, "status"),
                         fundamentalScore = requiredFiniteDouble(row, "fundamentalScore"),
-                        reasons = requiredString(row, "reasons"),
+                        reasons = presentString(row, "reasons"),
                         engineVersion = requiredString(row, "engineVersion"),
                         capturedAtUtc = requiredLong(row, "capturedAtUtc")
                     )
@@ -201,7 +201,7 @@ object NormalizedDatasetDecoder {
                         averageDollarVolume20 = optionalDouble(row, "averageDollarVolume20"),
                         spreadPct = optionalDouble(row, "spreadPct"),
                         eligible = requiredBoolean(row, "eligible"),
-                        exclusionReasons = requiredString(row, "exclusionReasons"),
+                        exclusionReasons = presentString(row, "exclusionReasons"),
                         capturedAtUtc = requiredLong(row, "capturedAtUtc")
                     )
                 )
@@ -235,6 +235,9 @@ object NormalizedDatasetDecoder {
     private fun requiredString(row: JSONObject, key: String): String =
         row.optString(key).takeIf { row.has(key) && !row.isNull(key) && it.isNotBlank() }
             ?: throw IOException("missing string: $key")
+
+    private fun presentString(row: JSONObject, key: String): String =
+        if (row.has(key) && !row.isNull(key)) row.optString(key) else throw IOException("missing string: $key")
 
     private fun optionalString(row: JSONObject, key: String): String? =
         if (row.has(key) && !row.isNull(key)) row.optString(key).takeIf { it.isNotBlank() } else null
