@@ -43,6 +43,13 @@ object FinalDecisionPersistenceFactory {
         val resolvedMacroConfidence = overlay.macroConfidence
             .takeUnless { it == "UNKNOWN" }
             ?: macroConfidence
+        val resolvedInstitutionalConflict = when {
+            overlay.institutionalConflict != "NONE" -> overlay.institutionalConflict
+            overlay.optionsCoverage == "COMPLETE" &&
+                overlay.optionsBias == "BEARISH_WITH_DATA" &&
+                overlay.institutionalScore <= 40.0 -> "HIGH"
+            else -> "NONE"
+        }
 
         val evaluated = FinalDecisionEngine.decide(
             FinalDecisionEngine.Input(
@@ -54,7 +61,7 @@ object FinalDecisionPersistenceFactory {
                 macroConfidence = resolvedMacroConfidence,
                 fundamentalCoverage = overlay.fundamentalCoverage,
                 institutionalCoverage = overlay.optionsCoverage,
-                institutionalConflict = overlay.institutionalConflict,
+                institutionalConflict = resolvedInstitutionalConflict,
                 riskPlanValid = aggressiveStop.valid,
                 liveTriggerConfirmed = candidate.liveTriggerConfirmed,
                 actionability = candidate.actionabilityAtExecution,
