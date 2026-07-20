@@ -1,5 +1,6 @@
 package com.analista.mobile.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -21,7 +22,10 @@ data class SignalContractEntity(
     val targetPrice: Double,
     val expirationSessions: Int,
     val engineVersion: String,
-    val createdAtUtc: Long
+    val createdAtUtc: Long,
+    @ColumnInfo(defaultValue = "0") val shares: Int = 0,
+    @ColumnInfo(defaultValue = "0") val positionValue: Double = 0.0,
+    @ColumnInfo(defaultValue = "0") val riskBudget: Double = 0.0
 )
 
 @Entity(
@@ -47,5 +51,14 @@ data class TradeOutcomeEntity(
     val maePct: Double?,
     val holdingSessions: Int,
     val ambiguousSameBar: Boolean,
-    val status: String
+    val status: String,
+    val exitTimestampUtc: Long? = null,
+    val exitFill: Double? = null,
+    @ColumnInfo(defaultValue = "'NONE'") val exitReason: String = "NONE",
+    val tradeReturnPct: Double? = null,
+    val tradeReturnR: Double? = null,
+    val grossPnl: Double? = null,
+    val netPnl: Double? = null,
+    val totalCosts: Double? = null,
+    @ColumnInfo(defaultValue = "'legacy-zero-cost'") val costModelVersion: String = "legacy-zero-cost"
 )

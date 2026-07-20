@@ -23,7 +23,7 @@ import androidx.room.RoomDatabase
         UniverseSnapshotEntity::class,
         UniverseMemberEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 abstract class AnalistaDatabase : RoomDatabase() {
