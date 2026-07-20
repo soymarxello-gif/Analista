@@ -1,7 +1,7 @@
 package com.analista.mobile.domain
 
 object FinalDecisionEngine {
-    const val VERSION = "final-decision-3"
+    const val VERSION = "final-decision-4"
 
     data class Thresholds(
         val minimumReadyScore: Double = 65.0,
@@ -49,9 +49,13 @@ object FinalDecisionEngine {
 
         val vetoReasons = input.hardVetoReasons.toMutableList()
         val penalties = input.penaltyReasons.toMutableList()
+        val riskOff = input.macroRegime.trim().uppercase() == "RISK_OFF"
+        val readyThreshold = (thresholds.minimumReadyScore + if (riskOff) 5.0 else 0.0).coerceAtMost(100.0)
+        val confirmedThreshold = (thresholds.minimumConfirmedScore + if (riskOff) 10.0 else 0.0).coerceAtMost(100.0)
 
         if (input.preliminarySignal == "VETO") vetoReasons += "preliminary_veto"
         if (!input.setupValid || input.setupType == "NO_VALID_SETUP") vetoReasons += "no_valid_setup"
+        if (riskOff) penalties += "risk_off_thresholds_elevated"
 
         val finalSignal = when {
             vetoReasons.isNotEmpty() -> "VETO"
@@ -87,7 +91,7 @@ object FinalDecisionEngine {
                 penalties += "institutional_conflict_high"
                 "WATCHLIST"
             }
-            input.finalTradeScore < thresholds.minimumReadyScore -> {
+            input.finalTradeScore < readyThreshold -> {
                 penalties += "final_trade_score_below_ready_threshold"
                 "WATCHLIST"
             }
@@ -96,7 +100,7 @@ object FinalDecisionEngine {
                 "WATCHLIST"
             }
             input.liveTriggerConfirmed && input.actionability == "ACTIONABLE_REVIEW" &&
-                input.finalTradeScore >= thresholds.minimumConfirmedScore -> "TRIGGER_CONFIRMED"
+                input.finalTradeScore >= confirmedThreshold -> "TRIGGER_CONFIRMED"
             input.liveTriggerConfirmed -> {
                 penalties += "live_trigger_not_confirmable"
                 "WATCHLIST"
@@ -124,7 +128,7 @@ object FinalDecisionEngine {
             require(input.liveTriggerConfirmed)
             require(input.actionability == "ACTIONABLE_REVIEW")
             require(input.executionFreshness == "FRESH")
-            require(input.finalTradeScore >= thresholds.minimumConfirmedScore)
+            require(input.finalTradeScore >= confirmedThreshold)
         }
         if (finalSignal == "READY_WAIT_TRIGGER") require(!input.liveTriggerConfirmed)
 
@@ -150,7 +154,7 @@ object FinalDecisionEngine {
             input.executionFreshness in setOf("STALE", "UNKNOWN") -> "LOW"
             coverage.any { it in setOf("UNKNOWN", "EMPTY", "ERROR", "UNAVAILABLE", "STALE") } -> "LOW"
             input.executionFreshness == "DELAYED_ACCEPTABLE" -> "MEDIUM"
-            coverage.any { it in setOf("PARTIAL", "AVAILABLE_PARTIAL", "MEDIUM") } -> "MEDIUM"
+            coverage.any { it in setOf("PARTIAL", "AVAILABLE_PARTIAL", "MEDIUM", "LOW") } -> "MEDIUM"
             else -> "HIGH"
         }
     }
