@@ -1,7 +1,7 @@
 package com.analista.mobile.domain
 
 object InstitutionalContrarianEngine {
-    const val VERSION = "institutional-contrarian-1"
+    const val VERSION = "institutional-contrarian-2"
 
     data class Component(
         val score: Double?,
@@ -87,6 +87,7 @@ object InstitutionalContrarianEngine {
         val adverseOptions = optionsBias in setOf("BEARISH_WITH_DATA", "CROWDED_BEARISH")
         val volumeDistribution = input.volumeAccumulation.score?.let { it < 35.0 } == true
         val conflict = when {
+            coveragePct >= 70.0 && optionsBias == "CROWDED_BEARISH" && adjusted <= 50.0 -> "HIGH"
             coveragePct >= 70.0 && adverseOptions && adjusted <= 42.0 -> "HIGH"
             coveragePct >= 70.0 && adverseOptions && volumeDistribution -> "HIGH"
             adverseOptions || volumeDistribution -> "MEDIUM"
