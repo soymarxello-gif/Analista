@@ -105,6 +105,7 @@ object TechnicalEngine {
         if (priorSessionBreakout) reasons += "prior_session_breakout"
         if (triggerConfirmed) { score += 10; reasons += "live_trigger_confirmed" }
         if (failedBreakout) reasons += "failed_breakout"
+        score = score.coerceIn(0.0, 100.0)
 
         val gapAtr = livePremarket?.let { abs(it - close) / atr }
         val actionability = when {
