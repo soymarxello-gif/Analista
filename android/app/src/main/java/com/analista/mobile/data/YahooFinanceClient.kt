@@ -22,7 +22,7 @@ class YahooFinanceClient(
     private val cacheDir = File(context.cacheDir, "market-data").apply { mkdirs() }
 
     suspend fun dailyHistory(ticker: String, range: String = "1y"): FetchResult = withContext(Dispatchers.IO) {
-        val safeTicker = ticker.trim().uppercase().replace(".", "-")
+        val safeTicker = yahooTicker(ticker)
         val cache = File(cacheDir, "${safeTicker.replace("^", "IDX_").replace("=", "_")}_$range.json")
         var retries = 0
         var lastError: Throwable? = null
@@ -64,7 +64,7 @@ class YahooFinanceClient(
     }
 
     suspend fun marketQuote(ticker: String): MarketQuote = withContext(Dispatchers.IO) {
-        val safeTicker = ticker.trim().uppercase().replace(".", "-")
+        val safeTicker = yahooTicker(ticker)
         val body = getJson("https://query1.finance.yahoo.com/v7/finance/quote?symbols=$safeTicker")
         parseMarketQuote(body, safeTicker)
     }
@@ -137,14 +137,14 @@ class YahooFinanceClient(
     }
 
     suspend fun fundamentals(ticker: String): FundamentalMetrics = withContext(Dispatchers.IO) {
-        val safeTicker = ticker.trim().uppercase().replace(".", "-")
+        val safeTicker = yahooTicker(ticker)
         val modules = "defaultKeyStatistics,financialData,summaryDetail"
         val body = getJson("https://query1.finance.yahoo.com/v10/finance/quoteSummary/$safeTicker?modules=$modules")
         parseFundamentals(body, safeTicker)
     }
 
     suspend fun options(ticker: String): OptionsMetrics = withContext(Dispatchers.IO) {
-        val safeTicker = ticker.trim().uppercase().replace(".", "-")
+        val safeTicker = yahooTicker(ticker)
         val body = getJson("https://query2.finance.yahoo.com/v7/finance/options/$safeTicker")
         parseOptions(body, safeTicker)
     }
@@ -213,6 +213,11 @@ class YahooFinanceClient(
     private fun rawLong(parent: JSONObject, key: String): Long? {
         val value = parent.optJSONObject(key) ?: return null
         return if (value.has("raw") && !value.isNull("raw")) value.optLong("raw").takeIf { it > 0L } else null
+    }
+
+    private fun yahooTicker(ticker: String): String {
+        val normalized = ticker.trim().uppercase()
+        return if (normalized == "DX-Y.NYB") normalized else normalized.replace(".", "-")
     }
 
     private fun JSONObject.optNullableDouble(key: String): Double? =
