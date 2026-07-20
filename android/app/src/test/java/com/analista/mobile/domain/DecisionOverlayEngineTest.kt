@@ -3,12 +3,22 @@ package com.analista.mobile.domain
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CanonicalAnalysis
 import com.analista.mobile.data.MarketSnapshotEntity
+import com.analista.mobile.data.OptionChainRegistry
+import com.analista.mobile.data.OptionChainSnapshot
+import com.analista.mobile.data.OptionContractSnapshot
+import com.analista.mobile.data.OptionExpirySnapshot
 import com.analista.mobile.data.ScanCandidate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class DecisionOverlayEngineTest {
+    @Before
+    fun clearRegistries() {
+        OptionChainRegistry.clear()
+    }
+
     @Test
     fun missingOptionsRemainUnknownAndReduceConfidence() {
         val result = DecisionOverlayEngine.apply(candidate(), base(), macro(), null)
@@ -28,10 +38,60 @@ class DecisionOverlayEngineTest {
     }
 
     @Test
+    fun normalizedStrikeDataOverridesLegacyAggregateAndCanFlagConflict() {
+        OptionChainRegistry.record(chain(
+            callOi = 300L,
+            putOi = 1_500L,
+            callVolume = 50L,
+            putVolume = 400L
+        ))
+        val result = DecisionOverlayEngine.apply(candidate(), base(final = 85.0), macro(), enrichment(putCall = 0.40))
+        assertEquals("CROWDED_BEARISH", result.optionsBias)
+        assertEquals("HIGH", result.institutionalConflict)
+        assertTrue(result.finalTradeScore <= 59.0)
+        assertTrue(result.institutionalReasons.contains("institutional_conflict_high"))
+    }
+
+    @Test
     fun vetoCanNeverExceedFortyNine() {
         val result = DecisionOverlayEngine.apply(candidate(signal = "VETO"), base(final = 95.0), macro(), enrichment(0.80))
         assertTrue(result.finalTradeScore <= 49.0)
     }
+
+    private fun chain(callOi: Long, putOi: Long, callVolume: Long, putVolume: Long) = OptionChainSnapshot(
+        ticker = "TEST",
+        spot = 100.0,
+        expiries = listOf(
+            OptionExpirySnapshot(
+                1_800_000_000L,
+                listOf(
+                    contract("CALL", 105.0, callOi, callVolume, 0.25, 5.0),
+                    contract("PUT", 95.0, putOi, putVolume, 0.40, -5.0)
+                )
+            )
+        ),
+        availableExpiries = listOf(1_800_000_000L),
+        capturedAtUtc = 1L,
+        provider = "YAHOO",
+        providerHost = "query2.finance.yahoo.com",
+        gammaStatus = "UNKNOWN"
+    )
+
+    private fun contract(type: String, strike: Double, oi: Long, volume: Long, iv: Double, distance: Double) =
+        OptionContractSnapshot(
+            expiryEpochSeconds = 1_800_000_000L,
+            strike = strike,
+            type = type,
+            bid = 1.0,
+            ask = 1.2,
+            volume = volume,
+            openInterest = oi,
+            impliedVolatility = iv,
+            delta = null,
+            gamma = null,
+            distanceToSpotPct = distance,
+            lastTradeEpochSeconds = null
+        )
 
     private fun macro() = listOf(
         snapshot("SPY", 1.0, 600.0), snapshot("QQQ", 1.1, 550.0), snapshot("IWM", 0.8, 240.0),
