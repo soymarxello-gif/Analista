@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
+import com.analista.mobile.domain.FundamentalAssessmentEngine
 import com.analista.mobile.domain.LiveRunDefinitionAssembler
 import com.analista.mobile.domain.RankingComparisonPersistenceFactory
 import com.analista.mobile.domain.TradePlanGenerationEngine
@@ -27,7 +28,27 @@ interface AnalistaDao {
     suspend fun insertMarketSnapshots(snapshots: List<MarketSnapshotEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEnrichment(rows: List<CandidateEnrichmentEntity>)
+    suspend fun insertEnrichmentRaw(rows: List<CandidateEnrichmentEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFundamentalSnapshots(rows: List<FundamentalSnapshotEntity>)
+
+    @Transaction
+    suspend fun insertEnrichment(rows: List<CandidateEnrichmentEntity>) {
+        if (rows.isEmpty()) return
+        insertEnrichmentRaw(rows)
+        val snapshots = rows.mapNotNull { row ->
+            if (row.fundamentalsStatus !in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL")) return@mapNotNull null
+            val registered = FundamentalSnapshotRegistry.get(row.ticker) ?: return@mapNotNull null
+            FundamentalAssessmentEngine.toEntity(
+                runId = row.runId,
+                ticker = row.ticker,
+                metrics = registered.metrics,
+                capturedAtUtc = row.capturedAtUtc
+            )
+        }
+        if (snapshots.isNotEmpty()) insertFundamentalSnapshots(snapshots)
+    }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAnalysis(rows: List<CandidateAnalysisEntity>)
@@ -113,6 +134,9 @@ interface AnalistaDao {
 
     @Query("SELECT * FROM candidate_enrichment WHERE runId = :runId")
     fun observeEnrichment(runId: String): Flow<List<CandidateEnrichmentEntity>>
+
+    @Query("SELECT * FROM fundamental_snapshots WHERE runId = :runId ORDER BY fundamentalScore DESC")
+    fun observeFundamentalSnapshots(runId: String): Flow<List<FundamentalSnapshotEntity>>
 
     @Query("SELECT * FROM candidate_analysis WHERE runId = :runId ORDER BY finalTradeScore DESC")
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>>
