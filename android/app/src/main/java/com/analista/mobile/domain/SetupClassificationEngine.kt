@@ -63,14 +63,15 @@ object SetupClassificationEngine {
                 triggerType = "NONE", invalidationType = "LOST_PRIOR_RESISTANCE", trigger = null,
                 reasons = listOf("prior_breakout_lost", "execution_below_resistance")
             )
-            breakoutHolding && execution >= breakoutTrigger -> assessment(
+            breakoutHolding && execution != null && execution >= breakoutTrigger -> assessment(
                 type = "BREAKOUT", valid = true,
                 score = score(75.0, trendUp, input.relativeVolume >= 1.5, input.rsi14 in 50.0..70.0),
                 triggerType = "RESISTANCE_BUFFER", invalidationType = "CLOSE_BELOW_BREAKOUT_LEVEL",
                 trigger = breakoutTrigger,
                 reasons = listOf("breakout_holding", "price_above_buffer")
             )
-            priorSessionBreakout && retestDistanceAtr != null && retestDistanceAtr <= 0.35 && execution >= input.priorResistance -> assessment(
+            priorSessionBreakout && execution != null && retestDistanceAtr != null &&
+                retestDistanceAtr <= 0.35 && execution >= input.priorResistance -> assessment(
                 type = "BREAKOUT_RETEST", valid = true,
                 score = score(72.0, trendUp, constructiveMomentum, input.relativeVolume >= 0.8),
                 triggerType = "RETEST_RECLAIM", invalidationType = "RETEST_LOW",
