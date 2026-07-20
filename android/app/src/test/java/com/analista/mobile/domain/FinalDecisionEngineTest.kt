@@ -109,6 +109,28 @@ class FinalDecisionEngineTest {
     }
 
     @Test
+    fun riskOffRaisesReadyAndConfirmedThresholds() {
+        val waiting = FinalDecisionEngine.decide(
+            input(macroRegime = "RISK_OFF", finalTradeScore = 68.0)
+        )
+        assertEquals("WATCHLIST", waiting.finalSignal)
+        assertFalse(waiting.eligibleForContract)
+        assertTrue("risk_off_thresholds_elevated" in waiting.penaltyReasons)
+
+        val triggered = FinalDecisionEngine.decide(
+            input(
+                preliminarySignal = "TRIGGER_CONFIRMED",
+                macroRegime = "RISK_OFF",
+                finalTradeScore = 80.0,
+                liveTriggerConfirmed = true,
+                actionability = "ACTIONABLE_REVIEW"
+            )
+        )
+        assertEquals("WATCHLIST", triggered.finalSignal)
+        assertFalse(triggered.eligibleForContract)
+    }
+
+    @Test
     fun delayedQuoteCanWaitButCannotConfirm() {
         val waiting = FinalDecisionEngine.decide(input(executionFreshness = "DELAYED_ACCEPTABLE"))
         assertEquals("READY_WAIT_TRIGGER", waiting.finalSignal)

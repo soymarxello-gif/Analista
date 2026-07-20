@@ -2,12 +2,13 @@ package com.analista.mobile.domain
 
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CanonicalAnalysis
+import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v2-overlays-1"
+    const val ENGINE_VERSION = "android-v3-overlays-2"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -19,7 +20,14 @@ object DecisionOverlayEngine {
         val fundamentalCoverage: String,
         val optionsCoverage: String,
         val confidencePenalty: Double,
-        val breakdown: String
+        val breakdown: String,
+        val riskAppetite: String = "UNKNOWN",
+        val ratesRegime: String = "UNKNOWN",
+        val liquidityRegime: String = "UNKNOWN",
+        val eventRisk: String = "UNKNOWN",
+        val sectorRegime: String = "UNKNOWN",
+        val macroConfidence: String = "UNKNOWN",
+        val macroCoveragePct: Double = 0.0
     )
 
     fun apply(
@@ -28,21 +36,29 @@ object DecisionOverlayEngine {
         macro: List<MarketSnapshotEntity>,
         enrichment: CandidateEnrichmentEntity?
     ): OverlayResult {
-        val context = macroScore(macro)
+        val histories = MarketHistoryRegistry.snapshot(macro.map { it.symbol })
+        val context = MacroRegimeEngine.assess(histories, macro)
         val fundamental = fundamentalScore(enrichment)
         val institutional = optionsScore(enrichment)
 
         var confidencePenalty = 0.0
         if (fundamental.coverage != "COMPLETE") confidencePenalty += if (fundamental.coverage == "PARTIAL") 2.0 else 4.0
         if (institutional.coverage != "COMPLETE") confidencePenalty += if (institutional.coverage == "PARTIAL") 2.0 else 4.0
-        if (macro.size < 6) confidencePenalty += 3.0
+        confidencePenalty += when (context.confidence) {
+            "HIGH" -> 0.0
+            "PARTIAL" -> 2.0
+            "LOW" -> 4.0
+            else -> 6.0
+        }
 
         var final = base.finalTradeScore +
-            0.10 * (context.score - 50.0) +
+            0.10 * (context.macroScore - 50.0) +
             0.10 * (fundamental.score - 50.0) +
             0.10 * (institutional.score - 50.0) -
             confidencePenalty
 
+        if (context.macroRegime == "RISK_OFF") final -= 5.0
+        if (context.ratesRegime == "RISING") final -= 2.0
         if (institutional.bias == "CROWDED_BULLISH") final -= 8.0
         if (candidate.signal == "VETO" || candidate.setupType == "NO_VALID_SETUP") final = minOf(final, 49.0)
         if (candidate.executionQuoteQuality == "LOW") final = minOf(final, 59.0)
@@ -51,44 +67,35 @@ object DecisionOverlayEngine {
         val breakdown = listOf(
             base.scoreBreakdown,
             "fundamental=${round2(fundamental.score)}:${fundamental.coverage}",
-            "macro=${round2(context.score)}:${context.regime}",
+            "macro=${round2(context.macroScore)}:${context.macroRegime}:${context.confidence}:20d_60d",
+            "risk_appetite=${context.riskAppetite}",
+            "rates=${context.ratesRegime}",
+            "liquidity=${context.liquidityRegime}",
+            "event_risk=${context.eventRisk}",
+            "sector=${context.sectorRegime}",
             "institutional=${round2(institutional.score)}:${institutional.bias}:${institutional.coverage}",
             "confidence_penalty=${round2(confidencePenalty)}"
         ).joinToString(";")
 
         return OverlayResult(
-            contextScore = round2(context.score),
+            contextScore = round2(context.macroScore),
             fundamentalScore = round2(fundamental.score),
             institutionalScore = round2(institutional.score),
             finalTradeScore = round2(final),
-            macroRegime = context.regime,
+            macroRegime = context.macroRegime,
             optionsBias = institutional.bias,
             fundamentalCoverage = fundamental.coverage,
             optionsCoverage = institutional.coverage,
             confidencePenalty = round2(confidencePenalty),
-            breakdown = breakdown
+            breakdown = breakdown,
+            riskAppetite = context.riskAppetite,
+            ratesRegime = context.ratesRegime,
+            liquidityRegime = context.liquidityRegime,
+            eventRisk = context.eventRisk,
+            sectorRegime = context.sectorRegime,
+            macroConfidence = context.confidence,
+            macroCoveragePct = context.coveragePct
         )
-    }
-
-    private data class MacroResult(val score: Double, val regime: String)
-
-    private fun macroScore(items: List<MarketSnapshotEntity>): MacroResult {
-        val byLabel = items.associateBy { it.label }
-        val spy = byLabel["SPY"]?.changePct
-        val qqq = byLabel["QQQ"]?.changePct
-        val iwm = byLabel["IWM"]?.changePct
-        val vix = byLabel["VIX"]?.close
-        val us10yChange = byLabel["US10Y"]?.changePct
-        val dxyChange = byLabel["DXY"]?.changePct
-
-        var score = 50.0
-        listOfNotNull(spy, qqq, iwm).forEach { score += when { it >= 0.75 -> 6.0; it > 0.0 -> 3.0; it <= -0.75 -> -6.0; else -> -3.0 } }
-        if (vix != null) score += when { vix < 18.0 -> 8.0; vix < 24.0 -> 2.0; vix >= 30.0 -> -15.0; else -> -7.0 }
-        if (us10yChange != null && us10yChange > 1.5) score -= 5.0
-        if (dxyChange != null && dxyChange > 0.5) score -= 4.0
-        score = score.coerceIn(0.0, 100.0)
-        val regime = when { score >= 65.0 -> "RISK_ON"; score <= 35.0 -> "RISK_OFF"; else -> "MIXED" }
-        return MacroResult(score, regime)
     }
 
     private data class FundamentalResult(val score: Double, val coverage: String)
