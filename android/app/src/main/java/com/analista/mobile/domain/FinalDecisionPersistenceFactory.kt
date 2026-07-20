@@ -29,11 +29,6 @@ object FinalDecisionPersistenceFactory {
         require(candidate.plannedTrigger != null)
         require(candidate.maximumEntry != null)
 
-        val institutionalConflict = if (
-            overlay.optionsCoverage == "COMPLETE" &&
-            overlay.optionsBias == "BEARISH_WITH_DATA" &&
-            overlay.institutionalScore <= 40.0
-        ) "HIGH" else "NONE"
         val aggressiveStop = AggressiveStopPolicy.evaluate(
             AggressiveStopPolicy.Input(
                 baseRiskPlanValid = plan.riskPlanValid,
@@ -59,7 +54,7 @@ object FinalDecisionPersistenceFactory {
                 macroConfidence = resolvedMacroConfidence,
                 fundamentalCoverage = overlay.fundamentalCoverage,
                 institutionalCoverage = overlay.optionsCoverage,
-                institutionalConflict = institutionalConflict,
+                institutionalConflict = overlay.institutionalConflict,
                 riskPlanValid = aggressiveStop.valid,
                 liveTriggerConfirmed = candidate.liveTriggerConfirmed,
                 actionability = candidate.actionabilityAtExecution,
@@ -69,11 +64,22 @@ object FinalDecisionPersistenceFactory {
                 failedBreakout = candidate.failedBreakout,
                 hardVetoReasons = candidate.allVetoReasons,
                 penaltyReasons = (
-                    candidate.penaltyReasons + aggressiveStop.reasons + overlay.fundamentalReasons
+                    candidate.penaltyReasons +
+                        aggressiveStop.reasons +
+                        overlay.fundamentalReasons +
+                        overlay.institutionalReasons
                 ).distinct()
             )
         )
 
+        val decisionBundle = listOf(
+            evaluated.decisionVersion,
+            AggressiveStopPolicy.VERSION,
+            MacroRegimeEngine.VERSION,
+            FundamentalAssessmentEngine.VERSION,
+            OptionMetricsEngine.VERSION,
+            InstitutionalContrarianEngine.VERSION
+        ).joinToString("+")
         val entity = FinalDecisionEntity(
             decisionId = "$runId-${candidate.ticker}",
             runId = runId,
@@ -89,7 +95,7 @@ object FinalDecisionPersistenceFactory {
             fundamentalCoverage = overlay.fundamentalCoverage,
             institutionalCoverage = overlay.optionsCoverage,
             executionFreshness = candidate.quoteFreshnessStatus,
-            decisionVersion = "${evaluated.decisionVersion}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}+${FundamentalAssessmentEngine.VERSION}",
+            decisionVersion = decisionBundle,
             calculatedAtUtc = calculatedAtUtc
         )
 
@@ -106,7 +112,7 @@ object FinalDecisionPersistenceFactory {
                 stopPrice = plan.structuralStop,
                 targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
-                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}+${FundamentalAssessmentEngine.VERSION}",
+                engineVersion = "$engineVersion+$decisionBundle+${QuoteFreshnessEngine.VERSION}",
                 createdAtUtc = calculatedAtUtc
             )
         } else null
