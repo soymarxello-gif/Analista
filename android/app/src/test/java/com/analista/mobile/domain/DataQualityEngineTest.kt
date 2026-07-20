@@ -23,6 +23,16 @@ class DataQualityEngineTest {
     }
 
     @Test
+    fun observedIndependenceDayDoesNotCreateFalseMissingSession() {
+        val thursday = LocalDate.of(2026, 7, 2)
+        val now = ZonedDateTime.of(2026, 7, 6, 9, 20, 0, 0, zone).toInstant().toEpochMilli()
+        val result = DataQualityEngine.assess(barsEnding(thursday), cacheHit = false, nowMillis = now)
+        assertEquals(0, result.sessionsOld)
+        assertEquals("HIGH", result.status)
+        assertEquals(NyseSessionCalendar.VERSION, result.calendarVersion)
+    }
+
+    @Test
     fun oneMissingSessionBlocksExecutionButRemainsObservable() {
         val monday = LocalDate.of(2026, 7, 20)
         val now = ZonedDateTime.of(2026, 7, 22, 9, 20, 0, 0, zone).toInstant().toEpochMilli()
