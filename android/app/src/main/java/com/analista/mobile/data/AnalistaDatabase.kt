@@ -21,9 +21,10 @@ import androidx.room.RoomDatabase
         FundamentalSnapshotEntity::class,
         OptionAssessmentEntity::class,
         UniverseSnapshotEntity::class,
-        UniverseMemberEntity::class
+        UniverseMemberEntity::class,
+        RunDatasetArtifactEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class AnalistaDatabase : RoomDatabase() {
