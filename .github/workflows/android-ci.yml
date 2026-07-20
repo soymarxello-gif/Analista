@@ -50,6 +50,7 @@ jobs:
           VERSION_NAME="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)"
           VERSION_CODE="$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' android/app/build.gradle.kts | head -1)"
           APPLICATION_ID="$(sed -n 's/.*applicationId = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)"
+          SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}"
           APK_SHA256="$(sha256sum "$APK" | awk '{print $1}')"
           printf '%s  %s\n' "$APK_SHA256" "analista-stable.apk" > "$APK_DIR/analista-stable.apk.sha256"
           cat > "$APK_DIR/release-manifest.txt" <<EOF
@@ -57,7 +58,7 @@ jobs:
           applicationId=$APPLICATION_ID
           versionName=$VERSION_NAME
           versionCode=$VERSION_CODE
-          commit=$GITHUB_SHA
+          commit=$SOURCE_COMMIT
           apkSha256=$APK_SHA256
           releaseGate=institutional-release-gate-1
           executionMode=manual_review
