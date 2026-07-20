@@ -66,12 +66,18 @@ class YahooFinanceClient(
         parseMarketQuote(body, safeTicker)
     }
 
-    internal fun parseMarketQuote(json: String, ticker: String): MarketQuote {
+    internal fun parseMarketQuote(
+        json: String,
+        ticker: String,
+        retrievedAtUtc: Long = System.currentTimeMillis()
+    ): MarketQuote {
         val result = JSONObject(json)
             .optJSONObject("quoteResponse")
             ?.optJSONArray("result")
             ?.optJSONObject(0)
             ?: throw IOException("No quote for $ticker")
+        val marketState = result.optString("marketState").takeIf { it.isNotBlank() }
+        val providerTimestamp = providerTimestampMillis(result, marketState)
         return MarketQuote(
             bid = result.optNullableDouble("bid"),
             ask = result.optNullableDouble("ask"),
@@ -79,9 +85,24 @@ class YahooFinanceClient(
             preMarketPrice = result.optNullableDouble("preMarketPrice"),
             marketCap = result.optNullableLong("marketCap"),
             quoteType = result.optString("quoteType").takeIf { it.isNotBlank() },
-            marketState = result.optString("marketState").takeIf { it.isNotBlank() },
-            capturedAtUtc = System.currentTimeMillis()
+            marketState = marketState,
+            capturedAtUtc = providerTimestamp ?: retrievedAtUtc,
+            providerTimestampUtc = providerTimestamp,
+            retrievedAtUtc = retrievedAtUtc,
+            provider = "YAHOO"
         )
+    }
+
+    private fun providerTimestampMillis(result: JSONObject, marketState: String?): Long? {
+        val keys = when (marketState?.uppercase()) {
+            "PRE", "PREPRE" -> listOf("preMarketTime", "regularMarketTime", "postMarketTime")
+            "POST", "POSTPOST" -> listOf("postMarketTime", "regularMarketTime", "preMarketTime")
+            else -> listOf("regularMarketTime", "preMarketTime", "postMarketTime")
+        }
+        return keys.asSequence()
+            .mapNotNull { key -> result.optLong(key, 0L).takeIf { it > 0L } }
+            .firstOrNull()
+            ?.times(1_000L)
     }
 
     internal fun parseChart(json: String, ticker: String): List<PriceBar> {
