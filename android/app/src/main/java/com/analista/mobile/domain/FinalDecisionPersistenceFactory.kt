@@ -68,7 +68,9 @@ object FinalDecisionPersistenceFactory {
                 dataQualityAllowsExecution = dataQualityAllowsExecution,
                 failedBreakout = candidate.failedBreakout,
                 hardVetoReasons = candidate.allVetoReasons,
-                penaltyReasons = (candidate.penaltyReasons + aggressiveStop.reasons).distinct()
+                penaltyReasons = (
+                    candidate.penaltyReasons + aggressiveStop.reasons + overlay.fundamentalReasons
+                ).distinct()
             )
         )
 
@@ -87,7 +89,7 @@ object FinalDecisionPersistenceFactory {
             fundamentalCoverage = overlay.fundamentalCoverage,
             institutionalCoverage = overlay.optionsCoverage,
             executionFreshness = candidate.quoteFreshnessStatus,
-            decisionVersion = "${evaluated.decisionVersion}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}",
+            decisionVersion = "${evaluated.decisionVersion}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}+${FundamentalAssessmentEngine.VERSION}",
             calculatedAtUtc = calculatedAtUtc
         )
 
@@ -104,7 +106,7 @@ object FinalDecisionPersistenceFactory {
                 stopPrice = plan.structuralStop,
                 targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
-                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}",
+                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}+${AggressiveStopPolicy.VERSION}+${MacroRegimeEngine.VERSION}+${FundamentalAssessmentEngine.VERSION}",
                 createdAtUtc = calculatedAtUtc
             )
         } else null
