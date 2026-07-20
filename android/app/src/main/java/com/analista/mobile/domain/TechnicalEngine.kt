@@ -62,17 +62,48 @@ object TechnicalEngine {
             (ask - bid) / ((ask + bid) / 2.0) * 100.0
         } else null
         val openingGapPct = livePremarket?.let { (it / close - 1.0) * 100.0 }
-        val plannedTrigger = prior20High + max(0.25 * atr, prior20High * 0.005)
+
+        val classified = SetupClassificationEngine.classify(
+            SetupClassificationEngine.Input(
+                bars = bars,
+                close = close,
+                sma20 = sma20,
+                sma50 = sma50,
+                atr = atr,
+                rsi14 = rsi,
+                macd = macd,
+                macdSignal = macdSignal,
+                relativeVolume = relativeVolume,
+                priorResistance = prior20High,
+                executionPrice = executionPrice
+            )
+        )
+        val setup = if (context.setupType == "BREAKOUT_OR_PULLBACK") classified else classified.copy(
+            setupType = context.setupType,
+            setupValid = context.setupType != "NO_VALID_SETUP",
+            reasons = classified.reasons + "setup_type_overridden"
+        )
+        reasons += setup.reasons.map { "setup_$it" }
+        if (setup.setupValid) {
+            score += setup.setupScore * 0.10
+            reasons += "setup_${setup.setupType.lowercase()}"
+        } else {
+            vetoReasons += "no_valid_setup"
+        }
+
+        val fallbackBreakoutTrigger = prior20High + max(0.25 * atr, prior20High * 0.005)
+        val plannedTrigger = setup.plannedTrigger ?: fallbackBreakoutTrigger
         val maximumEntry = plannedTrigger + 0.50 * atr
         val priorSessionBreakout = close > prior20High && relativeVolume >= 1.2
         val livePriceInTriggerWindow = executionPrice?.let { it >= plannedTrigger && it <= maximumEntry } ?: false
         val liveTriggerConfirmed = livePriceInTriggerWindow && freshness.permitsConfirmation
-        val breakoutHolding = priorSessionBreakout && executionPrice?.let { it >= plannedTrigger } == true
-        val failedBreakout = priorSessionBreakout && executionPrice?.let { it < prior20High } == true
+        val breakoutHolding = priorSessionBreakout && executionPrice?.let { it >= prior20High } == true
+        val failedBreakout = setup.setupType == "FAILED_BREAKOUT" ||
+            (priorSessionBreakout && executionPrice?.let { it < prior20High } == true)
         val triggerDistancePct = executionPrice?.let { (it / plannedTrigger - 1.0) * 100.0 }
         val triggerConfirmed = liveTriggerConfirmed && quote.quality != "LOW" && context.executionDataAllowed
         if (priorSessionBreakout) reasons += "prior_session_breakout"
-        if (triggerConfirmed) { score += 10; reasons += "live_breakout_confirmed" }
+        if (triggerConfirmed) { score += 10; reasons += "live_trigger_confirmed" }
         if (failedBreakout) reasons += "failed_breakout"
 
         val gapAtr = livePremarket?.let { abs(it - close) / atr }
@@ -103,7 +134,6 @@ object TechnicalEngine {
 
         val overextended = rsi > 75 || close > sma20 + 2.5 * atr
         if (overextended) reasons += "overextended"
-        if (context.setupType == "NO_VALID_SETUP") vetoReasons += "no_valid_setup"
 
         val theoreticalEntry = plannedTrigger
         val theoreticalStop = max(0.01, minOf(sma20, plannedTrigger - 1.5 * atr))
@@ -142,6 +172,7 @@ object TechnicalEngine {
             penalties += "trigger_state_incoherent"
         }
         require(signal in TradingPolicy.allowedSignals)
+        require(setup.setupType != "BREAKOUT_OR_PULLBACK")
 
         val actionable = signal == "TRIGGER_CONFIRMED" && actionability == "ACTIONABLE_REVIEW"
         val actionableEntry = executableEntry.takeIf { actionable }
@@ -156,7 +187,7 @@ object TechnicalEngine {
             entry = actionableEntry?.let(::round2), stop = actionableStop?.let(::round2),
             target = actionableTarget?.let(::round2), rr = round2(rr), reason = reasons.joinToString(","),
             quoteStatus = quote.status, executionQuoteQuality = quote.quality,
-            triggerConfirmed = triggerConfirmed, setupType = context.setupType,
+            triggerConfirmed = triggerConfirmed, setupType = setup.setupType,
             allVetoReasons = vetoReasons.distinct(), penaltyReasons = penalties.distinct(),
             actionableEntry = actionableEntry?.let(::round2), actionableStop = actionableStop?.let(::round2),
             actionableTarget = actionableTarget?.let(::round2), theoreticalEntry = round2(theoreticalEntry),
