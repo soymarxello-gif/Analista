@@ -24,7 +24,7 @@ object MacroRegimeEngine {
         histories: Map<String, List<PriceBar>>,
         fallbackSnapshots: List<MarketSnapshotEntity> = emptyList()
     ): Result {
-        val normalized = histories.mapKeys { it.key.trim().uppercase().replace(".", "-") }
+        val normalized = histories.mapKeys { it.key.trim().uppercase() }
         val reasons = mutableListOf<String>()
         val required = listOf("SPY", "QQQ", "IWM", "^VIX", "^TNX", "^TYX", "DX-Y.NYB", "CL=F", "BTC-USD")
         val validHistories = required.associateWith { normalized[it].orEmpty() }.filterValues { it.size >= 61 }
