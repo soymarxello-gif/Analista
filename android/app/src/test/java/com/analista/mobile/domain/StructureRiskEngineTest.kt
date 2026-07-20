@@ -45,7 +45,7 @@ class StructureRiskEngineTest {
     }
 
     @Test
-    fun nearbyResistanceCanInvalidateMinimumRewardRisk() {
+    fun nearbyRelevantResistanceCanInvalidateMinimumRewardRisk() {
         val plan = StructureRiskEngine.plan(
             entry = 100.0,
             atr = 2.0,
@@ -55,7 +55,7 @@ class StructureRiskEngineTest {
         )
         assertFalse(plan.valid)
         assertTrue("rr_below_min" in plan.reasons)
-        assertTrue("target_capped_by_resistance" in plan.reasons)
+        assertTrue("target_capped_by_relevant_resistance" in plan.reasons)
     }
 
     @Test
@@ -68,5 +68,43 @@ class StructureRiskEngineTest {
             nextResistance = null
         )
         assertEquals(2.5, plan.rr, 1e-9)
+    }
+
+    @Test
+    fun ema20PullbackSelectsEma20InvalidationInsteadOfNearestGenericStop() {
+        val plan = StructureRiskEngine.plan(
+            entry = 100.0,
+            atr = 2.0,
+            sma20 = 98.5,
+            sma50 = 95.0,
+            swingLow = 96.0,
+            support = 97.0,
+            nextResistance = null,
+            setupType = "PULLBACK_EMA20"
+        )
+        assertEquals("EMA20_STOP", plan.stopType)
+        assertTrue(plan.stopCandidates.any { it.type == "ATR_STOP" })
+        assertTrue(plan.stopCandidates.any { it.type == "SWING_LOW_STOP" })
+        assertTrue(plan.stopCandidates.any { it.type == "SUPPORT_STOP" })
+        assertTrue(plan.stopCandidates.any { it.type == "EMA50_STOP" })
+    }
+
+    @Test
+    fun openingGapCreatesSeparateGapInvalidationCandidate() {
+        val history = listOf(
+            PriceBar(1L, 98.0, 100.0, 97.0, 99.0, 1_000_000L),
+            PriceBar(2L, 101.0, 103.0, 100.0, 102.0, 1_000_000L)
+        )
+        val plan = StructureRiskEngine.plan(
+            entry = 103.0,
+            atr = 2.0,
+            sma20 = 98.0,
+            sma50 = 95.0,
+            swingLow = 96.0,
+            nextResistance = null,
+            setupType = "BREAKOUT",
+            bars = history
+        )
+        assertTrue(plan.stopCandidates.any { it.type == "GAP_INVALIDATION_STOP" })
     }
 }
