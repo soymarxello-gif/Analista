@@ -21,6 +21,8 @@ import com.analista.mobile.data.MIGRATION_13_14
 import com.analista.mobile.data.MIGRATION_14_15
 import com.analista.mobile.data.MIGRATION_15_16
 import com.analista.mobile.data.MarketDataGateway
+import com.analista.mobile.data.RunDatasetCaptureService
+import com.analista.mobile.data.RunDatasetStore
 import com.analista.mobile.data.ScanRepository
 import com.analista.mobile.data.YahooFinanceClient
 
@@ -47,9 +49,13 @@ class AnalistaApplication : Application() {
             .build()
     }
     private val yahoo by lazy { YahooFinanceClient(this) }
+    private val datasetStore by lazy { RunDatasetStore(this) }
+    private val datasetCapture by lazy { RunDatasetCaptureService(datasetStore) }
     val credentialsStore by lazy { AlpacaCredentialsStore(this) }
     val marketDataGateway by lazy {
         MarketDataGateway(yahoo, AlpacaMarketDataClient(), credentialsStore)
     }
-    val repository by lazy { ScanRepository(database.dao(), yahoo, marketDataGateway) }
+    val repository by lazy {
+        ScanRepository(database.dao(), yahoo, marketDataGateway, datasetCapture = datasetCapture)
+    }
 }
