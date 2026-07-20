@@ -37,6 +37,19 @@ interface AnalistaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOptionAssessments(rows: List<OptionAssessmentEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUniverseSnapshot(row: UniverseSnapshotEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUniverseMembers(rows: List<UniverseMemberEntity>)
+
+    @Transaction
+    suspend fun saveUniverseSnapshot(snapshot: UniverseSnapshotEntity, members: List<UniverseMemberEntity>) {
+        require(members.all { it.snapshotId == snapshot.snapshotId })
+        insertUniverseSnapshot(snapshot)
+        if (members.isNotEmpty()) insertUniverseMembers(members)
+    }
+
     @Transaction
     suspend fun insertEnrichment(rows: List<CandidateEnrichmentEntity>) {
         if (rows.isEmpty()) return
@@ -154,6 +167,12 @@ interface AnalistaDao {
 
     @Query("SELECT * FROM option_assessments WHERE runId = :runId ORDER BY institutionalScore DESC")
     fun observeOptionAssessments(runId: String): Flow<List<OptionAssessmentEntity>>
+
+    @Query("SELECT * FROM universe_snapshots ORDER BY effectiveDate DESC, createdAtUtc DESC LIMIT 1")
+    fun observeLatestUniverseSnapshot(): Flow<UniverseSnapshotEntity?>
+
+    @Query("SELECT * FROM universe_members WHERE snapshotId = :snapshotId ORDER BY ticker")
+    fun observeUniverseMembers(snapshotId: String): Flow<List<UniverseMemberEntity>>
 
     @Query("SELECT * FROM candidate_analysis WHERE runId = :runId ORDER BY finalTradeScore DESC")
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>>
