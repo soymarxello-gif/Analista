@@ -29,6 +29,8 @@ jobs:
         run: python -c "from tools.validate_audited_logic import validate_final_score; validate_final_score()"
       - name: Validate signal semantics
         run: python -c "from tools.validate_audited_logic import validate_signals; validate_signals()"
+      - name: Validate Android and Python indicator parity
+        run: python tools/validate_android_indicator_parity.py
       - name: Validate options semantics
         run: python -c "from tools.validate_audited_logic import validate_options; validate_options()"
       - name: Validate scan postprocessor
