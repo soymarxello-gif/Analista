@@ -26,7 +26,11 @@ class ExecutionPlannerTest {
             marketCap = 10_000_000_000L,
             quoteType = "EQUITY"
         )
-        val result = TechnicalEngine.analyze("TEST", history, TradeContext(quote = quote))
+        val result = TechnicalEngine.analyze(
+            "TEST",
+            history,
+            TradeContext(quote = quote, setupType = "PULLBACK_EMA20")
+        )
         assertEquals("GAP_EXCESSIVE", result.actionabilityAtExecution)
         assertNull(result.actionableEntry)
         assertTrue("opening_gap_excessive" in result.penaltyReasons)
@@ -37,7 +41,12 @@ class ExecutionPlannerTest {
         val result = TechnicalEngine.analyze(
             "TEST",
             bars(),
-            TradeContext(quote = null, marketCap = 10_000_000_000L, quoteType = "EQUITY")
+            TradeContext(
+                quote = null,
+                marketCap = 10_000_000_000L,
+                quoteType = "EQUITY",
+                setupType = "PULLBACK_EMA20"
+            )
         )
         assertEquals("QUOTE_UNCONFIRMED", result.actionabilityAtExecution)
         assertNull(result.actionableEntry)
