@@ -71,6 +71,17 @@ class RunDatasetCaptureService(private val store: RunDatasetStore) {
                 payload = NormalizedDatasetCodec.macro(macroSnapshots),
                 createdAtUtc = createdAtUtc
             )
+            macroSnapshots.map { it.symbol }.distinct().sorted().forEach { symbol ->
+                MarketHistoryRegistry.get(symbol)?.takeIf { it.isNotEmpty() }?.let { bars ->
+                    artifacts += store.write(
+                        runId = runId,
+                        datasetType = "MACRO_HISTORY",
+                        ticker = symbol,
+                        payload = NormalizedDatasetCodec.bars(symbol, bars),
+                        createdAtUtc = createdAtUtc
+                    )
+                }
+            }
         }
 
         val liveUniverse = LiveUniverseSnapshotAssembler.assemble(
@@ -100,6 +111,6 @@ class RunDatasetCaptureService(private val store: RunDatasetStore) {
     private fun normalizeTicker(value: String): String = value.trim().uppercase().replace(".", "-")
 
     companion object {
-        const val VERSION = "live-dataset-capture-1"
+        const val VERSION = "live-dataset-capture-2"
     }
 }

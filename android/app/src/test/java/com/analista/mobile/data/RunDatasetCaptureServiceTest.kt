@@ -8,12 +8,13 @@ import java.nio.file.Files
 
 class RunDatasetCaptureServiceTest {
     @Test
-    fun capturesBarsQuotesMacroAndUniverseForRuntimeTickers() = runTest {
+    fun capturesBarsQuotesMacroHistoryAndUniverseForRuntimeTickers() = runTest {
         val root = Files.createTempDirectory("analista-live-capture").toFile()
         try {
             RunUniverseRegistry.record("run-1", listOf("BBB", "AAA"))
             val service = RunDatasetCaptureService(RunDatasetStore(root))
             val bars = listOf(PriceBar(1L, 10.0, 11.0, 9.0, 10.5, 100L))
+            MarketHistoryRegistry.record("SPY", bars)
             val quote = MarketQuote(
                 bid = 10.4,
                 ask = 10.6,
@@ -46,10 +47,11 @@ class RunDatasetCaptureServiceTest {
                 createdAtUtc = 1L
             )
 
-            assertEquals(6, artifacts.size)
+            assertEquals(7, artifacts.size)
             assertEquals(2, artifacts.count { it.datasetType == "NORMALIZED_BARS" })
             assertEquals(2, artifacts.count { it.datasetType == "EXECUTION_QUOTE" })
             assertEquals(1, artifacts.count { it.datasetType == "MACRO_SNAPSHOT" })
+            assertEquals(1, artifacts.count { it.datasetType == "MACRO_HISTORY" })
             assertEquals(1, artifacts.count { it.datasetType == "UNIVERSE_SNAPSHOT" })
             assertTrue(artifacts.all { it.contentHash.length == 64 })
             val store = RunDatasetStore(root)
@@ -58,6 +60,7 @@ class RunDatasetCaptureServiceTest {
             RunUniverseRegistry.clear()
             FundamentalSnapshotRegistry.clear()
             OptionChainRegistry.clear()
+            MarketHistoryRegistry.clear()
             root.deleteRecursively()
         }
     }
