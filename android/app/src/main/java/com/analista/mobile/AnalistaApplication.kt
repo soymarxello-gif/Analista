@@ -16,6 +16,7 @@ import com.analista.mobile.data.MIGRATION_8_9
 import com.analista.mobile.data.MIGRATION_9_10
 import com.analista.mobile.data.MIGRATION_10_11
 import com.analista.mobile.data.MIGRATION_11_12
+import com.analista.mobile.data.MIGRATION_12_13
 import com.analista.mobile.data.MarketDataGateway
 import com.analista.mobile.data.ScanRepository
 import com.analista.mobile.data.YahooFinanceClient
@@ -34,7 +35,8 @@ class AnalistaApplication : Application() {
                 MIGRATION_8_9,
                 MIGRATION_9_10,
                 MIGRATION_10_11,
-                MIGRATION_11_12
+                MIGRATION_11_12,
+                MIGRATION_12_13
             )
             .build()
     }

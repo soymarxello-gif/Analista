@@ -9,6 +9,7 @@ import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
 import com.analista.mobile.domain.FundamentalAssessmentEngine
 import com.analista.mobile.domain.LiveRunDefinitionAssembler
+import com.analista.mobile.domain.OptionAssessmentPersistenceFactory
 import com.analista.mobile.domain.RankingComparisonPersistenceFactory
 import com.analista.mobile.domain.TradePlanGenerationEngine
 import kotlinx.coroutines.flow.Flow
@@ -33,11 +34,14 @@ interface AnalistaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFundamentalSnapshots(rows: List<FundamentalSnapshotEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOptionAssessments(rows: List<OptionAssessmentEntity>)
+
     @Transaction
     suspend fun insertEnrichment(rows: List<CandidateEnrichmentEntity>) {
         if (rows.isEmpty()) return
         insertEnrichmentRaw(rows)
-        val snapshots = rows.mapNotNull { row ->
+        val fundamentalSnapshots = rows.mapNotNull { row ->
             if (row.fundamentalsStatus !in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL")) return@mapNotNull null
             val registered = FundamentalSnapshotRegistry.get(row.ticker) ?: return@mapNotNull null
             FundamentalAssessmentEngine.toEntity(
@@ -47,7 +51,17 @@ interface AnalistaDao {
                 capturedAtUtc = row.capturedAtUtc
             )
         }
-        if (snapshots.isNotEmpty()) insertFundamentalSnapshots(snapshots)
+        if (fundamentalSnapshots.isNotEmpty()) insertFundamentalSnapshots(fundamentalSnapshots)
+        val optionAssessments = rows.mapNotNull { row ->
+            val chain = OptionChainRegistry.get(row.ticker) ?: return@mapNotNull null
+            OptionAssessmentPersistenceFactory.create(
+                runId = row.runId,
+                ticker = row.ticker,
+                chain = chain,
+                capturedAtUtc = row.capturedAtUtc
+            )
+        }
+        if (optionAssessments.isNotEmpty()) insertOptionAssessments(optionAssessments)
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -137,6 +151,9 @@ interface AnalistaDao {
 
     @Query("SELECT * FROM fundamental_snapshots WHERE runId = :runId ORDER BY fundamentalScore DESC")
     fun observeFundamentalSnapshots(runId: String): Flow<List<FundamentalSnapshotEntity>>
+
+    @Query("SELECT * FROM option_assessments WHERE runId = :runId ORDER BY institutionalScore DESC")
+    fun observeOptionAssessments(runId: String): Flow<List<OptionAssessmentEntity>>
 
     @Query("SELECT * FROM candidate_analysis WHERE runId = :runId ORDER BY finalTradeScore DESC")
     fun observeAnalysis(runId: String): Flow<List<CandidateAnalysisEntity>>
