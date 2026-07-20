@@ -7,11 +7,13 @@ import com.analista.mobile.data.FundamentalSnapshotRegistry
 import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.OptionChainRegistry
+import com.analista.mobile.data.OptionChainSnapshot
+import com.analista.mobile.data.PriceBar
 import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v3-overlays-4"
+    const val ENGINE_VERSION = "android-v3-overlays-5"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -37,16 +39,49 @@ object DecisionOverlayEngine {
         val institutionalReasons: List<String> = emptyList()
     )
 
+    data class ResolvedInputs(
+        val macroHistories: Map<String, List<PriceBar>>,
+        val fundamentalMetrics: FundamentalMetrics?,
+        val fundamentalAvailable: Boolean,
+        val fundamentalCapturedAtUtc: Long?,
+        val optionChain: OptionChainSnapshot?,
+        val legacyEnrichment: CandidateEnrichmentEntity?
+    )
+
     fun apply(
         candidate: ScanCandidate,
         base: CanonicalAnalysis,
         macro: List<MarketSnapshotEntity>,
         enrichment: CandidateEnrichmentEntity?
     ): OverlayResult {
-        val histories = MarketHistoryRegistry.snapshot(macro.map { it.symbol })
-        val context = MacroRegimeEngine.assess(histories, macro)
-        val fundamental = temporalFundamental(candidate.ticker, enrichment)
-        val institutional = institutionalAssessment(candidate, enrichment)
+        val registeredFundamental = FundamentalSnapshotRegistry.get(candidate.ticker)
+        val fundamentalMetrics = registeredFundamental?.metrics ?: enrichment
+            ?.takeIf { it.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL") }
+            ?.let(::legacyFundamentalMetrics)
+        return applyResolved(
+            candidate = candidate,
+            base = base,
+            macro = macro,
+            inputs = ResolvedInputs(
+                macroHistories = MarketHistoryRegistry.snapshot(macro.map { it.symbol }),
+                fundamentalMetrics = fundamentalMetrics,
+                fundamentalAvailable = enrichment?.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL"),
+                fundamentalCapturedAtUtc = registeredFundamental?.capturedAtUtc ?: enrichment?.capturedAtUtc,
+                optionChain = OptionChainRegistry.get(candidate.ticker),
+                legacyEnrichment = enrichment
+            )
+        )
+    }
+
+    fun applyResolved(
+        candidate: ScanCandidate,
+        base: CanonicalAnalysis,
+        macro: List<MarketSnapshotEntity>,
+        inputs: ResolvedInputs
+    ): OverlayResult {
+        val context = MacroRegimeEngine.assess(inputs.macroHistories, macro)
+        val fundamental = resolvedFundamental(inputs)
+        val institutional = institutionalAssessment(candidate, inputs.optionChain, inputs.legacyEnrichment)
 
         var confidencePenalty = 0.0
         confidencePenalty += when (fundamental.status) {
@@ -121,25 +156,14 @@ object DecisionOverlayEngine {
         )
     }
 
-    private fun temporalFundamental(
-        ticker: String,
-        enrichment: CandidateEnrichmentEntity?
-    ): FundamentalAssessmentEngine.Result {
-        if (enrichment == null || enrichment.fundamentalsStatus !in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL")) {
+    private fun resolvedFundamental(inputs: ResolvedInputs): FundamentalAssessmentEngine.Result {
+        if (!inputs.fundamentalAvailable || inputs.fundamentalMetrics == null) {
             return FundamentalAssessmentEngine.Result(50.0, 0.0, "EMPTY", "UNKNOWN", listOf("fundamentals_unavailable"))
         }
-        val metrics = FundamentalSnapshotRegistry.get(ticker)?.metrics ?: FundamentalMetrics(
-            marketCap = enrichment.marketCap,
-            trailingPe = enrichment.trailingPe,
-            priceToSales = enrichment.priceToSales,
-            epsTrailing = enrichment.epsTrailing,
-            revenueGrowthPct = enrichment.revenueGrowthPct,
-            grossMarginPct = enrichment.grossMarginPct,
-            operatingMarginPct = enrichment.operatingMarginPct,
-            profitMarginPct = enrichment.profitMarginPct,
-            debtToEquity = enrichment.debtToEquity
+        return FundamentalAssessmentEngine.assess(
+            inputs.fundamentalMetrics,
+            inputs.fundamentalCapturedAtUtc?.takeIf { it > 0L } ?: System.currentTimeMillis()
         )
-        return FundamentalAssessmentEngine.assess(metrics, enrichment.capturedAtUtc)
     }
 
     private data class InstitutionalResult(
@@ -152,9 +176,9 @@ object DecisionOverlayEngine {
 
     private fun institutionalAssessment(
         candidate: ScanCandidate,
+        chain: OptionChainSnapshot?,
         enrichment: CandidateEnrichmentEntity?
     ): InstitutionalResult {
-        val chain = OptionChainRegistry.get(candidate.ticker)
         if (chain != null) {
             val optionAssessment = OptionMetricsEngine.assess(chain)
             val volumeScore = when {
@@ -217,6 +241,18 @@ object DecisionOverlayEngine {
         val conflict = if (bias == "BEARISH_WITH_DATA" && score <= 40.0 && complete) "HIGH" else "NONE"
         return InstitutionalResult(score, bias, if (complete) "COMPLETE" else "PARTIAL", conflict, listOf("legacy_options_fallback"))
     }
+
+    private fun legacyFundamentalMetrics(enrichment: CandidateEnrichmentEntity) = FundamentalMetrics(
+        marketCap = enrichment.marketCap,
+        trailingPe = enrichment.trailingPe,
+        priceToSales = enrichment.priceToSales,
+        epsTrailing = enrichment.epsTrailing,
+        revenueGrowthPct = enrichment.revenueGrowthPct,
+        grossMarginPct = enrichment.grossMarginPct,
+        operatingMarginPct = enrichment.operatingMarginPct,
+        profitMarginPct = enrichment.profitMarginPct,
+        debtToEquity = enrichment.debtToEquity
+    )
 
     private fun round2(value: Double) = round(value * 100.0) / 100.0
 }
