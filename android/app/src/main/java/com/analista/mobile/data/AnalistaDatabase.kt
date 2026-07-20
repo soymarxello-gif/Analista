@@ -17,9 +17,10 @@ import androidx.room.RoomDatabase
         ReproducibilityManifestEntity::class,
         RankingComparisonEntity::class,
         RunDefinitionEntity::class,
-        FinalDecisionEntity::class
+        FinalDecisionEntity::class,
+        FundamentalSnapshotEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 abstract class AnalistaDatabase : RoomDatabase() {
