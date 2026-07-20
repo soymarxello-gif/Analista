@@ -65,7 +65,7 @@ object ProviderMatrixAssembler {
         require(ticker.isNotBlank())
         require(retrievedAtUtc > 0L)
         val normalized = ticker.trim().uppercase().replace(".", "-")
-        val historySource = HistorySourceRegistry.get(normalized)
+        val historySource = HistorySourceRegistry.sourceFor(normalized)
         val optionChain = OptionChainRegistry.get(normalized)
         val fundamental = FundamentalSnapshotRegistry.get(normalized)
         val rows = mutableListOf<ProviderObservation>()
