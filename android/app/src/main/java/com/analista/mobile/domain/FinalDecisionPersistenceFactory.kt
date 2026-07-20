@@ -34,6 +34,17 @@ object FinalDecisionPersistenceFactory {
             overlay.optionsBias == "BEARISH_WITH_DATA" &&
             overlay.institutionalScore <= 40.0
         ) "HIGH" else "NONE"
+        val aggressiveStop = AggressiveStopPolicy.evaluate(
+            AggressiveStopPolicy.Input(
+                baseRiskPlanValid = plan.riskPlanValid,
+                stopAtrMultiple = plan.stopAtrMultiple,
+                riskReward = plan.structuralRr,
+                structureScore = plan.structureScore,
+                setupQualityScore = analysis.setupQualityScore,
+                liveTriggerConfirmed = candidate.liveTriggerConfirmed,
+                executionQuoteQuality = candidate.executionQuoteQuality
+            )
+        )
 
         val evaluated = FinalDecisionEngine.decide(
             FinalDecisionEngine.Input(
@@ -46,7 +57,7 @@ object FinalDecisionPersistenceFactory {
                 fundamentalCoverage = overlay.fundamentalCoverage,
                 institutionalCoverage = overlay.optionsCoverage,
                 institutionalConflict = institutionalConflict,
-                riskPlanValid = plan.riskPlanValid,
+                riskPlanValid = aggressiveStop.valid,
                 liveTriggerConfirmed = candidate.liveTriggerConfirmed,
                 actionability = candidate.actionabilityAtExecution,
                 executionQuoteQuality = candidate.executionQuoteQuality,
@@ -54,7 +65,7 @@ object FinalDecisionPersistenceFactory {
                 dataQualityAllowsExecution = dataQualityAllowsExecution,
                 failedBreakout = candidate.failedBreakout,
                 hardVetoReasons = candidate.allVetoReasons,
-                penaltyReasons = candidate.penaltyReasons
+                penaltyReasons = (candidate.penaltyReasons + aggressiveStop.reasons).distinct()
             )
         )
 
@@ -73,7 +84,7 @@ object FinalDecisionPersistenceFactory {
             fundamentalCoverage = overlay.fundamentalCoverage,
             institutionalCoverage = overlay.optionsCoverage,
             executionFreshness = candidate.quoteFreshnessStatus,
-            decisionVersion = evaluated.decisionVersion,
+            decisionVersion = "${evaluated.decisionVersion}+${AggressiveStopPolicy.VERSION}",
             calculatedAtUtc = calculatedAtUtc
         )
 
@@ -90,7 +101,7 @@ object FinalDecisionPersistenceFactory {
                 stopPrice = plan.structuralStop,
                 targetPrice = plan.structuralTarget,
                 expirationSessions = 20,
-                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}",
+                engineVersion = "$engineVersion+${FinalDecisionEngine.VERSION}+${QuoteFreshnessEngine.VERSION}+${AggressiveStopPolicy.VERSION}",
                 createdAtUtc = calculatedAtUtc
             )
         } else null
