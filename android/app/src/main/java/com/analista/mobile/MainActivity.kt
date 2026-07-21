@@ -8,24 +8,36 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,10 +45,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.analista.mobile.data.BacktestOutcomeEntity
 import com.analista.mobile.data.CandidateEntity
@@ -48,6 +63,7 @@ import com.analista.mobile.data.ScanRunEntity
 import com.analista.mobile.data.TradeOutcomeEntity
 import com.analista.mobile.schedule.DiagnosticsStore
 import com.analista.mobile.schedule.ScanScheduler
+import com.analista.mobile.ui.AnalistaTheme
 import com.analista.mobile.ui.MainViewModel
 import java.time.Instant
 import java.time.ZoneId
@@ -59,7 +75,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ScanScheduler.scheduleNext(this)
-        setContent { MaterialTheme { AnalistaApp(viewModel) } }
+        setContent { AnalistaTheme { AnalistaApp(viewModel) } }
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -75,16 +91,32 @@ class MainActivity : ComponentActivity() {
         val tradeOutcomes by vm.tradeOutcomes.collectAsState()
         val running by vm.running.collectAsState()
         val error by vm.error.collectAsState()
-        var tab by remember { mutableIntStateOf(0) }
+        val universeStatus by vm.universeStatus.collectAsState()
+        val universeSource by vm.universeSource.collectAsState()
+        val universeCount by vm.universeCount.collectAsState()
+        var tab by rememberSaveable { mutableIntStateOf(0) }
         val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
         LaunchedEffect(Unit) {
             if (Build.VERSION.SDK_INT >= 33) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         val labels = listOf("Resumen", "Historial", "Backtest", "Diagnóstico")
         Scaffold(
-            topBar = { TopAppBar(title = { Text("Analista · Swing long-only") }) },
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text("Analista", fontWeight = FontWeight.Bold)
+                            Text("Swing long-only · revisión manual", style = MaterialTheme.typography.labelMedium)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            },
             bottomBar = {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     labels.forEachIndexed { index, label ->
                         NavigationBarItem(
                             selected = tab == index,
@@ -94,7 +126,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.background
         ) { padding ->
             when (tab) {
                 0 -> SummaryScreen(
@@ -106,6 +139,9 @@ class MainActivity : ComponentActivity() {
                     macro = macro,
                     running = running,
                     error = error,
+                    universeStatus = universeStatus,
+                    universeSource = universeSource,
+                    universeCount = universeCount,
                     runNow = vm::runNow,
                     modifier = Modifier.padding(padding)
                 )
@@ -126,48 +162,260 @@ class MainActivity : ComponentActivity() {
         macro: List<MarketSnapshotEntity>,
         running: Boolean,
         error: String?,
+        universeStatus: String,
+        universeSource: String,
+        universeCount: Int,
         runNow: () -> Unit,
         modifier: Modifier
     ) {
-        LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val enrichmentByTicker = enrichment.associateBy { it.ticker }
+        val decisionByTicker = finalDecisions.associateBy { it.ticker }
+        val planByTicker = tradePlans.associateBy { it.ticker }
+        val filters = listOf("Todos", "Accionables", "Esperando", "Observación", "Sin setup", "No elegibles")
+        var selectedFilter by rememberSaveable { mutableStateOf("Todos") }
+        val ordered = candidates
+            .filter { candidate -> selectedFilter == "Todos" || bucket(candidate, decisionByTicker[candidate.ticker]) == selectedFilter }
+            .sortedWith(
+                compareBy<CandidateEntity> { signalPriority(decisionByTicker[it.ticker]?.finalSignal ?: it.signal) }
+                    .thenByDescending { decisionByTicker[it.ticker]?.finalTradeScore ?: it.score }
+            )
+        val counts = candidates.groupingBy { bucket(it, decisionByTicker[it.ticker]) }.eachCount()
+
+        LazyColumn(
+            modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             item {
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Ejecución local autónoma", fontWeight = FontWeight.Bold)
-                        Text("NYSE · 09:20 America/New_York · Alpaca/Yahoo")
-                        Text("Próxima ejecución: ${formatTime(ScanScheduler.nextTrigger(this@MainActivity))}")
-                        Button(onClick = runNow, enabled = !running) {
-                            Text(if (running) "Ejecutando y verificando…" else "Ejecutar ahora")
-                        }
-                        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                ScanHealthCard(
+                    latest = runs.firstOrNull(),
+                    universeStatus = universeStatus,
+                    universeSource = universeSource,
+                    universeCount = universeCount,
+                    candidateCount = candidates.size,
+                    running = running,
+                    error = error,
+                    runNow = runNow
+                )
+            }
+            if (macro.isNotEmpty()) {
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(macro, key = { it.snapshotId }) { MacroPill(it) }
                     }
                 }
             }
-            runs.firstOrNull()?.let { latest -> item { RunCard(latest) } }
-            if (macro.isNotEmpty()) {
-                item { Text("Contexto macro", style = MaterialTheme.typography.titleLarge) }
-                items(macro, key = { it.snapshotId }) { MacroCard(it) }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(filters) { filter ->
+                        FilterChip(
+                            selected = selectedFilter == filter,
+                            onClick = { selectedFilter = filter },
+                            label = {
+                                val count = if (filter == "Todos") candidates.size else counts[filter] ?: 0
+                                Text("$filter $count")
+                            }
+                        )
+                    }
+                }
             }
-            item { Text("Candidatos", style = MaterialTheme.typography.titleLarge) }
-            if (candidates.isEmpty()) item { Text("Aún no hay resultados para esta ejecución.") }
-            val enrichmentByTicker = enrichment.associateBy { it.ticker }
-            val decisionByTicker = finalDecisions.associateBy { it.ticker }
-            val planByTicker = tradePlans.associateBy { it.ticker }
-            items(candidates, key = { it.id }) { candidate ->
-                CandidateCard(
+            if (ordered.isEmpty()) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Text(
+                            if (candidates.isEmpty()) "Aún no hay resultados. Ejecuta un scan para construir el universo dinámico."
+                            else "No hay símbolos en este grupo.",
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+            }
+            items(ordered, key = { it.id }) { candidate ->
+                CompactCandidateCard(
                     candidate = candidate,
                     enrichment = enrichmentByTicker[candidate.ticker],
                     plan = planByTicker[candidate.ticker],
                     decision = decisionByTicker[candidate.ticker]
                 )
             }
+            item { Spacer(Modifier.height(8.dp)) }
+        }
+    }
+
+    @Composable
+    private fun ScanHealthCard(
+        latest: ScanRunEntity?,
+        universeStatus: String,
+        universeSource: String,
+        universeCount: Int,
+        candidateCount: Int,
+        running: Boolean,
+        error: String?,
+        runNow: () -> Unit
+    ) {
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Universo", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            if (universeCount > 0) "$universeCount símbolos · $universeStatus" else universeStatus,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            sourceLabel(universeSource),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    StatusBadge(latest?.trustStatus ?: "SIN DATOS")
+                }
+                latest?.let {
+                    HorizontalDivider()
+                    Text("${it.marketDateEt} · analizados ${it.candidateCount} · fallos ${it.failureCount}")
+                    Text(it.source, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                Text("Resultados visibles: $candidateCount · próxima ejecución ${formatTime(ScanScheduler.nextTrigger(this@MainActivity))}", style = MaterialTheme.typography.bodySmall)
+                Button(onClick = runNow, enabled = !running, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (running) "Preparando universo y analizando…" else "Ejecutar scan ahora")
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+        }
+    }
+
+    @Composable
+    private fun CompactCandidateCard(
+        candidate: CandidateEntity,
+        enrichment: CandidateEnrichmentEntity?,
+        plan: CandidateTradePlanEntity?,
+        decision: FinalDecisionEntity?
+    ) {
+        var expanded by rememberSaveable(candidate.id) { mutableStateOf(false) }
+        val signal = decision?.finalSignal ?: candidate.signal
+        val score = decision?.finalTradeScore ?: candidate.score
+        Card(
+            onClick = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth().animateContentSize(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        Text(candidate.ticker, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${setupLabel(candidate.setupType)} · ${candidate.close}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                        SignalBadge(signal)
+                        Text("${"%.1f".format(score)}", fontWeight = FontWeight.Bold)
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(executionLabel(candidate), style = MaterialTheme.typography.bodySmall)
+                    Text(if (expanded) "Ocultar detalle ▲" else "Ver detalle ▼", style = MaterialTheme.typography.labelMedium)
+                }
+                if (expanded) {
+                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                    decision?.let {
+                        DetailLine("Decisión", "${signalLabel(it.preliminarySignal)} → ${signalLabel(it.finalSignal)}")
+                        DetailLine("Contrato", if (it.eligibleForContract) "Elegible para revisión manual" else "Bloqueado")
+                        DetailLine("Confianza", it.confidence)
+                        DetailLine("Contexto", "Macro ${it.macroRegime} · Fundamental ${it.fundamentalCoverage} · Institucional ${it.institutionalCoverage}")
+                    }
+                    DetailLine("Técnico", "RSI ${candidate.rsi14} · RVOL ${candidate.relativeVolume} · ATR ${candidate.atr14}")
+                    DetailLine("Tendencia", "SMA20 ${candidate.sma20} · SMA50 ${candidate.sma50}")
+                    DetailLine("Ejecución", "${candidate.quoteStatus}/${candidate.executionQuoteQuality} · ${actionabilityLabel(candidate.actionabilityAtExecution)}")
+                    DetailLine("Trigger", "${candidate.plannedTrigger ?: "—"} · máximo ${candidate.maximumEntry ?: "—"} · spread ${fmt(candidate.spreadPct)}")
+                    plan?.let {
+                        DetailLine("Plan", if (it.riskPlanValid) "Válido" else "No válido")
+                        DetailLine("Niveles", "Entrada ${it.plannedEntry} · Stop ${it.structuralStop} (${it.stopType}) · Objetivo ${it.structuralTarget}")
+                        DetailLine("Riesgo", "R/R ${it.structuralRr} · ${it.riskPct}% · ${it.shares} acciones · USD ${"%.2f".format(it.riskBudget)}")
+                        DetailLine("Ranking", "Legacy #${it.legacyRank} · shadow #${it.tradeRank} · Δ ${rankDeltaLabel(it.rankDelta)}")
+                    }
+                    enrichment?.let {
+                        DetailLine("Datos", "Fundamental ${it.fundamentalsStatus} · Opciones ${it.optionsStatus}")
+                        val fundamental = listOfNotNull(
+                            it.trailingPe?.let { value -> "P/E $value" },
+                            it.priceToSales?.let { value -> "P/Ventas $value" },
+                            it.revenueGrowthPct?.let { value -> "Ingresos $value%" },
+                            it.profitMarginPct?.let { value -> "Margen $value%" }
+                        )
+                        if (fundamental.isNotEmpty()) Text(fundamental.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                    }
+                    val reasons = buildList {
+                        decision?.vetoReasons?.split(',')?.filter { it.isNotBlank() }?.let(::addAll)
+                        decision?.penaltyReasons?.split(',')?.filter { it.isNotBlank() }?.let(::addAll)
+                        if (isEmpty()) addAll(candidate.penaltyReasons.split(',').filter { it.isNotBlank() })
+                    }.distinct().take(6)
+                    if (reasons.isNotEmpty()) {
+                        Text("Motivos", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                        reasons.forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
+                    }
+                    decision?.let {
+                        Text("Motor: ${it.decisionVersion}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun DetailLine(label: String, value: String) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.width(12.dp))
+            Text(value, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        }
+    }
+
+    @Composable
+    private fun SignalBadge(signal: String) {
+        val (background, foreground) = when (signal) {
+            "TRIGGER_CONFIRMED" -> Color(0xFF14532D) to Color(0xFFBBF7D0)
+            "READY_WAIT_TRIGGER" -> Color(0xFF164E63) to Color(0xFFCFFAFE)
+            "WATCHLIST" -> Color(0xFF3F3F46) to Color(0xFFE4E4E7)
+            "VETO" -> Color(0xFF450A0A) to Color(0xFFFECACA)
+            else -> Color(0xFF422006) to Color(0xFFFDE68A)
+        }
+        Surface(color = background, contentColor = foreground, shape = RoundedCornerShape(999.dp)) {
+            Text(signalLabel(signal), modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall)
+        }
+    }
+
+    @Composable
+    private fun StatusBadge(status: String) {
+        val normalized = status.uppercase()
+        val color = when (normalized) {
+            "TRUSTED", "LIVE" -> Color(0xFF166534)
+            "DEGRADED", "STALE_FALLBACK" -> Color(0xFF854D0E)
+            else -> Color(0xFF7F1D1D)
+        }
+        Surface(color = color, shape = RoundedCornerShape(999.dp)) {
+            Text(normalized, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+        }
+    }
+
+    @Composable
+    private fun MacroPill(item: MarketSnapshotEntity) {
+        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp)) {
+            Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(item.label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                Text("${item.close} ${signed(item.changePct)}%", style = MaterialTheme.typography.labelMedium)
+            }
         }
     }
 
     @Composable
     private fun HistoryScreen(runs: List<ScanRunEntity>, select: (String) -> Unit, modifier: Modifier) {
-        LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Text("Historial local", style = MaterialTheme.typography.headlineSmall) }
+        LazyColumn(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { Text("Historial local", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
             items(runs, key = { it.runId }) { run ->
                 Card(onClick = { select(run.runId) }, modifier = Modifier.fillMaxWidth()) { RunCardContent(run) }
             }
@@ -183,54 +431,40 @@ class MainActivity : ComponentActivity() {
         val triggered = tradeOutcomes.count { it.triggered }
         val targets = tradeOutcomes.count { it.exitReason in setOf("TARGET", "GAP_TARGET") }
         val stops = tradeOutcomes.count { it.exitReason in setOf("STOP", "GAP_STOP") }
-        val expired = tradeOutcomes.count { it.exitReason == "EXPIRED" }
-        val ambiguous = tradeOutcomes.count { it.ambiguousSameBar }
         val closed = tradeOutcomes.filter { it.tradeReturnR != null }
         val hitRate = if (closed.isEmpty()) 0.0 else closed.count { (it.tradeReturnR ?: 0.0) > 0.0 } * 100.0 / closed.size
         val expectancy = closed.mapNotNull { it.tradeReturnR }.average().takeIf { !it.isNaN() } ?: 0.0
         val netPnl = closed.mapNotNull { it.netPnl }.sum()
-        val avgMfe = tradeOutcomes.mapNotNull { it.mfePct }.average().takeIf { !it.isNaN() } ?: 0.0
-        val avgMae = tradeOutcomes.mapNotNull { it.maePct }.average().takeIf { !it.isNaN() } ?: 0.0
-        LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Text("Backtest inmutable", style = MaterialTheme.typography.headlineSmall) }
+        LazyColumn(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { Text("Backtest inmutable", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
             item {
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("Contratos evaluados: ${tradeOutcomes.size}")
-                        Text("Activados: $triggered · objetivos: $targets · stops: $stops · expirados: $expired")
-                        Text("Hit rate: ${"%.1f".format(hitRate)}% · expectancy ${"%.2f".format(expectancy)}R")
-                        Text("P&L neto registrado: $${"%.2f".format(netPnl)}")
-                        Text("MFE medio: ${"%.2f".format(avgMfe)}% · MAE medio: ${"%.2f".format(avgMae)}%")
-                        if (ambiguous > 0) Text("Resultados ambiguos sin secuencia intradía: $ambiguous")
-                        Text("Gaps, slippage y costes se aplican al fill; los markouts permanecen separados.", style = MaterialTheme.typography.bodySmall)
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Contratos ${tradeOutcomes.size} · activados $triggered")
+                        Text("Objetivos $targets · stops $stops · hit rate ${"%.1f".format(hitRate)}%")
+                        Text("Expectancy ${"%.2f".format(expectancy)}R · P&L neto USD ${"%.2f".format(netPnl)}")
                     }
                 }
             }
-            if (tradeOutcomes.isEmpty()) item { Text("Aún no hay contratos con barras posteriores suficientes.") }
             items(tradeOutcomes.take(100), key = { it.signalId }) { outcome ->
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("${outcome.ticker} · ${outcome.status}", fontWeight = FontWeight.Bold)
-                        Text("Trigger: ${if (outcome.triggered) "sí" else "no"} · salida: ${outcome.exitReason}")
-                        Text("Entrada ${outcome.entryFill ?: "—"} · salida ${outcome.exitFill ?: "—"} · sesiones ${outcome.holdingSessions}")
-                        Text("Resultado ${fmt(outcome.tradeReturnPct)} · ${outcome.tradeReturnR?.let { "%.2fR".format(it) } ?: "—"}")
-                        if (outcome.netPnl != null) {
-                            Text("P&L bruto $${"%.2f".format(outcome.grossPnl)} · costes $${"%.2f".format(outcome.totalCosts)} · neto $${"%.2f".format(outcome.netPnl)}")
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(outcome.ticker, fontWeight = FontWeight.Bold)
+                            Text(outcome.status)
                         }
-                        Text("1D ${fmt(outcome.return1dPct)} · 5D ${fmt(outcome.return5dPct)} · 20D ${fmt(outcome.return20dPct)}")
-                        Text("MFE ${fmt(outcome.mfePct)} · MAE ${fmt(outcome.maePct)} · ${outcome.costModelVersion}", style = MaterialTheme.typography.bodySmall)
+                        Text("${outcome.exitReason} · ${outcome.tradeReturnR?.let { "%.2fR".format(it) } ?: "—"} · ${outcome.holdingSessions} sesiones")
+                        Text("MFE ${fmt(outcome.mfePct)} · MAE ${fmt(outcome.maePct)}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
-            if (legacyOutcomes.isNotEmpty()) item {
-                Text("Seguimiento legacy conservado: ${legacyOutcomes.size}", style = MaterialTheme.typography.bodySmall)
-            }
+            if (legacyOutcomes.isNotEmpty()) item { Text("Seguimiento legacy conservado: ${legacyOutcomes.size}", style = MaterialTheme.typography.bodySmall) }
         }
     }
 
     @Composable
     private fun DiagnosticsScreen(vm: MainViewModel, modifier: Modifier) {
-        val d = DiagnosticsStore.snapshot(this)
+        val d = DiagnosticsStore.snapshot(this@MainActivity)
         val configured by vm.alpacaConfigured.collectAsState()
         val feed by vm.alpacaFeed.collectAsState()
         val status by vm.alpacaStatus.collectAsState()
@@ -239,21 +473,33 @@ class MainActivity : ComponentActivity() {
         val replay by vm.replayDiagnostics.collectAsState()
         val replayRunning by vm.replayRunning.collectAsState()
         val artifacts by vm.datasetArtifacts.collectAsState()
+        val universeStatus by vm.universeStatus.collectAsState()
+        val universeSource by vm.universeSource.collectAsState()
+        val universeCount by vm.universeCount.collectAsState()
         var apiKey by remember { mutableStateOf("") }
         var secretKey by remember { mutableStateOf("") }
-        LazyColumn(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Text("Diagnóstico operativo", style = MaterialTheme.typography.headlineSmall) }
+        LazyColumn(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { Text("Diagnóstico operativo", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
             item {
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("Universo y fuentes", fontWeight = FontWeight.Bold)
+                        Text("Estado $universeStatus · símbolos $universeCount")
+                        Text(sourceLabel(universeSource), style = MaterialTheme.typography.bodySmall)
+                        Text("Alpaca ${if (configured) "configurada" else "sin configurar"} · feed $feed · $status")
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("Automatización", fontWeight = FontWeight.Bold)
                         DiagnosticLine("Notificaciones", d.notificationsGranted)
                         DiagnosticLine("Alarmas exactas", d.exactAlarmGranted)
                         Text("Próxima alarma: ${formatTime(d.nextTriggerMillis)}")
-                        Text("Último inicio automático: ${formatTime(d.lastAutomaticStartMillis)}")
-                        Text("Último fin automático: ${formatTime(d.lastAutomaticFinishMillis)}")
-                        Text("Estado automático: ${d.lastAutomaticStatus}")
+                        Text("Último estado: ${d.lastAutomaticStatus}")
                         if (!d.exactAlarmGranted) {
-                            Button(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) {
+                            OutlinedButton(onClick = { startActivity(ScanScheduler.permissionIntent(this@MainActivity)) }) {
                                 Text("Habilitar alarma exacta")
                             }
                         }
@@ -262,37 +508,32 @@ class MainActivity : ComponentActivity() {
             }
             item {
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Reproducibilidad del scan", fontWeight = FontWeight.Bold)
-                        Text("Estado: ${reproducibility.status} · cobertura ${"%.2f".format(reproducibility.coveragePct)}%")
-                        Text("Manifiestos: ${reproducibility.manifestCount}/${reproducibility.expectedTickers}")
-                        Text("Configuraciones: ${reproducibility.uniqueConfigurationHashes} · universos: ${reproducibility.uniqueUniverseHashes}")
-                        Text("Proveedores: ${reproducibility.providers.joinToString().ifBlank { "sin datos" }}")
-                        Text("Fallbacks: ${reproducibility.fallbackCount} · cache: ${reproducibility.cacheHitCount} · inválidos: ${reproducibility.invalidManifestCount}")
-                        Text("Artefactos normalizados: ${artifacts.size} · tipos ${artifacts.map { it.datasetType }.distinct().size}")
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("Reproducibilidad", fontWeight = FontWeight.Bold)
+                        Text("${reproducibility.status} · cobertura ${"%.2f".format(reproducibility.coveragePct)}%")
+                        Text("Manifiestos ${reproducibility.manifestCount}/${reproducibility.expectedTickers} · artefactos ${artifacts.size}")
+                        Text("Proveedores: ${reproducibility.providers.joinToString().ifBlank { "sin datos" }}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
             item {
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text("Replay determinista", fontWeight = FontWeight.Bold)
-                        Text("Estado: ${replay.status} · cobertura ${replay.coverageLabel}")
-                        Text("Coincidencias completas: ${replay.matchLabel} · discrepancias: ${replay.mismatchLabel} · faltantes: ${replay.missingLabel}")
+                        Text("${replay.status} · ${replay.coverageLabel} · ${replay.matchLabel}")
                         DiagnosticLine("Corrida reproducible", replay.trustworthy)
-                        replay.reasons.take(5).forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
+                        replay.reasons.take(4).forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
                         Button(onClick = vm::replaySelected, enabled = !replayRunning) {
-                            Text(if (replayRunning) "Reproduciendo…" else "Reproducir corrida seleccionada")
+                            Text(if (replayRunning) "Reproduciendo…" else "Reproducir corrida")
                         }
                     }
                 }
             }
             item {
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Fuente Alpaca", fontWeight = FontWeight.Bold)
-                        Text("Configurada: ${if (configured) "sí" else "no"} · feed $feed · estado $status")
-                        Text("Las claves se cifran con Android Keystore y no se incluyen en reportes ni logs.", style = MaterialTheme.typography.bodySmall)
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Credenciales Alpaca", fontWeight = FontWeight.Bold)
+                        Text("Cifradas con Android Keystore; no se incluyen en reportes ni logs.", style = MaterialTheme.typography.bodySmall)
                         if (!configured) {
                             OutlinedTextField(apiKey, { apiKey = it }, label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                             OutlinedTextField(
@@ -308,16 +549,16 @@ class MainActivity : ComponentActivity() {
                                 enabled = !testing && apiKey.isNotBlank() && secretKey.isNotBlank()
                             ) { Text(if (testing) "Probando…" else "Guardar y probar Alpaca IEX") }
                         } else {
-                            Button(onClick = vm::clearAlpaca) { Text("Borrar credenciales Alpaca") }
+                            OutlinedButton(onClick = vm::clearAlpaca) { Text("Borrar credenciales Alpaca") }
                         }
                     }
                 }
             }
             item {
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Recomendado para Xiaomi / POCO", fontWeight = FontWeight.Bold)
-                        Text("Inicio automático activado · Batería sin restricciones · App fijada en recientes")
+                    Column(Modifier.padding(14.dp)) {
+                        Text("POCO / HyperOS", fontWeight = FontWeight.Bold)
+                        Text("Inicio automático · batería sin restricciones · app fijada en recientes")
                     }
                 }
             }
@@ -330,114 +571,102 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun RunCard(run: ScanRunEntity) {
-        Card(Modifier.fillMaxWidth()) { RunCardContent(run) }
-    }
-
-    @Composable
     private fun RunCardContent(run: ScanRunEntity) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("${run.marketDateEt} · ${run.status} · ${run.trustStatus}", fontWeight = FontWeight.Bold)
-            Text("Cobertura: ${run.candidateCount} · fallos: ${run.failureCount}")
-            Text("${run.source} · cache ${run.cacheHitCount} · reintentos ${run.retryCount} · ${run.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall)
+            Text("Cobertura ${run.candidateCount} · fallos ${run.failureCount}")
+            Text(run.source, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 
-    @Composable
-    private fun MacroCard(item: MarketSnapshotEntity) {
-        Card(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(item.label, fontWeight = FontWeight.Bold)
-                Text("${item.close} · ${if (item.changePct >= 0) "+" else ""}${item.changePct}%")
-            }
+    private fun bucket(candidate: CandidateEntity, decision: FinalDecisionEntity?): String {
+        val signal = decision?.finalSignal ?: candidate.signal
+        return when {
+            signal == "TRIGGER_CONFIRMED" -> "Accionables"
+            signal == "READY_WAIT_TRIGGER" -> "Esperando"
+            signal == "WATCHLIST" -> "Observación"
+            signal == "VETO" -> "No elegibles"
+            candidate.setupType == "NO_VALID_SETUP" || signal == "AVOID" -> "Sin setup"
+            else -> "Observación"
         }
     }
 
-    @Composable
-    private fun CandidateCard(
-        candidate: CandidateEntity,
-        enrichment: CandidateEnrichmentEntity?,
-        plan: CandidateTradePlanEntity?,
-        decision: FinalDecisionEntity?
-    ) {
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(candidate.ticker, fontWeight = FontWeight.Bold)
-                    Text("${signalLabel(decision?.finalSignal ?: candidate.signal)} · ${decision?.finalTradeScore ?: candidate.score}")
-                }
-                decision?.let {
-                    Text("Técnica: ${signalLabel(it.preliminarySignal)} · Final: ${signalLabel(it.finalSignal)}", fontWeight = FontWeight.Bold)
-                    Text("Contrato: ${if (it.eligibleForContract) "elegible para revisión manual" else "bloqueado"} · confianza ${it.confidence}")
-                    Text("Macro ${it.macroRegime} · Fundamental ${it.fundamentalCoverage} · Institucional ${it.institutionalCoverage}")
-                    Text("Frescura de ejecución: ${it.executionFreshness} · motor ${it.decisionVersion}", style = MaterialTheme.typography.bodySmall)
-                    it.vetoReasons.split(',').filter { reason -> reason.isNotBlank() }.take(3)
-                        .forEach { reason -> Text("Veto: ${reasonLabel(reason)}", style = MaterialTheme.typography.bodySmall) }
-                    it.penaltyReasons.split(',').filter { reason -> reason.isNotBlank() }.take(4)
-                        .forEach { reason -> Text("Penalización: ${reasonLabel(reason)}", style = MaterialTheme.typography.bodySmall) }
-                } ?: Text("Decisión final aún no disponible.", style = MaterialTheme.typography.bodySmall)
-                Text("Cierre ${candidate.close} · RSI ${candidate.rsi14} · RVOL ${candidate.relativeVolume}")
-                Text("SMA20 ${candidate.sma20} · SMA50 ${candidate.sma50} · ATR ${candidate.atr14}")
-                Text("Quote ${candidate.quoteStatus}/${candidate.executionQuoteQuality} · acción ${candidate.actionabilityAtExecution}")
-                Text("Trigger ${candidate.plannedTrigger ?: "—"} · máximo ${candidate.maximumEntry ?: "—"} · spread ${fmt(candidate.spreadPct)}")
-                plan?.let {
-                    Text("Plan estructural ${if (it.riskPlanValid) "válido" else "no válido"}", fontWeight = FontWeight.Bold)
-                    Text("Entrada ${it.plannedEntry} · Stop ${it.structuralStop} (${it.stopType}) · Objetivo ${it.structuralTarget}")
-                    Text("R/R ${it.structuralRr} · Riesgo ${it.riskPct}% · Recompensa ${it.rewardPct}%")
-                    Text("Sizing ${it.shares} acciones · Posición $${"%.2f".format(it.positionValue)} · Riesgo $${"%.2f".format(it.riskBudget)}")
-                    Text("Estructura ${it.structureScore} · RS SPY ${it.relativeStrengthStatus} (${it.relativeStrengthScore})")
-                    Text("Ranking legacy #${it.legacyRank} · shadow #${it.tradeRank} · Δ ${rankDeltaLabel(it.rankDelta)}")
-                    Text("Score operativo auditado ${it.auditedTradeScore}", style = MaterialTheme.typography.bodySmall)
-                } ?: Text("Plan operativo aún no disponible.", style = MaterialTheme.typography.bodySmall)
-                enrichment?.let {
-                    Text("Fundamental: ${it.fundamentalsStatus} · Opciones: ${it.optionsStatus}", fontWeight = FontWeight.Bold)
-                    val fundamental = listOfNotNull(
-                        it.trailingPe?.let { value -> "P/E $value" },
-                        it.priceToSales?.let { value -> "P/Ventas $value" },
-                        it.epsTrailing?.let { value -> "EPS $value" },
-                        it.revenueGrowthPct?.let { value -> "Ingresos ${value}%" },
-                        it.profitMarginPct?.let { value -> "Margen neto ${value}%" },
-                        it.debtToEquity?.let { value -> "Deuda/Patr. $value" }
-                    )
-                    if (fundamental.isNotEmpty()) Text(fundamental.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
-                    it.optionsPutCallOi?.let { value ->
-                        Text("Put/Call OI $value · Calls ${it.optionsNearCallOi ?: 0} · Puts ${it.optionsNearPutOi ?: 0}", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                candidate.reason.split(',').filter { it.isNotBlank() }.take(6)
-                    .forEach { Text("• ${reasonLabel(it)}", style = MaterialTheme.typography.bodySmall) }
-            }
-        }
+    private fun signalPriority(signal: String): Int = when (signal) {
+        "TRIGGER_CONFIRMED" -> 0
+        "READY_WAIT_TRIGGER" -> 1
+        "WATCHLIST" -> 2
+        "AVOID" -> 3
+        "VETO" -> 4
+        else -> 5
     }
-
-    private fun rankDeltaLabel(delta: Int): String = if (delta > 0) "+$delta" else delta.toString()
 
     private fun signalLabel(signal: String) = when (signal) {
-        "TRIGGER_CONFIRMED" -> "Trigger confirmado"
-        "READY_WAIT_TRIGGER" -> "Esperar activación"
-        "WATCHLIST" -> "En observación"
-        "VETO" -> "Vetado"
-        else -> "Evitar"
+        "TRIGGER_CONFIRMED" -> "Confirmado"
+        "READY_WAIT_TRIGGER" -> "Esperando"
+        "WATCHLIST" -> "Observación"
+        "VETO" -> "No elegible"
+        else -> "Sin setup"
+    }
+
+    private fun setupLabel(setup: String) = when (setup) {
+        "BREAKOUT" -> "Breakout"
+        "BREAKOUT_RETEST" -> "Retest"
+        "PULLBACK_EMA20" -> "Pullback EMA20"
+        "PULLBACK_EMA50" -> "Pullback EMA50"
+        "SUPPORT_RECLAIM" -> "Reclaim"
+        "VOLATILITY_CONTRACTION" -> "Contracción"
+        "FAILED_BREAKOUT" -> "Ruptura fallida"
+        "NO_VALID_SETUP" -> "Sin setup"
+        else -> setup.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
+    }
+
+    private fun executionLabel(candidate: CandidateEntity): String = when (candidate.actionabilityAtExecution) {
+        "MARKET_CLOSED_ANALYSIS_ONLY" -> "Análisis fuera de sesión"
+        "ACTIONABLE_REVIEW" -> "Precio ejecutable validado"
+        "WAIT_TRIGGER" -> "Esperando trigger"
+        "QUOTE_STALE" -> "Cotización antigua"
+        "QUOTE_MISSING" -> "Sin cotización ejecutable"
+        "NO_VALID_SETUP" -> "Sin estructura operable"
+        "VETOED" -> "No elegible"
+        else -> actionabilityLabel(candidate.actionabilityAtExecution)
+    }
+
+    private fun actionabilityLabel(value: String) = value.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
+
+    private fun sourceLabel(source: String): String = when (source) {
+        "ALPACA_ASSETS+NASDAQ_METADATA+ALPACA_BARS" -> "Alpaca Assets + Nasdaq + barras Alpaca"
+        "LAST_GOOD_DYNAMIC" -> "Último universo dinámico válido"
+        "EMERGENCY_STATIC" -> "Fallback estático de emergencia"
+        "NONE", "" -> "Fuente aún no resuelta"
+        else -> source.replace('_', ' ')
     }
 
     private fun reasonLabel(reason: String) = mapOf(
-        "price_above_sma20" to "Precio sobre la media de 20 sesiones",
-        "sma20_above_sma50" to "Tendencia intermedia alcista",
-        "rsi_constructive" to "RSI constructivo",
-        "macd_bullish" to "MACD alcista",
-        "stochastic_confirmed" to "Estocástico confirmado",
-        "volume_confirmation" to "Volumen relativo confirmado",
-        "live_trigger_confirmed" to "Trigger actual confirmado",
+        "price_below_min" to "Precio inferior al mínimo",
+        "market_cap_below_min" to "Capitalización conocida inferior al mínimo",
+        "market_cap_unverified" to "Capitalización no verificada",
+        "instrument_type_unverified" to "Tipo de instrumento no verificado",
+        "eligibility_metadata_unverified" to "Elegibilidad pendiente de validar",
+        "market_session_blocks_contract" to "Fuera de sesión ejecutable",
+        "market_session_blocks_execution" to "Análisis fuera de sesión",
+        "no_valid_setup" to "Sin setup swing válido",
         "failed_breakout" to "Ruptura fallida",
         "overextended" to "Precio sobreextendido",
         "institutional_conflict_high" to "Conflicto institucional alto",
         "risk_plan_invalid" to "Plan de riesgo inválido",
+        "base_risk_plan_invalid" to "Plan estructural inválido",
+        "quote_stale" to "Cotización antigua",
+        "quote_stale_blocks_execution" to "Cotización antigua bloquea ejecución",
+        "fundamentals_unavailable" to "Fundamentales no disponibles",
+        "options_ratio_missing" to "Cobertura de opciones insuficiente",
         "replay_mismatches_detected" to "El replay detectó discrepancias",
         "missing_replay_datasets" to "Faltan datasets para reproducir",
         "replay_not_executed" to "Replay aún no ejecutado"
-    )[reason] ?: reason.replace("_", " ")
+    )[reason] ?: reason.replace('_', ' ')
 
+    private fun rankDeltaLabel(delta: Int): String = if (delta > 0) "+$delta" else delta.toString()
     private fun fmt(value: Double?): String = value?.let { "${"%.2f".format(it)}%" } ?: "—"
+    private fun signed(value: Double): String = if (value >= 0) "+${"%.2f".format(value)}" else "%.2f".format(value)
 
     private fun formatTime(epochMillis: Long): String {
         if (epochMillis <= 0) return "no registrada"
