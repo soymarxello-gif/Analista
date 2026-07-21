@@ -4,6 +4,7 @@ import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CanonicalAnalysis
 import com.analista.mobile.data.FundamentalMetrics
 import com.analista.mobile.data.FundamentalSnapshotRegistry
+import com.analista.mobile.data.InsiderTransactionRegistry
 import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.OfficialContextRegistry
@@ -14,7 +15,7 @@ import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v3-overlays-6"
+    const val ENGINE_VERSION = "android-v3-overlays-7"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -47,7 +48,8 @@ object DecisionOverlayEngine {
         val fundamentalCapturedAtUtc: Long?,
         val optionChain: OptionChainSnapshot?,
         val legacyEnrichment: CandidateEnrichmentEntity?,
-        val officialContext: OfficialContextEngine.Assessment? = null
+        val officialContext: OfficialContextEngine.Assessment? = null,
+        val insiderSnapshot: InsiderTransactionRegistry.Snapshot? = null
     )
 
     fun apply(
@@ -82,7 +84,8 @@ object DecisionOverlayEngine {
                 fundamentalCapturedAtUtc = registeredFundamental?.capturedAtUtc ?: enrichment?.capturedAtUtc,
                 optionChain = OptionChainRegistry.get(candidate.ticker),
                 legacyEnrichment = enrichment,
-                officialContext = effectiveOfficial
+                officialContext = effectiveOfficial,
+                insiderSnapshot = InsiderTransactionRegistry.get(candidate.ticker)
             )
         )
     }
@@ -99,7 +102,8 @@ object DecisionOverlayEngine {
             candidate,
             inputs.optionChain,
             inputs.legacyEnrichment,
-            inputs.officialContext?.institutional
+            inputs.officialContext?.institutional,
+            inputs.insiderSnapshot
         )
 
         var confidencePenalty = 0.0
@@ -149,6 +153,7 @@ object DecisionOverlayEngine {
             "institutional=${round2(institutional.score)}:${institutional.bias}:${institutional.coverage}:${institutional.conflict}",
             "institutional_reasons=${institutional.reasons.joinToString("|")}",
             "officialContextVersion=${inputs.officialContext?.engineVersion ?: "UNAVAILABLE"}",
+            "insiderEngineVersion=${InsiderAssessmentEngine.VERSION}",
             "confidence_penalty=${round2(confidencePenalty)}"
         ).joinToString(";")
 
@@ -204,10 +209,12 @@ object DecisionOverlayEngine {
         candidate: ScanCandidate,
         chain: OptionChainSnapshot?,
         enrichment: CandidateEnrichmentEntity?,
-        official: OfficialContextEngine.InstitutionalAssessment?
+        official: OfficialContextEngine.InstitutionalAssessment?,
+        insiderSnapshot: InsiderTransactionRegistry.Snapshot?
     ): InstitutionalResult {
         val optionAssessment = chain?.let(OptionMetricsEngine::assess)
         val legacyOption = if (optionAssessment == null) legacyOptionsInput(enrichment) else LegacyOptionInput(null, null)
+        val insiderAssessment = InsiderAssessmentEngine.assess(insiderSnapshot)
         val volumeScore = when {
             candidate.close > candidate.sma20 && candidate.relativeVolume >= 1.5 -> 70.0
             candidate.close > candidate.sma20 && candidate.relativeVolume >= 1.2 -> 60.0
@@ -229,7 +236,11 @@ object DecisionOverlayEngine {
                     "AVAILABLE",
                     listOf("price_volume_accumulation_proxy")
                 ),
-                insiders = InstitutionalContrarianEngine.Component(null, "UNKNOWN", listOf("sec_insider_transactions_not_loaded")),
+                insiders = InstitutionalContrarianEngine.Component(
+                    score = insiderAssessment.score,
+                    status = insiderAssessment.coverageStatus,
+                    reasons = insiderAssessment.reasons
+                ),
                 futuresPositioning = futuresComponent,
                 marketOptionsRegime = official?.marketOptionsRegime ?: "UNKNOWN",
                 marketOptionsAdjustment = official?.marketOptionsAdjustment ?: 0.0,
