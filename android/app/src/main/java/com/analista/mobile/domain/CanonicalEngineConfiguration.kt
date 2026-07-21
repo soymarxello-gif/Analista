@@ -10,7 +10,7 @@ import com.analista.mobile.data.YahooOptionChainParser
 import java.util.Locale
 
 object CanonicalEngineConfiguration {
-    const val VERSION = "canonical-engine-config-1"
+    const val VERSION = "canonical-engine-config-2"
 
     fun create(
         policyVersion: String,
@@ -20,7 +20,6 @@ object CanonicalEngineConfiguration {
         minStopAtr: Double,
         targetSessions: Int
     ): Map<String, String> = sortedMapOf(
-        // Product contract
         "configurationContractVersion" to VERSION,
         "policyVersion" to policyVersion,
         "strategyDirection" to "LONG_ONLY",
@@ -30,7 +29,6 @@ object CanonicalEngineConfiguration {
         "portfolioConstructionEnabled" to "false",
         "buySetupActiveEnabled" to "false",
 
-        // Universe and hard filters
         "universeMode" to UniverseSelectionEngine.MODE,
         "minimumPrice" to canonical(TradingPolicy.MIN_PRICE),
         "minimumMarketCapUsd" to TradingPolicy.MIN_MARKET_CAP.toString(),
@@ -42,7 +40,6 @@ object CanonicalEngineConfiguration {
         "runUniverseRegistryVersion" to RunUniverseRegistry.VERSION,
         "universeObservationRegistryVersion" to UniverseObservationRegistry.VERSION,
 
-        // Market data and execution quote
         "maximumQuoteDistancePct" to canonical(TradingPolicy.MAX_QUOTE_DISTANCE_PCT),
         "maximumTightQuoteSpreadPct" to canonical(1.0),
         "quoteFreshSeconds" to "120",
@@ -61,7 +58,6 @@ object CanonicalEngineConfiguration {
         "macroProviderPrimary" to "YAHOO",
         "calendarProvider" to "LOCAL_VERSIONED_NYSE",
 
-        // Canonical technical indicators and warm-up
         "minimumHistoryBars" to "60",
         "smaFastPeriod" to "20",
         "smaSlowPeriod" to "50",
@@ -82,7 +78,6 @@ object CanonicalEngineConfiguration {
         "indicatorWarmupRule" to "PERIOD_SMA_SEED_AND_VALID_OUTPUT_ONLY",
         "canonicalAnalysisVersion" to CanonicalAnalysisEngine.ENGINE_VERSION,
 
-        // Legacy technical score retained for shadow comparison
         "legacyWeightPriceAboveSma20" to "15",
         "legacyWeightSma20AboveSma50" to "20",
         "legacyWeightRsiConstructive" to "15",
@@ -98,7 +93,6 @@ object CanonicalEngineConfiguration {
         "overextensionRsiThreshold" to canonical(75.0),
         "overextensionDistanceAtr" to canonical(2.5),
 
-        // Breakout, trigger and setup rules
         "breakoutLookbackSessions" to "20",
         "breakoutBufferAtr" to canonical(0.25),
         "breakoutBufferPct" to canonical(0.5),
@@ -113,7 +107,6 @@ object CanonicalEngineConfiguration {
         "setupConfirmationIncrement" to canonical(7.0),
         "setupClassifierVersion" to SetupClassificationEngine.VERSION,
 
-        // Structure, stop, target and sizing
         "riskPct" to canonical(riskPct),
         "maxPositionPct" to canonical(maxPositionPct),
         "minRiskReward" to canonical(minRiskReward),
@@ -131,10 +124,13 @@ object CanonicalEngineConfiguration {
         "aggressiveStopPolicyVersion" to AggressiveStopPolicy.VERSION,
         "tradePlanVersion" to TradePlanGenerationEngine.ENGINE_VERSION,
 
-        // Macro, fundamental and institutional engines
         "macroHorizonsSessions" to "1,20,60",
         "macroMinimumHighConfidenceInputs" to "6",
         "macroRegimeVersion" to MacroRegimeEngine.VERSION,
+        "macroEventCalendarVersion" to MacroEventCalendar.VERSION,
+        "macroEventCalendarSources" to "FED_FOMC,BLS_CPI,BLS_EMPLOYMENT_SITUATION",
+        "macroEventImminentWindowHours" to "24_AFTER_OR_2_BEFORE",
+        "macroEventNearWindowHours" to "72",
         "fundamentalCoverageStates" to "COMPLETE,PARTIAL,STALE,EMPTY,ERROR",
         "fundamentalEarningsRiskMode" to "STRONG_DEGRADATION_NOT_UNIVERSAL_VETO",
         "fundamentalAssessmentVersion" to FundamentalAssessmentEngine.VERSION,
@@ -148,14 +144,12 @@ object CanonicalEngineConfiguration {
         "unknownInstitutionalCoveragePolicy" to "LOWER_CONFIDENCE_SMALL_PENALTY",
         "decisionOverlayVersion" to DecisionOverlayEngine.ENGINE_VERSION,
 
-        // Final decision and contract gating
         "minimumReadyFinalScore" to canonical(65.0),
         "minimumConfirmedFinalScore" to canonical(75.0),
         "confirmedRequiresLiveTrigger" to "true",
         "confirmedRequiresActionableReview" to "true",
         "finalDecisionVersion" to FinalDecisionEngine.VERSION,
 
-        // Backtest assumptions
         "backtestEntrySlippageBps" to canonical(5.0),
         "backtestExitSlippageBps" to canonical(5.0),
         "backtestCommissionPerShare" to canonical(0.0),
@@ -164,7 +158,6 @@ object CanonicalEngineConfiguration {
         "backtestGapTargetFillPolicy" to "OPEN_WITH_EXIT_SLIPPAGE",
         "backtestVersion" to BacktestEngine.VERSION,
 
-        // Walk-forward and ranking promotion
         "walkForwardTrainingPct" to canonical(60.0),
         "walkForwardValidationPct" to canonical(20.0),
         "walkForwardTestPct" to canonical(20.0),
@@ -180,7 +173,6 @@ object CanonicalEngineConfiguration {
         "rankingPromotionVersion" to RankingPromotionEngine.VERSION,
         "rankingDefaultMode" to "LEGACY_UNTIL_PROMOTION_GATE",
 
-        // Reproducibility and local dataset storage
         "calendarVersion" to NyseSessionCalendar.VERSION,
         "normalizedDatasetCodecVersion" to NormalizedDatasetCodec.VERSION,
         "liveDatasetCaptureVersion" to RunDatasetCaptureService.VERSION,
