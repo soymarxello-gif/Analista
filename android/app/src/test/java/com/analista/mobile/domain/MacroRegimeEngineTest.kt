@@ -4,6 +4,8 @@ import com.analista.mobile.data.PriceBar
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 class MacroRegimeEngineTest {
     private fun bars(start: Double, dailyReturn: Double, count: Int = 80): List<PriceBar> {
@@ -16,17 +18,7 @@ class MacroRegimeEngineTest {
 
     @Test
     fun broadUptrendLowVixAndStableRatesProduceRiskOn() {
-        val histories = mapOf(
-            "SPY" to bars(500.0, 0.0020),
-            "QQQ" to bars(450.0, 0.0023),
-            "IWM" to bars(200.0, 0.0017),
-            "^VIX" to bars(22.0, -0.0030),
-            "^TNX" to bars(4.2, 0.0001),
-            "^TYX" to bars(4.5, 0.0001),
-            "DX-Y.NYB" to bars(104.0, -0.0003),
-            "CL=F" to bars(75.0, 0.0002),
-            "BTC-USD" to bars(80_000.0, 0.0015)
-        )
+        val histories = bullishHistories()
         val result = MacroRegimeEngine.assess(histories)
         assertEquals("RISK_ON", result.macroRegime)
         assertEquals("RISK_SEEKING", result.riskAppetite)
@@ -56,11 +48,47 @@ class MacroRegimeEngineTest {
     }
 
     @Test
+    fun imminentOfficialEventReducesMacroScoreDeterministically() {
+        val clear = MacroRegimeEngine.assess(
+            bullishHistories(),
+            assessmentTimestampUtc = atEt(2026, 7, 21, 9, 20)
+        )
+        val imminent = MacroRegimeEngine.assess(
+            bullishHistories(),
+            assessmentTimestampUtc = atEt(2026, 7, 29, 9, 20)
+        )
+
+        assertEquals("CLEAR", clear.eventRisk)
+        assertEquals("IMMINENT", imminent.eventRisk)
+        assertEquals(6.0, clear.macroScore - imminent.macroScore, 0.001)
+        assertTrue(imminent.reasons.any { it.startsWith("macro_event_imminent_") })
+    }
+
+    @Test
     fun missingHistoryIsNotAssumedNeutral() {
         val result = MacroRegimeEngine.assess(emptyMap())
         assertEquals("UNKNOWN", result.confidence)
         assertEquals("UNKNOWN", result.riskAppetite)
         assertEquals("UNKNOWN", result.liquidityRegime)
+        assertEquals("UNKNOWN", result.eventRisk)
         assertTrue("liquidity_series_unavailable" in result.reasons)
+        assertTrue("macro_event_timestamp_unavailable" in result.reasons)
     }
+
+    private fun bullishHistories() = mapOf(
+        "SPY" to bars(500.0, 0.0020),
+        "QQQ" to bars(450.0, 0.0023),
+        "IWM" to bars(200.0, 0.0017),
+        "^VIX" to bars(22.0, -0.0030),
+        "^TNX" to bars(4.2, 0.0001),
+        "^TYX" to bars(4.5, 0.0001),
+        "DX-Y.NYB" to bars(104.0, -0.0003),
+        "CL=F" to bars(75.0, 0.0002),
+        "BTC-USD" to bars(80_000.0, 0.0015)
+    )
+
+    private fun atEt(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long =
+        ZonedDateTime.of(year, month, day, hour, minute, 0, 0, ZoneId.of("America/New_York"))
+            .toInstant()
+            .toEpochMilli()
 }
