@@ -67,6 +67,8 @@ object FinalDecisionPersistenceFactory {
                 actionability = candidate.actionabilityAtExecution,
                 executionQuoteQuality = candidate.executionQuoteQuality,
                 executionFreshness = candidate.quoteFreshnessStatus,
+                executionSessionOpen = candidate.executionSessionOpen,
+                eligibilityVerified = candidate.eligibilityVerified,
                 dataQualityAllowsExecution = dataQualityAllowsExecution,
                 failedBreakout = candidate.failedBreakout,
                 hardVetoReasons = candidate.allVetoReasons,
