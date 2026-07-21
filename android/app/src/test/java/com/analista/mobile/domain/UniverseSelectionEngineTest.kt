@@ -56,6 +56,22 @@ class UniverseSelectionEngineTest {
     }
 
     @Test
+    fun missingFieldsAreUnverifiedNotFalseThresholdFailures() {
+        val result = UniverseSelectionEngine.assess(
+            input(type = null, price = null, marketCap = null, dollarVolume = null, spread = null)
+        )
+        assertFalse(result.eligible)
+        assertEquals(
+            setOf(
+                "price_unverified", "market_cap_unverified", "dollar_volume_unverified",
+                "spread_unverified", "instrument_type_unverified"
+            ),
+            result.reasons.toSet()
+        )
+        assertFalse("market_cap_below_min" in result.reasons)
+    }
+
+    @Test
     fun snapshotIsDeterministicRegardlessOfInputOrder() {
         val first = UniverseSelectionEngine.createSnapshot(
             effectiveDate = "2026-07-20",
