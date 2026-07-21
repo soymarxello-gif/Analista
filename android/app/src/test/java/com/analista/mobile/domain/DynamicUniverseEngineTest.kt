@@ -60,7 +60,7 @@ class DynamicUniverseEngineTest {
     fun capsSectorConcentration() {
         val symbols = listOf("A", "B", "C", "D")
         val result = DynamicUniverseEngine.select(
-            assets = symbols.map(::asset),
+            assets = symbols.map { asset(it) },
             metadata = symbols.map { metadata(it, sector = if (it == "D") "Energy" else "Technology") },
             histories = symbols.associateWith { bars(volume = 2_000_000L) },
             maximumSymbols = 4,
