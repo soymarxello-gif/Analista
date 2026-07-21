@@ -60,11 +60,16 @@ object DecisionOverlayEngine {
         val fundamentalMetrics = registeredFundamental?.metrics ?: enrichment
             ?.takeIf { it.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL") }
             ?.let(::legacyFundamentalMetrics)
-        val official = OfficialContextEngine.assess(
+        val assessedOfficial = OfficialContextEngine.assess(
             fred = OfficialContextRegistry.fredSnapshot(),
             cboe = OfficialContextRegistry.cboe(),
             cftc = OfficialContextRegistry.cftc()
         )
+        val effectiveOfficial = assessedOfficial.takeIf {
+            it.macro.coveragePct > 0.0 ||
+                it.institutional.futuresScore != null ||
+                it.institutional.marketOptionsRegime != "UNKNOWN"
+        }
         return applyResolved(
             candidate = candidate,
             base = base,
@@ -73,11 +78,11 @@ object DecisionOverlayEngine {
                 macroHistories = MarketHistoryRegistry.snapshot(macro.map { it.symbol }),
                 fundamentalMetrics = fundamentalMetrics,
                 fundamentalAvailable = registeredFundamental != null ||
-                    enrichment?.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL"),
+                    (enrichment?.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL")),
                 fundamentalCapturedAtUtc = registeredFundamental?.capturedAtUtc ?: enrichment?.capturedAtUtc,
                 optionChain = OptionChainRegistry.get(candidate.ticker),
                 legacyEnrichment = enrichment,
-                officialContext = official
+                officialContext = effectiveOfficial
             )
         )
     }
