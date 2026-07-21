@@ -42,13 +42,13 @@ class CanonicalAnalysisEngineTest {
     }
 
     @Test
-    fun noValidSetupCapsFinalTradeScore() {
+    fun noValidSetupIsAvoidAndCapsFinalTradeScore() {
         val analyzed = TechnicalEngine.analyzeWithAnalysis(
             "TEST",
             bars(),
             TradeContext(marketCap = 10_000_000_000L, quoteType = "EQUITY", setupType = "NO_VALID_SETUP")
         )
-        assertEquals("VETO", analyzed.candidate.signal)
+        assertEquals("AVOID", analyzed.candidate.signal)
         assertTrue(analyzed.analysis.finalTradeScore <= 49.0)
         assertTrue(analyzed.analysis.ema20 > analyzed.analysis.ema50)
         assertTrue(analyzed.analysis.ema50 > analyzed.analysis.ema200)
