@@ -39,7 +39,8 @@ class LiveUniverseSnapshotAssemblerTest {
         assertEquals(listOf("AAPL", "TSM"), result.bundle.members.map { it.ticker })
         assertTrue(result.bundle.members.first { it.ticker == "AAPL" }.eligible)
         assertFalse(result.bundle.members.first { it.ticker == "TSM" }.eligible)
-        assertTrue(result.bundle.members.first { it.ticker == "TSM" }.exclusionReasons.contains("instrument_type_not_eligible"))
+        assertTrue(result.bundle.members.first { it.ticker == "TSM" }.exclusionReasons.contains("instrument_type_unverified"))
+        assertFalse(result.bundle.members.first { it.ticker == "TSM" }.exclusionReasons.contains("market_cap_below_min"))
         assertEquals("AAPL", result.bundle.snapshot.symbols)
     }
 
