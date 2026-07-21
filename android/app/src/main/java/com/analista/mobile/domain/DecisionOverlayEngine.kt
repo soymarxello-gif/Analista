@@ -15,7 +15,7 @@ import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v3-overlays-7"
+    const val ENGINE_VERSION = "android-v3-overlays-8"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -49,7 +49,8 @@ object DecisionOverlayEngine {
         val optionChain: OptionChainSnapshot?,
         val legacyEnrichment: CandidateEnrichmentEntity?,
         val officialContext: OfficialContextEngine.Assessment? = null,
-        val insiderSnapshot: InsiderTransactionRegistry.Snapshot? = null
+        val insiderSnapshot: InsiderTransactionRegistry.Snapshot? = null,
+        val analysisTimestampUtc: Long? = null
     )
 
     fun apply(
@@ -85,7 +86,8 @@ object DecisionOverlayEngine {
                 optionChain = OptionChainRegistry.get(candidate.ticker),
                 legacyEnrichment = enrichment,
                 officialContext = effectiveOfficial,
-                insiderSnapshot = InsiderTransactionRegistry.get(candidate.ticker)
+                insiderSnapshot = InsiderTransactionRegistry.get(candidate.ticker),
+                analysisTimestampUtc = candidate.quoteRetrievedAtUtc ?: candidate.quoteCapturedAtUtc
             )
         )
     }
@@ -96,7 +98,15 @@ object DecisionOverlayEngine {
         macro: List<MarketSnapshotEntity>,
         inputs: ResolvedInputs
     ): OverlayResult {
-        val context = MacroRegimeEngine.assess(inputs.macroHistories, macro, inputs.officialContext?.macro)
+        val analysisTimestamp = inputs.analysisTimestampUtc
+            ?: candidate.quoteRetrievedAtUtc
+            ?: candidate.quoteCapturedAtUtc
+        val context = MacroRegimeEngine.assess(
+            histories = inputs.macroHistories,
+            fallbackSnapshots = macro,
+            official = inputs.officialContext?.macro,
+            assessmentTimestampUtc = analysisTimestamp
+        )
         val fundamental = resolvedFundamental(inputs)
         val institutional = institutionalAssessment(
             candidate,
@@ -132,6 +142,8 @@ object DecisionOverlayEngine {
         if (context.macroRegime == "RISK_OFF") final -= 5.0
         if (context.ratesRegime == "RISING") final -= 2.0
         if (context.liquidityRegime == "CONTRACTING") final -= 3.0
+        if (context.eventRisk == "IMMINENT") final -= 4.0
+        if (context.eventRisk == "NEAR") final -= 2.0
         if (fundamental.earningsRiskStatus == "IMMINENT") final -= 5.0
         if (fundamental.status == "STALE") final -= 3.0
         if (institutional.bias == "CROWDED_BULLISH") final -= 8.0
@@ -149,6 +161,7 @@ object DecisionOverlayEngine {
             "rates=${context.ratesRegime}",
             "liquidity=${context.liquidityRegime}",
             "event_risk=${context.eventRisk}",
+            "macroEventCalendarVersion=${MacroEventCalendar.VERSION}",
             "sector=${context.sectorRegime}",
             "institutional=${round2(institutional.score)}:${institutional.bias}:${institutional.coverage}:${institutional.conflict}",
             "institutional_reasons=${institutional.reasons.joinToString("|")}",
