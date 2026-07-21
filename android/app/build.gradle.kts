@@ -13,8 +13,8 @@ android {
         applicationId = "com.analista.mobile.stable"
         minSdk = 26
         targetSdk = 35
-        versionCode = 77
-        versionName = "1.73.0"
+        versionCode = 78
+        versionName = "1.74.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
