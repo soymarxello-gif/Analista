@@ -42,9 +42,9 @@ class SetupClassificationEngineTest {
     )
 
     @Test
-    fun classifiesLiveBreakoutAboveBufferedResistance() {
+    fun classifiesDailyBreakoutWithoutRequiringLiveQuote() {
         val result = SetupClassificationEngine.classify(
-            input(close = 105.0, rvol = 1.5, resistance = 104.0, execution = 105.0)
+            input(close = 105.0, rvol = 1.5, resistance = 104.0, execution = null)
         )
         assertEquals("BREAKOUT", result.setupType)
         assertTrue(result.setupValid)
@@ -53,19 +53,19 @@ class SetupClassificationEngineTest {
     }
 
     @Test
-    fun classifiesLostPriorBreakoutAsFailedBreakout() {
+    fun classifiesLostPriorBreakoutAsInvalidFailedBreakout() {
         val result = SetupClassificationEngine.classify(
             input(close = 105.0, rvol = 1.5, resistance = 104.0, execution = 103.5)
         )
         assertEquals("FAILED_BREAKOUT", result.setupType)
-        assertTrue(result.setupValid)
+        assertFalse(result.setupValid)
         assertEquals("LOST_PRIOR_RESISTANCE", result.invalidationType)
     }
 
     @Test
-    fun classifiesConstructiveEma20Pullback() {
+    fun classifiesConstructiveEma20PullbackFromDailyClose() {
         val result = SetupClassificationEngine.classify(
-            input(close = 100.3, sma20 = 100.0, sma50 = 95.0, execution = 100.1, resistance = 110.0)
+            input(close = 100.3, sma20 = 100.0, sma50 = 95.0, execution = 110.0, resistance = 120.0)
         )
         assertEquals("PULLBACK_EMA20", result.setupType)
         assertTrue(result.setupValid)
@@ -78,7 +78,7 @@ class SetupClassificationEngineTest {
         val result = SetupClassificationEngine.classify(
             input(
                 bars = compressed, close = 110.0, sma20 = 105.0, sma50 = 100.0,
-                execution = 110.0, rvol = 0.8, resistance = 120.0
+                execution = null, rvol = 0.8, resistance = 120.0
             )
         )
         assertEquals("VOLATILITY_CONTRACTION", result.setupType)
@@ -89,7 +89,7 @@ class SetupClassificationEngineTest {
     fun unsupportedStructureIsExplicitlyInvalid() {
         val result = SetupClassificationEngine.classify(
             input(close = 90.0, sma20 = 100.0, sma50 = 105.0, rsi = 35.0, macd = -2.0, signal = -1.0,
-                rvol = 0.7, resistance = 110.0, execution = 90.0)
+                rvol = 0.7, resistance = 110.0, execution = null)
         )
         assertEquals("NO_VALID_SETUP", result.setupType)
         assertFalse(result.setupValid)
