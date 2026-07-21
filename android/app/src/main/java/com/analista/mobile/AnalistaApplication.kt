@@ -5,6 +5,10 @@ import androidx.room.Room
 import com.analista.mobile.data.AlpacaCredentialsStore
 import com.analista.mobile.data.AlpacaMarketDataClient
 import com.analista.mobile.data.AnalistaDatabase
+import com.analista.mobile.data.DynamicScanCoordinator
+import com.analista.mobile.data.DynamicTickerList
+import com.analista.mobile.data.DynamicUniverseResolver
+import com.analista.mobile.data.DynamicUniverseStore
 import com.analista.mobile.data.MIGRATION_1_2
 import com.analista.mobile.data.MIGRATION_2_3
 import com.analista.mobile.data.MIGRATION_3_4
@@ -22,6 +26,7 @@ import com.analista.mobile.data.MIGRATION_14_15
 import com.analista.mobile.data.MIGRATION_15_16
 import com.analista.mobile.data.MIGRATION_16_17
 import com.analista.mobile.data.MarketDataGateway
+import com.analista.mobile.data.NasdaqScreenerClient
 import com.analista.mobile.data.RunDatasetCaptureService
 import com.analista.mobile.data.RunDatasetStore
 import com.analista.mobile.data.RunReplayService
@@ -59,7 +64,23 @@ class AnalistaApplication : Application() {
     val marketDataGateway by lazy {
         MarketDataGateway(yahoo, AlpacaMarketDataClient(), credentialsStore)
     }
+    private val universeResolver by lazy {
+        DynamicUniverseResolver(
+            marketData = marketDataGateway,
+            nasdaq = NasdaqScreenerClient(),
+            store = DynamicUniverseStore(this)
+        )
+    }
+    val dynamicScanCoordinator by lazy {
+        DynamicScanCoordinator(universeResolver, ScanRepository.DEFAULT_TICKERS)
+    }
     val repository by lazy {
-        ScanRepository(database.dao(), yahoo, marketDataGateway, datasetCapture = datasetCapture)
+        ScanRepository(
+            database.dao(),
+            yahoo,
+            marketDataGateway,
+            tickers = DynamicTickerList(ScanRepository.DEFAULT_TICKERS),
+            datasetCapture = datasetCapture
+        )
     }
 }
