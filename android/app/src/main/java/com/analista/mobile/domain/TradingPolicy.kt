@@ -33,8 +33,16 @@ object TradingPolicy {
 
     fun hardVetoReasons(price: Double, marketCap: Long?, quoteType: String?): List<String> = buildList {
         if (price < MIN_PRICE) add("price_below_min")
-        if (marketCap == null || marketCap < MIN_MARKET_CAP) add("market_cap_below_min")
-        val normalized = quoteType?.uppercase()
+        if (marketCap != null && marketCap < MIN_MARKET_CAP) add("market_cap_below_min")
+        val normalized = quoteType?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
         if (normalized != null && normalized in excludedQuoteTypes) add("excluded_security_type")
     }
+
+    fun eligibilityWarnings(marketCap: Long?, quoteType: String?): List<String> = buildList {
+        if (marketCap == null) add("market_cap_unverified")
+        if (quoteType.isNullOrBlank()) add("instrument_type_unverified")
+    }
+
+    fun eligibilityVerified(marketCap: Long?, quoteType: String?): Boolean =
+        marketCap != null && !quoteType.isNullOrBlank()
 }
