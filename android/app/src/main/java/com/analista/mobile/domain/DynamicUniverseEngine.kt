@@ -29,7 +29,7 @@ object DynamicUniverseEngine {
         val metadataBySymbol = metadata.associateBy { it.symbol }
         val eligible = assets.asSequence()
             .filter { it.tradable && it.status == "active" && it.assetClass == "us_equity" }
-            .filter { it.exchange in ALLOWED_EXCHANGES }
+            .filter { asset -> asset.exchange?.let { it in ALLOWED_EXCHANGES } == true }
             .mapNotNull { asset ->
                 val info = metadataBySymbol[asset.symbol] ?: return@mapNotNull null
                 val cap = info.marketCap ?: return@mapNotNull null
