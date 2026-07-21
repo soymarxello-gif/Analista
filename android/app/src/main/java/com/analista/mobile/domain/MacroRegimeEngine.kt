@@ -5,7 +5,7 @@ import com.analista.mobile.data.PriceBar
 import kotlin.math.round
 
 object MacroRegimeEngine {
-    const val VERSION = "macro-regime-2"
+    const val VERSION = "macro-regime-3"
 
     data class Result(
         val macroScore: Double,
@@ -23,7 +23,8 @@ object MacroRegimeEngine {
     fun assess(
         histories: Map<String, List<PriceBar>>,
         fallbackSnapshots: List<MarketSnapshotEntity> = emptyList(),
-        official: OfficialContextEngine.MacroAssessment? = null
+        official: OfficialContextEngine.MacroAssessment? = null,
+        assessmentTimestampUtc: Long? = null
     ): Result {
         val normalized = histories.mapKeys { it.key.trim().uppercase() }
         val reasons = mutableListOf<String>()
@@ -117,10 +118,15 @@ object MacroRegimeEngine {
             reasons += "fred_labor_regime_${official.laborRegime.lowercase()}"
         }
         val liquidityRegime = official?.liquidityRegime?.takeIf { hasOfficial } ?: "UNKNOWN"
-        val eventRisk = "UNKNOWN"
+        val eventAssessment = assessmentTimestampUtc?.takeIf { it > 0L }?.let(MacroEventCalendar::assess)
+        val eventRisk = eventAssessment?.risk ?: "UNKNOWN"
+        when (eventRisk) {
+            "IMMINENT" -> score -= 6.0
+            "NEAR" -> score -= 3.0
+        }
+        reasons += eventAssessment?.reasons ?: listOf("macro_event_timestamp_unavailable")
         val sectorRegime = "UNKNOWN"
         if (liquidityRegime == "UNKNOWN") reasons += "liquidity_series_unavailable"
-        reasons += "macro_event_calendar_unavailable"
         reasons += "sector_breadth_unavailable"
 
         val officialCoverage = official?.coveragePct?.takeIf { hasOfficial } ?: 0.0
