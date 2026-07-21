@@ -5,7 +5,7 @@ import com.analista.mobile.data.PriceBar
 import kotlin.math.round
 
 object MacroRegimeEngine {
-    const val VERSION = "macro-regime-1"
+    const val VERSION = "macro-regime-2"
 
     data class Result(
         val macroScore: Double,
@@ -22,13 +22,14 @@ object MacroRegimeEngine {
 
     fun assess(
         histories: Map<String, List<PriceBar>>,
-        fallbackSnapshots: List<MarketSnapshotEntity> = emptyList()
+        fallbackSnapshots: List<MarketSnapshotEntity> = emptyList(),
+        official: OfficialContextEngine.MacroAssessment? = null
     ): Result {
         val normalized = histories.mapKeys { it.key.trim().uppercase() }
         val reasons = mutableListOf<String>()
         val required = listOf("SPY", "QQQ", "IWM", "^VIX", "^TNX", "^TYX", "DX-Y.NYB", "CL=F", "BTC-USD")
         val validHistories = required.associateWith { normalized[it].orEmpty() }.filterValues { it.size >= 61 }
-        val coveragePct = validHistories.size.toDouble() / required.size * 100.0
+        val marketCoveragePct = validHistories.size.toDouble() / required.size * 100.0
 
         fun returns(symbol: String, sessions: Int): Double? {
             val bars = validHistories[symbol] ?: return null
@@ -81,14 +82,21 @@ object MacroRegimeEngine {
         val ten20 = returns("^TNX", 20)
         val ten60 = returns("^TNX", 60)
         val curve = if (tenYear != null && thirtyYear != null) thirtyYear - tenYear else null
-        val ratesRegime = when {
+        val marketRatesRegime = when {
             ten20 == null || ten60 == null -> "UNKNOWN"
             ten20 > 3.0 && ten60 > 5.0 -> "RISING"
             ten20 < -3.0 && ten60 < -5.0 -> "FALLING"
             else -> "STABLE_MIXED"
         }
-        if (ratesRegime == "RISING") { score -= 7.0; reasons += "rates_rising_20d_60d" }
-        if (ratesRegime == "FALLING") { score += 3.0; reasons += "rates_falling_20d_60d" }
+        val hasOfficial = official?.coveragePct?.let { it > 0.0 } == true
+        val officialRatesRegime = official?.ratesRegime.takeIf { hasOfficial }
+        val ratesRegime = when {
+            marketRatesRegime == "UNKNOWN" -> officialRatesRegime ?: "UNKNOWN"
+            officialRatesRegime in setOf("RISING", "FALLING") && officialRatesRegime != marketRatesRegime -> "STABLE_MIXED"
+            else -> marketRatesRegime
+        }
+        if (marketRatesRegime == "RISING") { score -= 7.0; reasons += "rates_rising_20d_60d" }
+        if (marketRatesRegime == "FALLING") { score += 3.0; reasons += "rates_falling_20d_60d" }
         if (curve != null && curve < 0.0) { score -= 3.0; reasons += "long_curve_inverted" }
 
         val dxy20 = returns("DX-Y.NYB", 20)
@@ -102,18 +110,35 @@ object MacroRegimeEngine {
         if (bitcoin20 != null && bitcoin20 > 10.0) score += 2.0
         if (bitcoin20 != null && bitcoin20 < -15.0) score -= 2.0
 
-        val liquidityRegime = "UNKNOWN"
+        if (hasOfficial && official != null) {
+            score += official.scoreAdjustment
+            reasons += official.reasons
+            reasons += "fred_inflation_regime_${official.inflationRegime.lowercase()}"
+            reasons += "fred_labor_regime_${official.laborRegime.lowercase()}"
+        }
+        val liquidityRegime = official?.liquidityRegime?.takeIf { hasOfficial } ?: "UNKNOWN"
         val eventRisk = "UNKNOWN"
         val sectorRegime = "UNKNOWN"
-        reasons += "liquidity_series_unavailable"
+        if (liquidityRegime == "UNKNOWN") reasons += "liquidity_series_unavailable"
         reasons += "macro_event_calendar_unavailable"
         reasons += "sector_breadth_unavailable"
 
-        val confidence = when {
-            coveragePct >= 88.0 -> "HIGH"
-            coveragePct >= 66.0 -> "PARTIAL"
-            coveragePct > 0.0 || fallbackSnapshots.size >= 6 -> "LOW"
-            else -> "UNKNOWN"
+        val officialCoverage = official?.coveragePct?.takeIf { hasOfficial } ?: 0.0
+        val coveragePct = if (hasOfficial) marketCoveragePct * 0.75 + officialCoverage * 0.25 else marketCoveragePct
+        val confidence = if (hasOfficial) {
+            when {
+                marketCoveragePct >= 88.0 && officialCoverage >= 50.0 -> "HIGH"
+                marketCoveragePct >= 66.0 || (marketCoveragePct >= 44.0 && officialCoverage >= 50.0) -> "PARTIAL"
+                marketCoveragePct > 0.0 || fallbackSnapshots.size >= 6 || officialCoverage > 0.0 -> "LOW"
+                else -> "UNKNOWN"
+            }
+        } else {
+            when {
+                marketCoveragePct >= 88.0 -> "HIGH"
+                marketCoveragePct >= 66.0 -> "PARTIAL"
+                marketCoveragePct > 0.0 || fallbackSnapshots.size >= 6 -> "LOW"
+                else -> "UNKNOWN"
+            }
         }
         if (confidence != "HIGH") score -= when (confidence) {
             "PARTIAL" -> 2.0

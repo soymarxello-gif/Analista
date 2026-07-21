@@ -6,6 +6,7 @@ import com.analista.mobile.data.FundamentalMetrics
 import com.analista.mobile.data.FundamentalSnapshotRegistry
 import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
+import com.analista.mobile.data.OfficialContextRegistry
 import com.analista.mobile.data.OptionChainRegistry
 import com.analista.mobile.data.OptionChainSnapshot
 import com.analista.mobile.data.OptionContractSnapshot
@@ -22,6 +23,7 @@ class DecisionOverlayEngineTest {
         OptionChainRegistry.clear()
         FundamentalSnapshotRegistry.clear()
         MarketHistoryRegistry.clear()
+        OfficialContextRegistry.clear()
     }
 
     @Test
