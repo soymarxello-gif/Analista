@@ -1,7 +1,7 @@
 package com.analista.mobile.domain
 
 object InstitutionalContrarianEngine {
-    const val VERSION = "institutional-contrarian-2"
+    const val VERSION = "institutional-contrarian-3"
 
     data class Component(
         val score: Double?,
@@ -16,7 +16,11 @@ object InstitutionalContrarianEngine {
         val futuresPositioning: Component,
         val bullishConsensusPercentile: Double? = null,
         val priceTrendConstructive: Boolean,
-        val technicalScore: Double
+        val technicalScore: Double,
+        val optionsComponent: Component? = null,
+        val optionsBiasOverride: String? = null,
+        val marketOptionsRegime: String = "UNKNOWN",
+        val marketOptionsAdjustment: Double = 0.0
     )
 
     data class Assessment(
@@ -38,8 +42,10 @@ object InstitutionalContrarianEngine {
     fun assess(input: Input): Assessment {
         require(input.technicalScore in 0.0..100.0)
         input.bullishConsensusPercentile?.let { require(it in 0.0..100.0) }
+        require(input.marketOptionsAdjustment in -10.0..10.0)
+        val optionScore = input.options?.score ?: input.optionsComponent?.score
         val components = listOf(
-            Triple("options", input.options?.score, 0.50),
+            Triple("options", optionScore, 0.50),
             Triple("volume", input.volumeAccumulation.score, 0.25),
             Triple("insiders", input.insiders.score, 0.15),
             Triple("futures", input.futuresPositioning.score, 0.10)
@@ -50,16 +56,22 @@ object InstitutionalContrarianEngine {
             available.sumOf { (_, score, weight) -> score!! * weight } / availableWeight
         } else 50.0
         val coveragePct = availableWeight * 100.0
-        val optionsBias = input.options?.bias ?: "UNKNOWN_OPTIONS_FLOW"
+        val optionsBias = input.options?.bias ?: input.optionsBiasOverride ?: "UNKNOWN_OPTIONS_FLOW"
         val reasons = mutableListOf<String>()
         reasons += input.options?.reasons.orEmpty()
+        reasons += input.optionsComponent?.reasons.orEmpty()
         reasons += input.volumeAccumulation.reasons
         reasons += input.insiders.reasons
         reasons += input.futuresPositioning.reasons
         if (availableWeight < 1.0) reasons += "institutional_coverage_incomplete"
-        if (input.options == null || optionsBias == "UNKNOWN_OPTIONS_FLOW") reasons += "options_unknown_not_neutral"
+        if (optionScore == null || optionsBias == "UNKNOWN_OPTIONS_FLOW") reasons += "options_unknown_not_neutral"
 
-        var contrarian = 0.0
+        var contrarian = input.marketOptionsAdjustment
+        when (input.marketOptionsRegime) {
+            "CROWDED_BULLISH" -> reasons += "market_options_crowded_bullish_penalty"
+            "CROWDED_BEARISH" -> reasons += "market_options_crowded_bearish_context"
+            "UNKNOWN" -> reasons += "market_options_context_unknown"
+        }
         when {
             optionsBias == "CROWDED_BULLISH" -> {
                 contrarian -= 10.0
@@ -86,11 +98,14 @@ object InstitutionalContrarianEngine {
         val adjusted = (composite + contrarian).coerceIn(0.0, 100.0)
         val adverseOptions = optionsBias in setOf("BEARISH_WITH_DATA", "CROWDED_BEARISH")
         val volumeDistribution = input.volumeAccumulation.score?.let { it < 35.0 } == true
+        val futuresAdverse = input.futuresPositioning.score?.let { it <= 35.0 } == true &&
+            input.futuresPositioning.status in setOf("COMPLETE", "AVAILABLE_COMPLETE")
         val conflict = when {
             coveragePct >= 70.0 && optionsBias == "CROWDED_BEARISH" && adjusted <= 50.0 -> "HIGH"
             coveragePct >= 70.0 && adverseOptions && adjusted <= 42.0 -> "HIGH"
             coveragePct >= 70.0 && adverseOptions && volumeDistribution -> "HIGH"
-            adverseOptions || volumeDistribution -> "MEDIUM"
+            coveragePct >= 70.0 && futuresAdverse && volumeDistribution -> "HIGH"
+            adverseOptions || volumeDistribution || futuresAdverse -> "MEDIUM"
             else -> "NONE"
         }
         if (conflict == "HIGH") reasons += "institutional_conflict_high"
@@ -100,7 +115,7 @@ object InstitutionalContrarianEngine {
             else -> "UNKNOWN"
         }
         return Assessment(
-            optionsScore = input.options?.score,
+            optionsScore = optionScore,
             volumeAccumulationScore = input.volumeAccumulation.score,
             insiderScore = input.insiders.score,
             futuresPositioningScore = input.futuresPositioning.score,
