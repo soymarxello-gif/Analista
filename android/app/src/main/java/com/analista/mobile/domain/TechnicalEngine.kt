@@ -110,6 +110,8 @@ object TechnicalEngine {
         if (setup.setupValid) {
             score += setup.setupScore * 0.10
             reasons += "setup_${setup.setupType.lowercase()}"
+        } else if (setup.setupType == "FAILED_BREAKOUT") {
+            penalties += "failed_breakout"
         } else {
             penalties += "no_valid_setup"
         }
@@ -134,9 +136,11 @@ object TechnicalEngine {
         val gapAtr = livePremarket?.let { abs(it - close) / atr }
         val actionability = when {
             vetoReasons.isNotEmpty() -> "VETOED"
+            failedBreakout -> "FAILED_BREAKOUT"
             !setup.setupValid -> "NO_VALID_SETUP"
             !context.executionDataAllowed && context.dataQualityStatus == "UNUSABLE" -> "DATA_UNUSABLE"
             !context.executionDataAllowed -> "STALE_OR_ILLIQUID_DATA"
+            context.quote == null -> "QUOTE_MISSING"
             !executionSessionOpen -> "MARKET_CLOSED_ANALYSIS_ONLY"
             quote.quality == "LOW" -> "QUOTE_UNCONFIRMED"
             executionPrice == null -> "QUOTE_MISSING"
@@ -145,7 +149,6 @@ object TechnicalEngine {
             freshness.status == "DELAYED_ACCEPTABLE" && livePriceInTriggerWindow -> "QUOTE_DELAYED"
             gapAtr != null && gapAtr > 1.5 -> "GAP_EXCESSIVE"
             executionPrice > maximumEntry -> "ABOVE_MAX_ENTRY"
-            failedBreakout -> "FAILED_BREAKOUT"
             executionPrice < plannedTrigger -> "WAIT_TRIGGER"
             triggerConfirmed -> "ACTIONABLE_REVIEW"
             else -> "WAIT_TRIGGER"
@@ -175,7 +178,7 @@ object TechnicalEngine {
 
         var signal = when {
             vetoReasons.isNotEmpty() -> "VETO"
-            !setup.setupValid || overextended || failedBreakout -> "AVOID"
+            failedBreakout || !setup.setupValid || overextended -> "AVOID"
             triggerConfirmed && score >= 80 -> "TRIGGER_CONFIRMED"
             score >= 65 -> "READY_WAIT_TRIGGER"
             score >= 50 -> "WATCHLIST"
