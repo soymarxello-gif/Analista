@@ -66,7 +66,7 @@ class MarketDataGateway(
                     regularMarketPrice = yahooQuote?.regularMarketPrice,
                     preMarketPrice = alpacaMid,
                     marketCap = yahooQuote?.marketCap,
-                    quoteType = yahooQuote?.quoteType ?: "EQUITY",
+                    quoteType = yahooQuote?.quoteType,
                     marketState = yahooQuote?.marketState,
                     capturedAtUtc = providerTimestamp ?: retrievedAtUtc,
                     providerTimestampUtc = providerTimestamp,
@@ -104,7 +104,7 @@ class MarketDataGateway(
     suspend fun dailyHistories(symbols: List<String>, yahooRange: String = "2y"): HistoryBatchResult {
         val normalized = normalizeSymbols(symbols)
         val credentials = credentialsStore.load()
-        val alpacaResult = if (credentials != null) {
+        val alpacaResult: Result<Map<String, List<PriceBar>>> = if (credentials != null) {
             runCatching { alpaca.dailyBars(normalized, credentials) }
         } else {
             Result.success(emptyMap())
