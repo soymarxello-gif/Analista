@@ -4,6 +4,7 @@ import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CanonicalAnalysis
 import com.analista.mobile.data.FundamentalMetrics
 import com.analista.mobile.data.FundamentalSnapshotRegistry
+import com.analista.mobile.data.InsiderTransactionRegistry
 import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.OfficialContextRegistry
@@ -12,10 +13,13 @@ import com.analista.mobile.data.OptionChainSnapshot
 import com.analista.mobile.data.OptionContractSnapshot
 import com.analista.mobile.data.OptionExpirySnapshot
 import com.analista.mobile.data.ScanCandidate
+import com.analista.mobile.data.SecEdgarClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 class DecisionOverlayEngineTest {
     @Before
@@ -24,6 +28,7 @@ class DecisionOverlayEngineTest {
         FundamentalSnapshotRegistry.clear()
         MarketHistoryRegistry.clear()
         OfficialContextRegistry.clear()
+        InsiderTransactionRegistry.clear()
     }
 
     @Test
@@ -57,6 +62,29 @@ class DecisionOverlayEngineTest {
         assertEquals("HIGH", result.institutionalConflict)
         assertTrue(result.finalTradeScore <= 59.0)
         assertTrue(result.institutionalReasons.contains("institutional_conflict_high"))
+    }
+
+    @Test
+    fun registeredOpenMarketPurchaseRaisesInstitutionalEvidence() {
+        val baseline = DecisionOverlayEngine.apply(candidate(), base(), macro(), enrichment(putCall = 0.90))
+        val captured = LocalDate.of(2026, 7, 21).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+        InsiderTransactionRegistry.record(
+            InsiderTransactionRegistry.Snapshot(
+                ticker = "TEST",
+                transactions = listOf(
+                    insider("Director A", "P", "A", 5_000.0, 30.0, LocalDate.of(2026, 7, 15)),
+                    insider("Director B", "P", "A", 4_000.0, 28.0, LocalDate.of(2026, 7, 16))
+                ),
+                status = "COMPLETE",
+                capturedAtUtc = captured
+            )
+        )
+
+        val withInsiders = DecisionOverlayEngine.apply(candidate(), base(), macro(), enrichment(putCall = 0.90))
+
+        assertTrue(withInsiders.institutionalScore > baseline.institutionalScore)
+        assertTrue("sec_open_market_purchases_present" in withInsiders.institutionalReasons)
+        assertTrue("sec_multiple_distinct_buyers" in withInsiders.institutionalReasons)
     }
 
     @Test
@@ -119,6 +147,31 @@ class DecisionOverlayEngineTest {
             distanceToSpotPct = distance,
             lastTradeEpochSeconds = null
         )
+
+    private fun insider(
+        owner: String,
+        code: String,
+        acquiredDisposed: String,
+        shares: Double,
+        price: Double,
+        date: LocalDate
+    ) = SecEdgarClient.InsiderTransaction(
+        accessionNumber = "fixture-$owner",
+        ticker = "TEST",
+        ownerName = owner,
+        isDirector = true,
+        isOfficer = false,
+        officerTitle = null,
+        securityTitle = "Common Stock",
+        transactionDate = date,
+        transactionCode = code,
+        acquiredDisposedCode = acquiredDisposed,
+        shares = shares,
+        pricePerShare = price,
+        transactionValue = shares * price,
+        sharesOwnedFollowing = 20_000.0,
+        directOrIndirect = "D"
+    )
 
     private fun macro() = listOf(
         snapshot("SPY", 1.0, 600.0), snapshot("QQQ", 1.1, 550.0), snapshot("IWM", 0.8, 240.0),
