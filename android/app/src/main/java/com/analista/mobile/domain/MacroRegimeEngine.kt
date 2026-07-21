@@ -88,7 +88,8 @@ object MacroRegimeEngine {
             ten20 < -3.0 && ten60 < -5.0 -> "FALLING"
             else -> "STABLE_MIXED"
         }
-        val officialRatesRegime = official?.ratesRegime
+        val hasOfficial = official?.coveragePct?.let { it > 0.0 } == true
+        val officialRatesRegime = official?.ratesRegime.takeIf { hasOfficial }
         val ratesRegime = when {
             marketRatesRegime == "UNKNOWN" -> officialRatesRegime ?: "UNKNOWN"
             officialRatesRegime in setOf("RISING", "FALLING") && officialRatesRegime != marketRatesRegime -> "STABLE_MIXED"
@@ -109,26 +110,35 @@ object MacroRegimeEngine {
         if (bitcoin20 != null && bitcoin20 > 10.0) score += 2.0
         if (bitcoin20 != null && bitcoin20 < -15.0) score -= 2.0
 
-        if (official != null) {
+        if (hasOfficial && official != null) {
             score += official.scoreAdjustment
             reasons += official.reasons
             reasons += "fred_inflation_regime_${official.inflationRegime.lowercase()}"
             reasons += "fred_labor_regime_${official.laborRegime.lowercase()}"
         }
-        val liquidityRegime = official?.liquidityRegime ?: "UNKNOWN"
+        val liquidityRegime = official?.liquidityRegime?.takeIf { hasOfficial } ?: "UNKNOWN"
         val eventRisk = "UNKNOWN"
         val sectorRegime = "UNKNOWN"
         if (liquidityRegime == "UNKNOWN") reasons += "liquidity_series_unavailable"
         reasons += "macro_event_calendar_unavailable"
         reasons += "sector_breadth_unavailable"
 
-        val officialCoverage = official?.coveragePct ?: 0.0
-        val coveragePct = marketCoveragePct * 0.75 + officialCoverage * 0.25
-        val confidence = when {
-            marketCoveragePct >= 88.0 && officialCoverage >= 50.0 -> "HIGH"
-            marketCoveragePct >= 66.0 || (marketCoveragePct >= 44.0 && officialCoverage >= 50.0) -> "PARTIAL"
-            marketCoveragePct > 0.0 || fallbackSnapshots.size >= 6 || officialCoverage > 0.0 -> "LOW"
-            else -> "UNKNOWN"
+        val officialCoverage = official?.coveragePct?.takeIf { hasOfficial } ?: 0.0
+        val coveragePct = if (hasOfficial) marketCoveragePct * 0.75 + officialCoverage * 0.25 else marketCoveragePct
+        val confidence = if (hasOfficial) {
+            when {
+                marketCoveragePct >= 88.0 && officialCoverage >= 50.0 -> "HIGH"
+                marketCoveragePct >= 66.0 || (marketCoveragePct >= 44.0 && officialCoverage >= 50.0) -> "PARTIAL"
+                marketCoveragePct > 0.0 || fallbackSnapshots.size >= 6 || officialCoverage > 0.0 -> "LOW"
+                else -> "UNKNOWN"
+            }
+        } else {
+            when {
+                marketCoveragePct >= 88.0 -> "HIGH"
+                marketCoveragePct >= 66.0 -> "PARTIAL"
+                marketCoveragePct > 0.0 || fallbackSnapshots.size >= 6 -> "LOW"
+                else -> "UNKNOWN"
+            }
         }
         if (confidence != "HIGH") score -= when (confidence) {
             "PARTIAL" -> 2.0
