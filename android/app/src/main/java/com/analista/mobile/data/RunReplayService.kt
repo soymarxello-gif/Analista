@@ -36,6 +36,7 @@ class RunReplayService(
         val macroHistories = mutableMapOf<String, List<PriceBar>>()
         val fundamentals = mutableMapOf<String, FundamentalSnapshotEntity>()
         val options = mutableMapOf<String, OptionChainSnapshot>()
+        val insiders = mutableMapOf<String, InsiderTransactionRegistry.Snapshot>()
         var universe: NormalizedDatasetDecoder.UniverseDataset? = null
 
         for (artifact in artifacts) {
@@ -73,6 +74,11 @@ class RunReplayService(
                     require(decoded.ticker == artifact.ticker)
                     require(options.put(decoded.ticker, decoded) == null) { "duplicate_option_chain" }
                 }
+                "INSIDER_TRANSACTIONS" -> {
+                    val decoded = NormalizedDatasetDecoder.insiders(payload)
+                    require(decoded.ticker == artifact.ticker)
+                    require(insiders.put(decoded.ticker, decoded) == null) { "duplicate_insider_transactions" }
+                }
                 "UNIVERSE_SNAPSHOT" -> {
                     require(artifact.ticker == null)
                     require(universe == null) { "duplicate_universe_snapshot" }
@@ -101,7 +107,8 @@ class RunReplayService(
                 macroHistories = macroHistories,
                 fundamentalsByTicker = fundamentals,
                 optionsByTicker = options,
-                universe = resolvedUniverse
+                universe = resolvedUniverse,
+                insidersByTicker = insiders
             )
         )
     }
@@ -139,6 +146,6 @@ class RunReplayService(
     )
 
     companion object {
-        const val VERSION = "run-replay-service-1"
+        const val VERSION = "run-replay-service-2"
     }
 }

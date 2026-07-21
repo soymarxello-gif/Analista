@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
 object NormalizedDatasetCodec {
-    const val VERSION = "normalized-dataset-codec-1"
+    const val VERSION = "normalized-dataset-codec-2"
 
     fun bars(ticker: String, rows: List<PriceBar>): ByteArray = utf8(buildString {
         append("{\"ticker\":").append(q(normalizeTicker(ticker))).append(",\"bars\":[")
@@ -116,6 +116,39 @@ object NormalizedDatasetCodec {
                         .append('}')
                 }
             append("]}")
+        }
+        append("]}")
+    })
+
+    fun insiders(snapshot: InsiderTransactionRegistry.Snapshot): ByteArray = utf8(buildString {
+        append("{\"ticker\":").append(q(normalizeTicker(snapshot.ticker)))
+            .append(",\"status\":").append(q(snapshot.status.trim().uppercase()))
+            .append(",\"capturedAtUtc\":").append(snapshot.capturedAtUtc)
+            .append(",\"provider\":").append(q(snapshot.provider.trim().uppercase()))
+            .append(",\"transactions\":[")
+        snapshot.transactions.sortedWith(
+            compareBy<SecEdgarClient.InsiderTransaction> { it.transactionDate?.toString() ?: "" }
+                .thenBy { it.accessionNumber }
+                .thenBy { it.ownerName ?: "" }
+                .thenBy { it.transactionCode ?: "" }
+        ).forEachIndexed { index, row ->
+            if (index > 0) append(',')
+            append("{\"accessionNumber\":").append(q(row.accessionNumber))
+                .append(",\"ticker\":").append(qn(row.ticker?.let(::normalizeTicker)))
+                .append(",\"ownerName\":").append(qn(row.ownerName))
+                .append(",\"isDirector\":").append(row.isDirector)
+                .append(",\"isOfficer\":").append(row.isOfficer)
+                .append(",\"officerTitle\":").append(qn(row.officerTitle))
+                .append(",\"securityTitle\":").append(qn(row.securityTitle))
+                .append(",\"transactionDate\":").append(qn(row.transactionDate?.toString()))
+                .append(",\"transactionCode\":").append(qn(row.transactionCode))
+                .append(",\"acquiredDisposedCode\":").append(qn(row.acquiredDisposedCode))
+                .append(",\"shares\":").append(n(row.shares))
+                .append(",\"pricePerShare\":").append(n(row.pricePerShare))
+                .append(",\"transactionValue\":").append(n(row.transactionValue))
+                .append(",\"sharesOwnedFollowing\":").append(n(row.sharesOwnedFollowing))
+                .append(",\"directOrIndirect\":").append(qn(row.directOrIndirect))
+                .append('}')
         }
         append("]}")
     })

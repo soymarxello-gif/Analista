@@ -85,6 +85,7 @@ class OfficialSourceCoordinator(
         require(maxTickers in 1..20)
         require(maxFilingsPerTicker in 1..5)
         require(lookbackDays in 1L..180L)
+        InsiderTransactionRegistry.clear()
         val requested = tickers.map(::normalizeTicker).filter(String::isNotBlank).distinct().take(maxTickers)
         if (requested.isEmpty()) return InsiderRefreshResult(0, 0, 0, 0, 0, 0, 0, "EMPTY", nowUtc)
         val email = settingsStore.load().secContactEmail

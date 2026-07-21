@@ -3,9 +3,10 @@ package com.analista.mobile.data
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.time.LocalDate
 
 object NormalizedDatasetDecoder {
-    const val VERSION = "normalized-dataset-decoder-1"
+    const val VERSION = "normalized-dataset-decoder-2"
 
     data class BarsDataset(val ticker: String, val bars: List<PriceBar>)
     data class QuoteDataset(val ticker: String, val quote: MarketQuote?)
@@ -179,6 +180,48 @@ object NormalizedDatasetDecoder {
         )
     }
 
+    fun insiders(payload: ByteArray): InsiderTransactionRegistry.Snapshot {
+        val root = json(payload)
+        val ticker = requiredString(root, "ticker")
+        val transactionsArray = root.optJSONArray("transactions") ?: throw IOException("insider transactions missing")
+        val transactions = buildList {
+            for (index in 0 until transactionsArray.length()) {
+                val row = transactionsArray.optJSONObject(index) ?: throw IOException("invalid insider transaction at $index")
+                add(
+                    SecEdgarClient.InsiderTransaction(
+                        accessionNumber = requiredString(row, "accessionNumber"),
+                        ticker = optionalString(row, "ticker"),
+                        ownerName = optionalString(row, "ownerName"),
+                        isDirector = requiredBoolean(row, "isDirector"),
+                        isOfficer = requiredBoolean(row, "isOfficer"),
+                        officerTitle = optionalString(row, "officerTitle"),
+                        securityTitle = optionalString(row, "securityTitle"),
+                        transactionDate = optionalDate(row, "transactionDate"),
+                        transactionCode = optionalString(row, "transactionCode"),
+                        acquiredDisposedCode = optionalString(row, "acquiredDisposedCode"),
+                        shares = optionalDouble(row, "shares"),
+                        pricePerShare = optionalDouble(row, "pricePerShare"),
+                        transactionValue = optionalDouble(row, "transactionValue"),
+                        sharesOwnedFollowing = optionalDouble(row, "sharesOwnedFollowing"),
+                        directOrIndirect = optionalString(row, "directOrIndirect")
+                    )
+                )
+            }
+        }.sortedWith(
+            compareBy<SecEdgarClient.InsiderTransaction> { it.transactionDate?.toString() ?: "" }
+                .thenBy { it.accessionNumber }
+                .thenBy { it.ownerName ?: "" }
+                .thenBy { it.transactionCode ?: "" }
+        )
+        return InsiderTransactionRegistry.Snapshot(
+            ticker = ticker,
+            transactions = transactions,
+            status = requiredString(root, "status"),
+            capturedAtUtc = requiredLong(root, "capturedAtUtc"),
+            provider = requiredString(root, "provider")
+        )
+    }
+
     fun universe(payload: ByteArray): UniverseDataset {
         val root = json(payload)
         val snapshotId = requiredString(root, "snapshotId")
@@ -241,6 +284,10 @@ object NormalizedDatasetDecoder {
 
     private fun optionalString(row: JSONObject, key: String): String? =
         if (row.has(key) && !row.isNull(key)) row.optString(key).takeIf { it.isNotBlank() } else null
+
+    private fun optionalDate(row: JSONObject, key: String): LocalDate? = optionalString(row, key)?.let { value ->
+        runCatching { LocalDate.parse(value) }.getOrElse { throw IOException("invalid date: $key", it) }
+    }
 
     private fun requiredLong(row: JSONObject, key: String): Long =
         if (row.has(key) && !row.isNull(key)) row.optLong(key) else throw IOException("missing long: $key")

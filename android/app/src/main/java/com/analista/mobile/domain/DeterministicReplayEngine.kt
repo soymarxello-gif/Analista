@@ -7,6 +7,7 @@ import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.FinalDecisionEntity
 import com.analista.mobile.data.FundamentalMetrics
 import com.analista.mobile.data.FundamentalSnapshotEntity
+import com.analista.mobile.data.InsiderTransactionRegistry
 import com.analista.mobile.data.MarketQuote
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.NormalizedDatasetDecoder
@@ -22,7 +23,7 @@ import kotlin.math.abs
 import kotlin.math.round
 
 object DeterministicReplayEngine {
-    const val VERSION = "deterministic-replay-1"
+    const val VERSION = "deterministic-replay-2"
 
     data class DatasetBundle(
         val barsByTicker: Map<String, List<PriceBar>>,
@@ -31,7 +32,8 @@ object DeterministicReplayEngine {
         val macroHistories: Map<String, List<PriceBar>>,
         val fundamentalsByTicker: Map<String, FundamentalSnapshotEntity>,
         val optionsByTicker: Map<String, OptionChainSnapshot>,
-        val universe: NormalizedDatasetDecoder.UniverseDataset
+        val universe: NormalizedDatasetDecoder.UniverseDataset,
+        val insidersByTicker: Map<String, InsiderTransactionRegistry.Snapshot> = emptyMap()
     )
 
     data class StoredRun(
@@ -131,7 +133,8 @@ object DeterministicReplayEngine {
                     fundamentalAvailable = fundamental != null,
                     fundamentalCapturedAtUtc = fundamental?.capturedAtUtc,
                     optionChain = datasets.optionsByTicker[symbol],
-                    legacyEnrichment = originalEnrichment[symbol]
+                    legacyEnrichment = originalEnrichment[symbol],
+                    insiderSnapshot = datasets.insidersByTicker[symbol]
                 )
             )
             val analysisEntity = analyzed.toEntity(runId, overlay, stored.run.finishedAtUtc)
