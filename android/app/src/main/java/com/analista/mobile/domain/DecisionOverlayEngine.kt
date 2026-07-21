@@ -6,6 +6,7 @@ import com.analista.mobile.data.FundamentalMetrics
 import com.analista.mobile.data.FundamentalSnapshotRegistry
 import com.analista.mobile.data.MarketHistoryRegistry
 import com.analista.mobile.data.MarketSnapshotEntity
+import com.analista.mobile.data.OfficialContextRegistry
 import com.analista.mobile.data.OptionChainRegistry
 import com.analista.mobile.data.OptionChainSnapshot
 import com.analista.mobile.data.PriceBar
@@ -13,7 +14,7 @@ import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v3-overlays-5"
+    const val ENGINE_VERSION = "android-v3-overlays-6"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -45,7 +46,8 @@ object DecisionOverlayEngine {
         val fundamentalAvailable: Boolean,
         val fundamentalCapturedAtUtc: Long?,
         val optionChain: OptionChainSnapshot?,
-        val legacyEnrichment: CandidateEnrichmentEntity?
+        val legacyEnrichment: CandidateEnrichmentEntity?,
+        val officialContext: OfficialContextEngine.Assessment? = null
     )
 
     fun apply(
@@ -58,6 +60,11 @@ object DecisionOverlayEngine {
         val fundamentalMetrics = registeredFundamental?.metrics ?: enrichment
             ?.takeIf { it.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL") }
             ?.let(::legacyFundamentalMetrics)
+        val official = OfficialContextEngine.assess(
+            fred = OfficialContextRegistry.fredSnapshot(),
+            cboe = OfficialContextRegistry.cboe(),
+            cftc = OfficialContextRegistry.cftc()
+        )
         return applyResolved(
             candidate = candidate,
             base = base,
@@ -65,10 +72,12 @@ object DecisionOverlayEngine {
             inputs = ResolvedInputs(
                 macroHistories = MarketHistoryRegistry.snapshot(macro.map { it.symbol }),
                 fundamentalMetrics = fundamentalMetrics,
-                fundamentalAvailable = enrichment?.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL"),
+                fundamentalAvailable = registeredFundamental != null ||
+                    enrichment?.fundamentalsStatus in setOf("AVAILABLE_COMPLETE", "AVAILABLE_PARTIAL"),
                 fundamentalCapturedAtUtc = registeredFundamental?.capturedAtUtc ?: enrichment?.capturedAtUtc,
                 optionChain = OptionChainRegistry.get(candidate.ticker),
-                legacyEnrichment = enrichment
+                legacyEnrichment = enrichment,
+                officialContext = official
             )
         )
     }
@@ -79,9 +88,14 @@ object DecisionOverlayEngine {
         macro: List<MarketSnapshotEntity>,
         inputs: ResolvedInputs
     ): OverlayResult {
-        val context = MacroRegimeEngine.assess(inputs.macroHistories, macro)
+        val context = MacroRegimeEngine.assess(inputs.macroHistories, macro, inputs.officialContext?.macro)
         val fundamental = resolvedFundamental(inputs)
-        val institutional = institutionalAssessment(candidate, inputs.optionChain, inputs.legacyEnrichment)
+        val institutional = institutionalAssessment(
+            candidate,
+            inputs.optionChain,
+            inputs.legacyEnrichment,
+            inputs.officialContext?.institutional
+        )
 
         var confidencePenalty = 0.0
         confidencePenalty += when (fundamental.status) {
@@ -108,6 +122,7 @@ object DecisionOverlayEngine {
 
         if (context.macroRegime == "RISK_OFF") final -= 5.0
         if (context.ratesRegime == "RISING") final -= 2.0
+        if (context.liquidityRegime == "CONTRACTING") final -= 3.0
         if (fundamental.earningsRiskStatus == "IMMINENT") final -= 5.0
         if (fundamental.status == "STALE") final -= 3.0
         if (institutional.bias == "CROWDED_BULLISH") final -= 8.0
@@ -120,7 +135,7 @@ object DecisionOverlayEngine {
             base.scoreBreakdown,
             "fundamental=${round2(fundamental.score)}:${fundamental.status}:${fundamental.earningsRiskStatus}",
             "fundamental_reasons=${fundamental.reasons.joinToString("|")}",
-            "macro=${round2(context.macroScore)}:${context.macroRegime}:${context.confidence}:20d_60d",
+            "macro=${round2(context.macroScore)}:${context.macroRegime}:${context.confidence}:20d_60d_official",
             "risk_appetite=${context.riskAppetite}",
             "rates=${context.ratesRegime}",
             "liquidity=${context.liquidityRegime}",
@@ -128,6 +143,7 @@ object DecisionOverlayEngine {
             "sector=${context.sectorRegime}",
             "institutional=${round2(institutional.score)}:${institutional.bias}:${institutional.coverage}:${institutional.conflict}",
             "institutional_reasons=${institutional.reasons.joinToString("|")}",
+            "officialContextVersion=${inputs.officialContext?.engineVersion ?: "UNAVAILABLE"}",
             "confidence_penalty=${round2(confidencePenalty)}"
         ).joinToString(";")
 
@@ -174,54 +190,62 @@ object DecisionOverlayEngine {
         val reasons: List<String>
     )
 
+    private data class LegacyOptionInput(
+        val component: InstitutionalContrarianEngine.Component?,
+        val bias: String?
+    )
+
     private fun institutionalAssessment(
         candidate: ScanCandidate,
         chain: OptionChainSnapshot?,
-        enrichment: CandidateEnrichmentEntity?
+        enrichment: CandidateEnrichmentEntity?,
+        official: OfficialContextEngine.InstitutionalAssessment?
     ): InstitutionalResult {
-        if (chain != null) {
-            val optionAssessment = OptionMetricsEngine.assess(chain)
-            val volumeScore = when {
-                candidate.close > candidate.sma20 && candidate.relativeVolume >= 1.5 -> 70.0
-                candidate.close > candidate.sma20 && candidate.relativeVolume >= 1.2 -> 60.0
-                candidate.relativeVolume < 0.75 -> 40.0
-                else -> 50.0
-            }
-            val institutional = InstitutionalContrarianEngine.assess(
-                InstitutionalContrarianEngine.Input(
-                    options = optionAssessment,
-                    volumeAccumulation = InstitutionalContrarianEngine.Component(
-                        volumeScore,
-                        "AVAILABLE",
-                        listOf("price_volume_accumulation_proxy")
-                    ),
-                    insiders = InstitutionalContrarianEngine.Component(null, "UNKNOWN"),
-                    futuresPositioning = InstitutionalContrarianEngine.Component(null, "UNKNOWN"),
-                    priceTrendConstructive = candidate.close > candidate.sma20,
-                    technicalScore = candidate.score.coerceIn(0.0, 100.0)
-                )
-            )
-            return InstitutionalResult(
-                score = institutional.adjustedInstitutionalScore,
-                bias = institutional.optionsBias,
-                coverage = institutional.coverageStatus,
-                conflict = institutional.conflict,
-                reasons = institutional.reasons
-            )
+        val optionAssessment = chain?.let(OptionMetricsEngine::assess)
+        val legacyOption = if (optionAssessment == null) legacyOptionsInput(enrichment) else LegacyOptionInput(null, null)
+        val volumeScore = when {
+            candidate.close > candidate.sma20 && candidate.relativeVolume >= 1.5 -> 70.0
+            candidate.close > candidate.sma20 && candidate.relativeVolume >= 1.2 -> 60.0
+            candidate.relativeVolume < 0.75 -> 40.0
+            else -> 50.0
         }
-        return legacyOptionsScore(enrichment)
+        val futuresComponent = InstitutionalContrarianEngine.Component(
+            score = official?.futuresScore,
+            status = official?.futuresStatus ?: "UNKNOWN",
+            reasons = official?.reasons.orEmpty().filter { it.startsWith("cftc_") }
+        )
+        val institutional = InstitutionalContrarianEngine.assess(
+            InstitutionalContrarianEngine.Input(
+                options = optionAssessment,
+                optionsComponent = legacyOption.component,
+                optionsBiasOverride = legacyOption.bias,
+                volumeAccumulation = InstitutionalContrarianEngine.Component(
+                    volumeScore,
+                    "AVAILABLE",
+                    listOf("price_volume_accumulation_proxy")
+                ),
+                insiders = InstitutionalContrarianEngine.Component(null, "UNKNOWN", listOf("sec_insider_transactions_not_loaded")),
+                futuresPositioning = futuresComponent,
+                marketOptionsRegime = official?.marketOptionsRegime ?: "UNKNOWN",
+                marketOptionsAdjustment = official?.marketOptionsAdjustment ?: 0.0,
+                priceTrendConstructive = candidate.close > candidate.sma20,
+                technicalScore = candidate.score.coerceIn(0.0, 100.0)
+            )
+        )
+        return InstitutionalResult(
+            score = institutional.adjustedInstitutionalScore,
+            bias = institutional.optionsBias,
+            coverage = institutional.coverageStatus,
+            conflict = institutional.conflict,
+            reasons = (institutional.reasons + official?.reasons.orEmpty()).distinct()
+        )
     }
 
-    private fun legacyOptionsScore(e: CandidateEnrichmentEntity?): InstitutionalResult {
-        if (e == null || e.optionsStatus == "UNAVAILABLE") {
-            return InstitutionalResult(50.0, "UNKNOWN_OPTIONS_FLOW", "UNKNOWN", "NONE", listOf("options_unavailable"))
-        }
-        val ratio = e.optionsPutCallOi ?: return InstitutionalResult(
-            50.0,
-            "UNKNOWN_OPTIONS_FLOW",
-            "PARTIAL",
-            "NONE",
-            listOf("options_ratio_missing")
+    private fun legacyOptionsInput(e: CandidateEnrichmentEntity?): LegacyOptionInput {
+        if (e == null || e.optionsStatus == "UNAVAILABLE") return LegacyOptionInput(null, "UNKNOWN_OPTIONS_FLOW")
+        val ratio = e.optionsPutCallOi ?: return LegacyOptionInput(
+            InstitutionalContrarianEngine.Component(null, "PARTIAL", listOf("options_ratio_missing")),
+            "UNKNOWN_OPTIONS_FLOW"
         )
         val bias = when {
             ratio < 0.35 -> "CROWDED_BULLISH"
@@ -238,8 +262,14 @@ object DecisionOverlayEngine {
             else -> 50.0
         }
         val complete = e.optionsNearCallOi != null && e.optionsNearPutOi != null && e.optionsExpiry != null
-        val conflict = if (bias == "BEARISH_WITH_DATA" && score <= 40.0 && complete) "HIGH" else "NONE"
-        return InstitutionalResult(score, bias, if (complete) "COMPLETE" else "PARTIAL", conflict, listOf("legacy_options_fallback"))
+        return LegacyOptionInput(
+            InstitutionalContrarianEngine.Component(
+                score,
+                if (complete) "COMPLETE" else "PARTIAL",
+                listOf("legacy_options_fallback")
+            ),
+            bias
+        )
     }
 
     private fun legacyFundamentalMetrics(enrichment: CandidateEnrichmentEntity) = FundamentalMetrics(
