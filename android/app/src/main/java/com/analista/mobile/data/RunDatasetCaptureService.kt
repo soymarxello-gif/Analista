@@ -61,6 +61,15 @@ class RunDatasetCaptureService(private val store: RunDatasetStore) {
                     createdAtUtc = createdAtUtc
                 )
             }
+            InsiderTransactionRegistry.get(ticker)?.let { snapshot ->
+                artifacts += store.write(
+                    runId = runId,
+                    datasetType = "INSIDER_TRANSACTIONS",
+                    ticker = ticker,
+                    payload = NormalizedDatasetCodec.insiders(snapshot),
+                    createdAtUtc = createdAtUtc
+                )
+            }
         }
 
         if (macroSnapshots.isNotEmpty()) {
@@ -111,6 +120,6 @@ class RunDatasetCaptureService(private val store: RunDatasetStore) {
     private fun normalizeTicker(value: String): String = value.trim().uppercase().replace(".", "-")
 
     companion object {
-        const val VERSION = "live-dataset-capture-2"
+        const val VERSION = "live-dataset-capture-3"
     }
 }
