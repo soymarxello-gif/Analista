@@ -88,7 +88,8 @@ class AnalistaApplication : Application() {
             yahoo,
             marketDataGateway,
             tickers = DynamicTickerList(ScanRepository.DEFAULT_TICKERS),
-            datasetCapture = datasetCapture
+            datasetCapture = datasetCapture,
+            officialSources = officialSourceCoordinator
         )
     }
 }
