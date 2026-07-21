@@ -88,9 +88,10 @@ object MacroRegimeEngine {
             ten20 < -3.0 && ten60 < -5.0 -> "FALLING"
             else -> "STABLE_MIXED"
         }
+        val officialRatesRegime = official?.ratesRegime
         val ratesRegime = when {
-            marketRatesRegime == "UNKNOWN" -> official?.ratesRegime ?: "UNKNOWN"
-            official?.ratesRegime in setOf("RISING", "FALLING") && official.ratesRegime != marketRatesRegime -> "STABLE_MIXED"
+            marketRatesRegime == "UNKNOWN" -> officialRatesRegime ?: "UNKNOWN"
+            officialRatesRegime in setOf("RISING", "FALLING") && officialRatesRegime != marketRatesRegime -> "STABLE_MIXED"
             else -> marketRatesRegime
         }
         if (marketRatesRegime == "RISING") { score -= 7.0; reasons += "rates_rising_20d_60d" }
