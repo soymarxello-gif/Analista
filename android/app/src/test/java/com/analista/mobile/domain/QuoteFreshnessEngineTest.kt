@@ -25,11 +25,12 @@ class QuoteFreshnessEngineTest {
     )
 
     @Test
-    fun freshQuotePermitsConfirmation() {
+    fun freshPremarketQuotePermitsConfirmation() {
         val result = QuoteFreshnessEngine.assess(quote(now - 90_000L), now)
         assertEquals("FRESH", result.status)
         assertEquals(90L, result.ageSeconds)
         assertEquals("PREMARKET", result.marketSession)
+        assertTrue(result.executionSessionOpen)
         assertTrue(result.permitsConfirmation)
         assertTrue(result.permitsWaitingContract)
     }
@@ -40,6 +41,17 @@ class QuoteFreshnessEngineTest {
         assertEquals("DELAYED_ACCEPTABLE", result.status)
         assertFalse(result.permitsConfirmation)
         assertTrue(result.permitsWaitingContract)
+    }
+
+    @Test
+    fun freshClosedQuoteIsAnalysisOnly() {
+        val result = QuoteFreshnessEngine.assess(quote(now - 30_000L, state = "CLOSED"), now)
+        assertEquals("FRESH", result.status)
+        assertEquals("CLOSED", result.marketSession)
+        assertFalse(result.executionSessionOpen)
+        assertFalse(result.permitsConfirmation)
+        assertFalse(result.permitsWaitingContract)
+        assertTrue("market_session_not_executable" in result.reasons)
     }
 
     @Test

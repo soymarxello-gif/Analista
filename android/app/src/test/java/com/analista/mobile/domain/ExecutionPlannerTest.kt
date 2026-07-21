@@ -9,6 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExecutionPlannerTest {
+    private val now = 2_000_000L
+
     private fun bars(): List<PriceBar> = (0 until 90).map { index ->
         val close = 100.0 + index * 0.25
         PriceBar(index.toLong(), close - 0.3, close + 0.6, close - 0.6, close, 1_000_000L + index * 5_000L)
@@ -24,12 +26,16 @@ class ExecutionPlannerTest {
             regularMarketPrice = reference,
             preMarketPrice = reference + 10.1,
             marketCap = 10_000_000_000L,
-            quoteType = "EQUITY"
+            quoteType = "EQUITY",
+            marketState = "PRE",
+            capturedAtUtc = now - 30_000L,
+            providerTimestampUtc = now - 30_000L,
+            retrievedAtUtc = now
         )
         val result = TechnicalEngine.analyze(
             "TEST",
             history,
-            TradeContext(quote = quote, setupType = "PULLBACK_EMA20")
+            TradeContext(quote = quote, setupType = "PULLBACK_EMA20", analysisTimestampUtc = now)
         )
         assertEquals("GAP_EXCESSIVE", result.actionabilityAtExecution)
         assertNull(result.actionableEntry)
@@ -45,10 +51,11 @@ class ExecutionPlannerTest {
                 quote = null,
                 marketCap = 10_000_000_000L,
                 quoteType = "EQUITY",
-                setupType = "PULLBACK_EMA20"
+                setupType = "PULLBACK_EMA20",
+                analysisTimestampUtc = now
             )
         )
-        assertEquals("QUOTE_UNCONFIRMED", result.actionabilityAtExecution)
+        assertEquals("QUOTE_MISSING", result.actionabilityAtExecution)
         assertNull(result.actionableEntry)
         assertTrue(result.signal != "TRIGGER_CONFIRMED")
     }

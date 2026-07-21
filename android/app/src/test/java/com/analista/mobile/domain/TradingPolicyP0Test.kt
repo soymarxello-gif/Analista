@@ -10,6 +10,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TradingPolicyP0Test {
+    private val now = 2_000_000L
+
     private fun bars(lastClose: Double = 150.0, breakout: Boolean = false): List<PriceBar> {
         val base = (0 until 89).map { index ->
             val close = 100.0 + index * 0.4
@@ -20,15 +22,31 @@ class TradingPolicyP0Test {
         return base + PriceBar(89, close - 0.5, close + 0.8, close - 0.8, close, 2_000_000L)
     }
 
-    private fun validContext(
-        quote: MarketQuote = MarketQuote(149.9, 150.1, 150.0, 150.0, 10_000_000_000L, "EQUITY"),
+    private fun quote(
         marketCap: Long? = 10_000_000_000L,
+        type: String? = "EQUITY",
+        state: String = "PRE",
+        bid: Double = 149.9,
+        ask: Double = 150.1
+    ) = MarketQuote(
+        bid = bid, ask = ask, regularMarketPrice = 150.0, preMarketPrice = 150.0,
+        marketCap = marketCap, quoteType = type, marketState = state,
+        capturedAtUtc = now - 30_000L, providerTimestampUtc = now - 30_000L,
+        retrievedAtUtc = now, provider = "TEST"
+    )
+
+    private fun validContext(
+        quote: MarketQuote = quote(),
+        marketCap: Long? = quote.marketCap,
         setupType: String = "BREAKOUT_OR_PULLBACK"
-    ) = TradeContext(quote = quote, marketCap = marketCap, quoteType = quote.quoteType, setupType = setupType)
+    ) = TradeContext(
+        quote = quote, marketCap = marketCap, quoteType = quote.quoteType,
+        setupType = setupType, analysisTimestampUtc = now,
+        eligibilityVerified = marketCap != null && !quote.quoteType.isNullOrBlank()
+    )
 
     @Test fun invalidBidAskCannotBeTriggerConfirmed() {
-        val badQuote = MarketQuote(151.0, 150.0, 150.0, 150.0, 10_000_000_000L, "EQUITY")
-        val result = TechnicalEngine.analyze("TEST", bars(breakout = true), validContext(badQuote))
+        val result = TechnicalEngine.analyze("TEST", bars(breakout = true), validContext(quote(bid = 151.0, ask = 150.0)))
         assertEquals("LOW", result.executionQuoteQuality)
         assertFalse(result.signal == "TRIGGER_CONFIRMED")
     }
@@ -39,10 +57,18 @@ class TradingPolicyP0Test {
         assertTrue("price_below_min" in result.allVetoReasons)
     }
 
-    @Test fun marketCapFilterIsHard() {
-        val result = TechnicalEngine.analyze("TEST", bars(), validContext(marketCap = 500_000_000L))
+    @Test fun marketCapFilterIsHardOnlyWhenValueIsKnown() {
+        val result = TechnicalEngine.analyze("TEST", bars(), validContext(quote(marketCap = 500_000_000L)))
         assertEquals("VETO", result.signal)
         assertTrue("market_cap_below_min" in result.allVetoReasons)
+    }
+
+    @Test fun missingMarketCapIsUnverifiedNotFalseVeto() {
+        val result = TechnicalEngine.analyze("META", bars(), validContext(quote(marketCap = null)))
+        assertFalse("market_cap_below_min" in result.allVetoReasons)
+        assertFalse(result.signal == "VETO")
+        assertTrue("market_cap_unverified" in result.penaltyReasons)
+        assertFalse(result.eligibilityVerified)
     }
 
     @Test fun readyWaitTriggerRequiresUnconfirmedTrigger() {
@@ -59,10 +85,20 @@ class TradingPolicyP0Test {
         }
     }
 
-    @Test fun noValidSetupIsVeto() {
+    @Test fun noValidSetupIsAvoidNotUniverseVeto() {
         val result = TechnicalEngine.analyze("TEST", bars(), validContext(setupType = "NO_VALID_SETUP"))
-        assertEquals("VETO", result.signal)
-        assertTrue("no_valid_setup" in result.allVetoReasons)
+        assertEquals("AVOID", result.signal)
+        assertTrue(result.allVetoReasons.isEmpty())
+        assertTrue("no_valid_setup" in result.penaltyReasons)
+    }
+
+    @Test fun closedSessionIsAnalysisOnly() {
+        val result = TechnicalEngine.analyze("TEST", bars(breakout = true), validContext(quote(state = "CLOSED")))
+        assertEquals("MARKET_CLOSED_ANALYSIS_ONLY", result.actionabilityAtExecution)
+        assertFalse(result.executionSessionOpen)
+        assertFalse(result.triggerConfirmed)
+        assertNull(result.spreadPct)
+        assertFalse(result.signal == "TRIGGER_CONFIRMED" || result.signal == "READY_WAIT_TRIGGER")
     }
 
     @Test fun vetoHasNoActionableLevels() {

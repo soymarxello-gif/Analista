@@ -4,7 +4,7 @@ import com.analista.mobile.data.MarketQuote
 import kotlin.math.max
 
 object QuoteFreshnessEngine {
-    const val VERSION = "quote-freshness-1"
+    const val VERSION = "quote-freshness-2"
 
     data class Thresholds(
         val freshSeconds: Long = 120L,
@@ -16,6 +16,7 @@ object QuoteFreshnessEngine {
         val status: String,
         val ageSeconds: Long?,
         val marketSession: String,
+        val executionSessionOpen: Boolean,
         val permitsConfirmation: Boolean,
         val permitsWaitingContract: Boolean,
         val reasons: List<String>
@@ -32,15 +33,20 @@ object QuoteFreshnessEngine {
         require(thresholds.maximumFutureSkewSeconds >= 0L)
 
         val marketSession = normalizeSession(quote?.marketState)
+        val executionSessionOpen = marketSession in setOf("PREMARKET", "REGULAR")
         val timestamp = quote?.providerTimestampUtc
         if (quote == null || timestamp == null || timestamp <= 0L) {
             return Assessment(
                 status = "UNKNOWN",
                 ageSeconds = null,
                 marketSession = marketSession,
+                executionSessionOpen = executionSessionOpen,
                 permitsConfirmation = false,
                 permitsWaitingContract = false,
-                reasons = listOf("quote_provider_timestamp_missing")
+                reasons = buildList {
+                    add("quote_provider_timestamp_missing")
+                    if (!executionSessionOpen) add("market_session_not_executable")
+                }
             )
         }
 
@@ -50,9 +56,13 @@ object QuoteFreshnessEngine {
                 status = "UNKNOWN",
                 ageSeconds = rawAgeSeconds,
                 marketSession = marketSession,
+                executionSessionOpen = executionSessionOpen,
                 permitsConfirmation = false,
                 permitsWaitingContract = false,
-                reasons = listOf("quote_timestamp_in_future")
+                reasons = buildList {
+                    add("quote_timestamp_in_future")
+                    if (!executionSessionOpen) add("market_session_not_executable")
+                }
             )
         }
 
@@ -66,12 +76,15 @@ object QuoteFreshnessEngine {
             status = status,
             ageSeconds = ageSeconds,
             marketSession = marketSession,
-            permitsConfirmation = status == "FRESH",
-            permitsWaitingContract = status in setOf("FRESH", "DELAYED_ACCEPTABLE"),
-            reasons = when (status) {
-                "DELAYED_ACCEPTABLE" -> listOf("quote_delayed_acceptable")
-                "STALE" -> listOf("quote_stale")
-                else -> emptyList()
+            executionSessionOpen = executionSessionOpen,
+            permitsConfirmation = executionSessionOpen && status == "FRESH",
+            permitsWaitingContract = executionSessionOpen && status in setOf("FRESH", "DELAYED_ACCEPTABLE"),
+            reasons = buildList {
+                when (status) {
+                    "DELAYED_ACCEPTABLE" -> add("quote_delayed_acceptable")
+                    "STALE" -> add("quote_stale")
+                }
+                if (!executionSessionOpen) add("market_session_not_executable")
             }
         )
     }

@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
 object UniverseSelectionEngine {
-    const val VERSION = "universe-selection-1"
+    const val VERSION = "universe-selection-2"
     const val MODE = "us_listed_common_equities"
     const val MIN_AVERAGE_DOLLAR_VOLUME = 20_000_000.0
     const val MAX_SPREAD_PCT = 1.0
@@ -50,14 +50,25 @@ object UniverseSelectionEngine {
         val type = input.instrumentType?.trim()?.uppercase()?.replace(' ', '_').orEmpty().ifBlank { "UNKNOWN" }
         val adrStatus = input.adrStatus?.trim()?.uppercase()?.replace(' ', '_').orEmpty().ifBlank { "NOT_ADR_OR_UNKNOWN" }
         val reasons = mutableListOf<String>()
-        if (input.price == null || input.price < TradingPolicy.MIN_PRICE) reasons += "price_below_min"
-        if (input.marketCap == null || input.marketCap < TradingPolicy.MIN_MARKET_CAP) reasons += "market_cap_below_min"
-        if (input.averageDollarVolume20 == null || input.averageDollarVolume20 < MIN_AVERAGE_DOLLAR_VOLUME) {
-            reasons += "dollar_volume_below_min"
+        when {
+            input.price == null -> reasons += "price_unverified"
+            input.price < TradingPolicy.MIN_PRICE -> reasons += "price_below_min"
         }
-        if (input.spreadPct == null || input.spreadPct > MAX_SPREAD_PCT) reasons += "spread_unacceptable"
+        when {
+            input.marketCap == null -> reasons += "market_cap_unverified"
+            input.marketCap < TradingPolicy.MIN_MARKET_CAP -> reasons += "market_cap_below_min"
+        }
+        when {
+            input.averageDollarVolume20 == null -> reasons += "dollar_volume_unverified"
+            input.averageDollarVolume20 < MIN_AVERAGE_DOLLAR_VOLUME -> reasons += "dollar_volume_below_min"
+        }
+        when {
+            input.spreadPct == null -> reasons += "spread_unverified"
+            input.spreadPct > MAX_SPREAD_PCT -> reasons += "spread_unacceptable"
+        }
         when {
             type in excludedTypes -> reasons += "excluded_security_type"
+            type == "UNKNOWN" -> reasons += "instrument_type_unverified"
             type !in allowedTypes -> reasons += "instrument_type_not_eligible"
         }
         if (adrStatus == "ILLIQUID_ADR") reasons += "illiquid_adr"

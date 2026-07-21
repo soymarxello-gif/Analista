@@ -1,7 +1,7 @@
 package com.analista.mobile.domain
 
 object FinalDecisionEngine {
-    const val VERSION = "final-decision-4"
+    const val VERSION = "final-decision-5"
 
     data class Thresholds(
         val minimumReadyScore: Double = 65.0,
@@ -23,6 +23,8 @@ object FinalDecisionEngine {
         val actionability: String,
         val executionQuoteQuality: String,
         val executionFreshness: String = "UNKNOWN",
+        val executionSessionOpen: Boolean = false,
+        val eligibilityVerified: Boolean = true,
         val dataQualityAllowsExecution: Boolean,
         val failedBreakout: Boolean,
         val hardVetoReasons: List<String> = emptyList(),
@@ -54,11 +56,14 @@ object FinalDecisionEngine {
         val confirmedThreshold = (thresholds.minimumConfirmedScore + if (riskOff) 10.0 else 0.0).coerceAtMost(100.0)
 
         if (input.preliminarySignal == "VETO") vetoReasons += "preliminary_veto"
-        if (!input.setupValid || input.setupType == "NO_VALID_SETUP") vetoReasons += "no_valid_setup"
         if (riskOff) penalties += "risk_off_thresholds_elevated"
 
         val finalSignal = when {
             vetoReasons.isNotEmpty() -> "VETO"
+            !input.setupValid || input.setupType == "NO_VALID_SETUP" -> {
+                penalties += "no_valid_setup"
+                "AVOID"
+            }
             input.preliminarySignal == "AVOID" -> {
                 penalties += "preliminary_avoid_not_promoted"
                 "AVOID"
@@ -75,8 +80,16 @@ object FinalDecisionEngine {
                 penalties += "risk_plan_invalid"
                 "AVOID"
             }
+            !input.eligibilityVerified -> {
+                penalties += "eligibility_metadata_unverified"
+                "WATCHLIST"
+            }
             !input.dataQualityAllowsExecution -> {
                 penalties += "data_quality_blocks_final_decision"
+                "WATCHLIST"
+            }
+            !input.executionSessionOpen -> {
+                penalties += "market_session_blocks_contract"
                 "WATCHLIST"
             }
             input.executionQuoteQuality == "LOW" -> {
@@ -116,7 +129,9 @@ object FinalDecisionEngine {
         }
         val eligible = finalSignal in setOf("READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED") &&
             input.riskPlanValid &&
+            input.eligibilityVerified &&
             input.dataQualityAllowsExecution &&
+            input.executionSessionOpen &&
             input.executionQuoteQuality != "LOW" &&
             eligibleFreshness &&
             !input.failedBreakout &&
@@ -128,6 +143,7 @@ object FinalDecisionEngine {
             require(input.liveTriggerConfirmed)
             require(input.actionability == "ACTIONABLE_REVIEW")
             require(input.executionFreshness == "FRESH")
+            require(input.executionSessionOpen)
             require(input.finalTradeScore >= confirmedThreshold)
         }
         if (finalSignal == "READY_WAIT_TRIGGER") require(!input.liveTriggerConfirmed)
@@ -150,6 +166,7 @@ object FinalDecisionEngine {
             input.institutionalCoverage
         ).map { it.trim().uppercase() }
         return when {
+            !input.eligibilityVerified || !input.executionSessionOpen -> "LOW"
             !input.dataQualityAllowsExecution || input.executionQuoteQuality == "LOW" -> "LOW"
             input.executionFreshness in setOf("STALE", "UNKNOWN") -> "LOW"
             coverage.any { it in setOf("UNKNOWN", "EMPTY", "ERROR", "UNAVAILABLE", "STALE") } -> "LOW"

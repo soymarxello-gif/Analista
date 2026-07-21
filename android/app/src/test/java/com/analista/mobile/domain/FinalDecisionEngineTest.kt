@@ -21,6 +21,8 @@ class FinalDecisionEngineTest {
         actionability: String = "WAIT_TRIGGER",
         executionQuoteQuality: String = "HIGH",
         executionFreshness: String = "FRESH",
+        executionSessionOpen: Boolean = true,
+        eligibilityVerified: Boolean = true,
         dataQualityAllowsExecution: Boolean = true,
         failedBreakout: Boolean = false,
         hardVetoReasons: List<String> = emptyList()
@@ -39,6 +41,8 @@ class FinalDecisionEngineTest {
         actionability = actionability,
         executionQuoteQuality = executionQuoteQuality,
         executionFreshness = executionFreshness,
+        executionSessionOpen = executionSessionOpen,
+        eligibilityVerified = eligibilityVerified,
         dataQualityAllowsExecution = dataQualityAllowsExecution,
         failedBreakout = failedBreakout,
         hardVetoReasons = hardVetoReasons
@@ -50,6 +54,15 @@ class FinalDecisionEngineTest {
         assertEquals("VETO", result.finalSignal)
         assertFalse(result.eligibleForContract)
         assertTrue("market_cap_below_min" in result.vetoReasons)
+    }
+
+    @Test
+    fun noSetupIsAvoidRatherThanUniverseVeto() {
+        val result = FinalDecisionEngine.decide(input(setupType = "NO_VALID_SETUP", setupValid = false))
+        assertEquals("AVOID", result.finalSignal)
+        assertFalse(result.eligibleForContract)
+        assertTrue(result.vetoReasons.isEmpty())
+        assertTrue("no_valid_setup" in result.penaltyReasons)
     }
 
     @Test
@@ -157,6 +170,24 @@ class FinalDecisionEngineTest {
             assertFalse(result.eligibleForContract)
             assertEquals("LOW", result.confidence)
         }
+    }
+
+    @Test
+    fun closedSessionBlocksContractWithoutCreatingVeto() {
+        val result = FinalDecisionEngine.decide(input(executionSessionOpen = false))
+        assertEquals("WATCHLIST", result.finalSignal)
+        assertFalse(result.eligibleForContract)
+        assertTrue(result.vetoReasons.isEmpty())
+        assertTrue("market_session_blocks_contract" in result.penaltyReasons)
+    }
+
+    @Test
+    fun missingEligibilityMetadataBlocksContractWithoutFalseMarketCapVeto() {
+        val result = FinalDecisionEngine.decide(input(eligibilityVerified = false))
+        assertEquals("WATCHLIST", result.finalSignal)
+        assertFalse(result.eligibleForContract)
+        assertTrue(result.vetoReasons.isEmpty())
+        assertTrue("eligibility_metadata_unverified" in result.penaltyReasons)
     }
 
     @Test
