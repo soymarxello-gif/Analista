@@ -1,5 +1,7 @@
 package com.analista.mobile.data
 
+import com.analista.mobile.domain.UsMarketSessionClock
+
 class MarketDataGateway(
     private val yahoo: YahooFinanceClient,
     private val alpaca: AlpacaMarketDataClient,
@@ -45,9 +47,14 @@ class MarketDataGateway(
         var fallbackCount = 0
         var divergenceCount = 0
         for (symbol in normalizeSymbols(symbols)) {
-            val yahooQuote = runCatching { yahoo.marketQuote(symbol) }.getOrNull()
+            val metadata = SecurityMetadataRegistry.get(symbol)
             val alpacaQuote = alpacaQuotes[symbol]
             val usableAlpaca = alpacaQuote?.bid != null && alpacaQuote.ask != null && alpacaQuote.ask > alpacaQuote.bid
+            val yahooQuote = when {
+                !usableAlpaca -> runCatching { yahoo.marketQuote(symbol) }.getOrNull()
+                metadata == null -> runCatching { yahoo.marketQuote(symbol) }.getOrNull()
+                else -> null
+            }
             if (usableAlpaca) {
                 val yahooMid = yahooQuote?.let { q ->
                     val bid = q.bid
@@ -65,22 +72,25 @@ class MarketDataGateway(
                     ask = alpacaQuote.ask,
                     regularMarketPrice = yahooQuote?.regularMarketPrice,
                     preMarketPrice = alpacaMid,
-                    marketCap = yahooQuote?.marketCap,
-                    quoteType = yahooQuote?.quoteType,
-                    marketState = yahooQuote?.marketState,
+                    marketCap = metadata?.marketCap ?: yahooQuote?.marketCap,
+                    quoteType = metadata?.quoteType ?: yahooQuote?.quoteType,
+                    marketState = yahooQuote?.marketState ?: UsMarketSessionClock.marketState(retrievedAtUtc),
                     capturedAtUtc = providerTimestamp ?: retrievedAtUtc,
                     providerTimestampUtc = providerTimestamp,
                     retrievedAtUtc = retrievedAtUtc,
-                    provider = "ALPACA"
+                    provider = "ALPACA/${credentials.feed}"
                 )
             } else if (yahooQuote != null) {
                 fallbackCount += 1
-                results[symbol] = yahooQuote
+                results[symbol] = yahooQuote.copy(
+                    marketCap = metadata?.marketCap ?: yahooQuote.marketCap,
+                    quoteType = metadata?.quoteType ?: yahooQuote.quoteType
+                )
             }
         }
         return BatchQuoteResult(
             quotes = results,
-            primarySource = if (alpacaQuotes.isNotEmpty()) "Alpaca + Yahoo metadata" else "Yahoo Finance",
+            primarySource = if (alpacaQuotes.isNotEmpty()) "Alpaca ${credentials.feed}" else "Yahoo Finance",
             feed = credentials.feed,
             alpacaStatus = status,
             fallbackCount = fallbackCount,
@@ -159,7 +169,16 @@ class MarketDataGateway(
     fun alpacaCredentials(): AlpacaCredentialsStore.Credentials? = credentialsStore.load()
 
     private suspend fun yahooQuotes(symbols: List<String>): Map<String, MarketQuote> = buildMap {
-        for (symbol in normalizeSymbols(symbols)) runCatching { yahoo.marketQuote(symbol) }.getOrNull()?.let { put(symbol, it) }
+        for (symbol in normalizeSymbols(symbols)) runCatching { yahoo.marketQuote(symbol) }.getOrNull()?.let { quote ->
+            val metadata = SecurityMetadataRegistry.get(symbol)
+            put(
+                symbol,
+                quote.copy(
+                    marketCap = metadata?.marketCap ?: quote.marketCap,
+                    quoteType = metadata?.quoteType ?: quote.quoteType
+                )
+            )
+        }
     }
 
     private fun normalizeSymbols(symbols: List<String>): List<String> = symbols.asSequence()
