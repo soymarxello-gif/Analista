@@ -5,7 +5,7 @@ import kotlin.math.abs
 import kotlin.math.max
 
 object SetupClassificationEngine {
-    const val VERSION = "setup-classifier-1"
+    const val VERSION = "setup-classifier-2"
 
     data class Input(
         val bars: List<PriceBar>,
@@ -18,7 +18,7 @@ object SetupClassificationEngine {
         val macdSignal: Double,
         val relativeVolume: Double,
         val priorResistance: Double,
-        val executionPrice: Double?
+        val executionPrice: Double? = null
     )
 
     data class Assessment(
@@ -40,14 +40,12 @@ object SetupClassificationEngine {
         val priorSessionBreakout = input.close > input.priorResistance && input.relativeVolume >= 1.2
         val execution = input.executionPrice
         val failedBreakout = priorSessionBreakout && execution != null && execution < input.priorResistance
-        val breakoutHolding = priorSessionBreakout && execution != null && execution >= input.priorResistance
         val breakoutTrigger = input.priorResistance + max(0.25 * input.atr, input.priorResistance * 0.005)
         val retestDistanceAtr = execution?.let { abs(it - input.priorResistance) / input.atr }
         val previousSma20 = input.bars.dropLast(1).takeLast(20).map { it.close }.average()
         val supportReclaim = previous.close <= previousSma20 && input.close > input.sma20 && input.relativeVolume >= 1.0
-        val priceForSetup = execution ?: input.close
-        val distanceEma20Atr = abs(priceForSetup - input.sma20) / input.atr
-        val distanceEma50Atr = abs(priceForSetup - input.sma50) / input.atr
+        val distanceEma20Atr = abs(input.close - input.sma20) / input.atr
+        val distanceEma50Atr = abs(input.close - input.sma50) / input.atr
         val constructiveMomentum = input.rsi14 in 45.0..70.0 && input.macd >= input.macdSignal - 0.15 * input.atr
         val recentRanges = input.bars.takeLast(10).map { it.high - it.low }
         val priorRanges = input.bars.takeLast(30).dropLast(10).map { it.high - it.low }
@@ -59,24 +57,24 @@ object SetupClassificationEngine {
 
         return when {
             failedBreakout -> assessment(
-                type = "FAILED_BREAKOUT", valid = true, score = 10.0,
+                type = "FAILED_BREAKOUT", valid = false, score = 10.0,
                 triggerType = "NONE", invalidationType = "LOST_PRIOR_RESISTANCE", trigger = null,
                 reasons = listOf("prior_breakout_lost", "execution_below_resistance")
             )
-            breakoutHolding && execution != null && execution >= breakoutTrigger -> assessment(
-                type = "BREAKOUT", valid = true,
-                score = score(75.0, trendUp, input.relativeVolume >= 1.5, input.rsi14 in 50.0..70.0),
-                triggerType = "RESISTANCE_BUFFER", invalidationType = "CLOSE_BELOW_BREAKOUT_LEVEL",
-                trigger = breakoutTrigger,
-                reasons = listOf("breakout_holding", "price_above_buffer")
-            )
             priorSessionBreakout && execution != null && retestDistanceAtr != null &&
-                retestDistanceAtr <= 0.35 && execution >= input.priorResistance -> assessment(
+                retestDistanceAtr <= 0.35 && execution < breakoutTrigger -> assessment(
                 type = "BREAKOUT_RETEST", valid = true,
                 score = score(72.0, trendUp, constructiveMomentum, input.relativeVolume >= 0.8),
                 triggerType = "RETEST_RECLAIM", invalidationType = "RETEST_LOW",
                 trigger = input.priorResistance + 0.10 * input.atr,
                 reasons = listOf("prior_breakout", "controlled_retest")
+            )
+            priorSessionBreakout -> assessment(
+                type = "BREAKOUT", valid = true,
+                score = score(75.0, trendUp, input.relativeVolume >= 1.5, input.rsi14 in 50.0..70.0),
+                triggerType = "RESISTANCE_BUFFER", invalidationType = "CLOSE_BELOW_BREAKOUT_LEVEL",
+                trigger = breakoutTrigger,
+                reasons = listOf("prior_session_breakout", "daily_structure_valid")
             )
             supportReclaim -> assessment(
                 type = "SUPPORT_RECLAIM", valid = true,
