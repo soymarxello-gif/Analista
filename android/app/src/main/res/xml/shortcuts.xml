@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="official_sources" android:enabled="true" android:shortcutShortLabel="@string/official_sources_shortcut" android:shortcutLongLabel="@string/official_sources_shortcut_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.analista.mobile.stable" android:targetClass="com.analista.mobile.OfficialSourcesActivity" />
+    </shortcut>
+</shortcuts>

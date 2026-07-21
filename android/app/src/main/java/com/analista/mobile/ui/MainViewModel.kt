@@ -137,6 +137,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val universeStatus = MutableStateFlow("NO_PREPARADO")
     val universeSource = MutableStateFlow("NONE")
     val universeCount = MutableStateFlow(0)
+    val officialSources = MutableStateFlow(
+        OfficialSourceUiState.fromSettings(app.officialSourceCoordinator.loadSettings())
+    )
+    val refreshingOfficialSources = MutableStateFlow(false)
 
     init {
         viewModelScope.launch {
@@ -155,6 +159,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             error.value = null
             runCatching {
                 val universe = app.dynamicScanCoordinator.prepare()
+                officialSources.value = OfficialSourceUiState.fromSettings(app.officialSourceCoordinator.loadSettings()).copy(
+                    status = "REFRESHED_BEFORE_SCAN",
+                    refreshedAtUtc = System.currentTimeMillis()
+                )
                 universeStatus.value = universe.status
                 universeSource.value = universe.source
                 universeCount.value = universe.symbols.size
@@ -213,5 +221,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         universeStatus.value = "NO_PREPARADO"
         universeSource.value = "NONE"
         universeCount.value = 0
+    }
+
+    fun saveAndRefreshOfficialSources(fredApiKey: String, secContactEmail: String) {
+        if (refreshingOfficialSources.value) return
+        viewModelScope.launch {
+            refreshingOfficialSources.value = true
+            error.value = null
+            runCatching {
+                fredApiKey.trim().takeIf { it.isNotBlank() }?.let(app.officialSourceCoordinator::saveFredApiKey)
+                secContactEmail.trim().takeIf { it.isNotBlank() }?.let(app.officialSourceCoordinator::saveSecContactEmail)
+                val result = app.officialSourceCoordinator.refresh()
+                officialSources.value = OfficialSourceUiState.fromResult(
+                    app.officialSourceCoordinator.loadSettings(),
+                    result
+                )
+            }.onFailure {
+                error.value = it.message ?: "Error al actualizar fuentes oficiales"
+                officialSources.value = OfficialSourceUiState.fromSettings(app.officialSourceCoordinator.loadSettings()).copy(
+                    status = "ERROR"
+                )
+            }
+            refreshingOfficialSources.value = false
+        }
+    }
+
+    fun refreshOfficialSources() = saveAndRefreshOfficialSources("", "")
+
+    fun clearFredApiKey() {
+        app.officialSourceCoordinator.clearFredApiKey()
+        officialSources.value = OfficialSourceUiState.fromSettings(app.officialSourceCoordinator.loadSettings()).copy(
+            status = "FRED_BORRADO"
+        )
+    }
+
+    fun clearSecContactEmail() {
+        app.officialSourceCoordinator.clearSecContactEmail()
+        officialSources.value = OfficialSourceUiState.fromSettings(app.officialSourceCoordinator.loadSettings()).copy(
+            status = "SEC_BORRADO"
+        )
     }
 }
