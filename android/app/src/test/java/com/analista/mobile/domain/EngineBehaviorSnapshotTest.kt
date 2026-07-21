@@ -35,7 +35,7 @@ class EngineBehaviorSnapshotTest {
     }
 
     @Test
-    fun snapshotPreservesAllVetoAndPenaltyReasons() {
+    fun snapshotPreservesNoSetupAsPenaltyInsteadOfUniverseVeto() {
         val bars = V3BehaviorFixtures.trendingBars()
         val price = bars.last().close
         val candidate = TechnicalEngine.analyze(
@@ -49,8 +49,9 @@ class EngineBehaviorSnapshotTest {
 
         val snapshot = EngineBehaviorSnapshot.from(candidate)
 
-        assertEquals("VETO", snapshot.preliminarySignal)
-        assertTrue("no_valid_setup" in snapshot.vetoReasons)
+        assertEquals("AVOID", snapshot.preliminarySignal)
+        assertTrue(snapshot.vetoReasons.isEmpty())
+        assertTrue("no_valid_setup" in snapshot.penaltyReasons)
         assertEquals(snapshot.vetoReasons.distinct(), snapshot.vetoReasons)
         assertEquals(snapshot.penaltyReasons.distinct(), snapshot.penaltyReasons)
     }
