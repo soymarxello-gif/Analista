@@ -45,10 +45,12 @@ class DynamicTickerList(private val fallback: List<String>) : AbstractList<Strin
 
 class DynamicScanCoordinator(
     private val resolver: DynamicUniverseResolver,
-    private val emergencySymbols: List<String>
+    private val emergencySymbols: List<String>,
+    private val officialSources: OfficialSourceCoordinator? = null
 ) {
     suspend fun prepare(): DynamicUniverseResolver.Resolution {
         DynamicScanRegistry.clear()
+        officialSources?.refresh()
         val resolution = resolver.resolve(emergencySymbols)
         DynamicScanRegistry.activate(resolution)
         return resolution

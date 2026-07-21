@@ -27,6 +27,8 @@ import com.analista.mobile.data.MIGRATION_15_16
 import com.analista.mobile.data.MIGRATION_16_17
 import com.analista.mobile.data.MarketDataGateway
 import com.analista.mobile.data.NasdaqScreenerClient
+import com.analista.mobile.data.OfficialSourceCoordinator
+import com.analista.mobile.data.OfficialSourceSettingsStore
 import com.analista.mobile.data.RunDatasetCaptureService
 import com.analista.mobile.data.RunDatasetStore
 import com.analista.mobile.data.RunReplayService
@@ -61,6 +63,8 @@ class AnalistaApplication : Application() {
     private val datasetCapture by lazy { RunDatasetCaptureService(datasetStore) }
     val replayService by lazy { RunReplayService(database.replayDao(), datasetStore) }
     val credentialsStore by lazy { AlpacaCredentialsStore(this) }
+    val officialSourceSettings by lazy { OfficialSourceSettingsStore(this) }
+    val officialSourceCoordinator by lazy { OfficialSourceCoordinator(officialSourceSettings) }
     val marketDataGateway by lazy {
         MarketDataGateway(yahoo, AlpacaMarketDataClient(), credentialsStore)
     }
@@ -72,7 +76,11 @@ class AnalistaApplication : Application() {
         )
     }
     val dynamicScanCoordinator by lazy {
-        DynamicScanCoordinator(universeResolver, ScanRepository.DEFAULT_TICKERS)
+        DynamicScanCoordinator(
+            resolver = universeResolver,
+            emergencySymbols = ScanRepository.DEFAULT_TICKERS,
+            officialSources = officialSourceCoordinator
+        )
     }
     val repository by lazy {
         ScanRepository(
