@@ -14,6 +14,22 @@ class MarketDataGateway(
         val divergenceCount: Int
     )
 
+    data class AssetCatalogResult(
+        val assets: List<AlpacaMarketDataClient.AlpacaAsset>,
+        val source: String,
+        val status: String,
+        val feed: String?
+    )
+
+    data class HistoryBatchResult(
+        val histories: Map<String, FetchResult>,
+        val primarySource: String,
+        val feed: String?,
+        val alpacaStatus: String,
+        val fallbackCount: Int,
+        val failedSymbols: List<String>
+    )
+
     suspend fun quotes(symbols: List<String>): BatchQuoteResult {
         val credentials = credentialsStore.load()
         if (credentials == null) {
@@ -23,18 +39,14 @@ class MarketDataGateway(
 
         val alpacaResult = runCatching { alpaca.latestQuotes(symbols, credentials) }
         val alpacaQuotes = alpacaResult.getOrNull().orEmpty()
-        val status = when (val error = alpacaResult.exceptionOrNull()) {
-            null -> if (alpacaQuotes.isEmpty()) "EMPTY" else "AVAILABLE"
-            is AlpacaMarketDataClient.AlpacaException -> error.status
-            else -> "NETWORK_ERROR"
-        }
+        val status = alpacaStatus(alpacaResult.exceptionOrNull(), alpacaQuotes.isEmpty())
 
         val results = mutableMapOf<String, MarketQuote>()
         var fallbackCount = 0
         var divergenceCount = 0
-        for (symbol in symbols.distinct()) {
+        for (symbol in normalizeSymbols(symbols)) {
             val yahooQuote = runCatching { yahoo.marketQuote(symbol) }.getOrNull()
-            val alpacaQuote = alpacaQuotes[symbol.uppercase()]
+            val alpacaQuote = alpacaQuotes[symbol]
             val usableAlpaca = alpacaQuote?.bid != null && alpacaQuote.ask != null && alpacaQuote.ask > alpacaQuote.bid
             if (usableAlpaca) {
                 val yahooMid = yahooQuote?.let { q ->
@@ -76,6 +88,70 @@ class MarketDataGateway(
         )
     }
 
+    suspend fun activeAssetCatalog(): AssetCatalogResult {
+        val credentials = credentialsStore.load()
+            ?: return AssetCatalogResult(emptyList(), "NONE", "NOT_CONFIGURED", null)
+        val result = runCatching { alpaca.activeUsEquities(credentials) }
+        val assets = result.getOrNull().orEmpty()
+        return AssetCatalogResult(
+            assets = assets,
+            source = if (assets.isEmpty()) "NONE" else "ALPACA_ASSETS",
+            status = alpacaStatus(result.exceptionOrNull(), assets.isEmpty()),
+            feed = credentials.feed
+        )
+    }
+
+    suspend fun dailyHistories(symbols: List<String>, yahooRange: String = "2y"): HistoryBatchResult {
+        val normalized = normalizeSymbols(symbols)
+        val credentials = credentialsStore.load()
+        val alpacaResult: Result<Map<String, List<PriceBar>>> = if (credentials != null) {
+            runCatching { alpaca.dailyBars(normalized, credentials) }
+        } else {
+            Result.success(emptyMap())
+        }
+        val alpacaBars = alpacaResult.getOrNull().orEmpty()
+        val histories = mutableMapOf<String, FetchResult>()
+        alpacaBars.forEach { (symbol, bars) ->
+            if (bars.size >= MIN_HISTORY_BARS) {
+                histories[symbol] = FetchResult(
+                    bars = bars,
+                    source = "Alpaca/${credentials?.feed ?: "unknown"}",
+                    cacheHit = false,
+                    retries = 0
+                )
+            }
+        }
+
+        var fallbackCount = 0
+        val failed = mutableListOf<String>()
+        normalized.filterNot { it in histories }.forEach { symbol ->
+            val fallback = runCatching { yahoo.dailyHistory(symbol, yahooRange) }.getOrNull()
+            if (fallback != null) {
+                histories[symbol] = fallback
+                fallbackCount += 1
+            } else {
+                failed += symbol
+            }
+        }
+        val primarySource = when {
+            histories.isEmpty() -> "UNAVAILABLE"
+            alpacaBars.isNotEmpty() && fallbackCount > 0 -> "ALPACA_BARS+YAHOO_FALLBACK"
+            alpacaBars.isNotEmpty() -> "ALPACA_BARS"
+            else -> "YAHOO_BARS"
+        }
+        return HistoryBatchResult(
+            histories = histories,
+            primarySource = primarySource,
+            feed = credentials?.feed,
+            alpacaStatus = when {
+                credentials == null -> "NOT_CONFIGURED"
+                else -> alpacaStatus(alpacaResult.exceptionOrNull(), alpacaBars.isEmpty())
+            },
+            fallbackCount = fallbackCount,
+            failedSymbols = failed
+        )
+    }
+
     suspend fun testAlpacaConnection(credentials: AlpacaCredentialsStore.Credentials) = alpaca.testConnection(credentials)
 
     fun saveAlpacaCredentials(credentials: AlpacaCredentialsStore.Credentials) = credentialsStore.save(credentials)
@@ -83,8 +159,23 @@ class MarketDataGateway(
     fun alpacaCredentials(): AlpacaCredentialsStore.Credentials? = credentialsStore.load()
 
     private suspend fun yahooQuotes(symbols: List<String>): Map<String, MarketQuote> = buildMap {
-        for (symbol in symbols.distinct()) runCatching { yahoo.marketQuote(symbol) }.getOrNull()?.let { put(symbol, it) }
+        for (symbol in normalizeSymbols(symbols)) runCatching { yahoo.marketQuote(symbol) }.getOrNull()?.let { put(symbol, it) }
     }
 
-    companion object { private const val MAX_DIVERGENCE_PCT = 1.0 }
+    private fun normalizeSymbols(symbols: List<String>): List<String> = symbols.asSequence()
+        .map { it.trim().uppercase().replace('.', '-') }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .toList()
+
+    private fun alpacaStatus(error: Throwable?, empty: Boolean): String = when (error) {
+        null -> if (empty) "EMPTY" else "AVAILABLE"
+        is AlpacaMarketDataClient.AlpacaException -> error.status
+        else -> "NETWORK_ERROR"
+    }
+
+    companion object {
+        private const val MAX_DIVERGENCE_PCT = 1.0
+        private const val MIN_HISTORY_BARS = 220
+    }
 }
