@@ -163,7 +163,8 @@ data class TradeContext(
     val sessionsOld: Int = 0,
     val executionDataAllowed: Boolean = true,
     val analysisTimestampUtc: Long = System.currentTimeMillis(),
-    val recordUniverseObservation: Boolean = true
+    val recordUniverseObservation: Boolean = true,
+    val eligibilityVerified: Boolean = marketCap != null && !quoteType.isNullOrBlank()
 )
 
 data class ScanCandidate(
@@ -216,7 +217,9 @@ data class ScanCandidate(
     val quoteAgeSeconds: Long? = null,
     val quoteProviderTimestampUtc: Long? = null,
     val quoteRetrievedAtUtc: Long? = null,
-    val marketSession: String = "UNKNOWN"
+    val marketSession: String = "UNKNOWN",
+    val eligibilityVerified: Boolean = true,
+    val executionSessionOpen: Boolean = false
 )
 
 data class FundamentalMetrics(
