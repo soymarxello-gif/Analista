@@ -5,6 +5,7 @@ import com.analista.mobile.domain.CanonicalAnalysisEngine
 import com.analista.mobile.domain.DataQualityEngine
 import com.analista.mobile.domain.DecisionOverlayEngine
 import com.analista.mobile.domain.FinalDecisionPersistenceFactory
+import com.analista.mobile.domain.InsiderScanSelectionPolicy
 import com.analista.mobile.domain.LiveReproducibilityAssembler
 import com.analista.mobile.domain.TechnicalEngine
 import com.analista.mobile.domain.TradePlanGenerationEngine
@@ -36,7 +37,8 @@ class ScanRepository(
     private val yahoo: YahooFinanceClient,
     private val marketData: MarketDataGateway,
     private val tickers: List<String> = DEFAULT_TICKERS,
-    private val datasetCapture: RunDatasetCaptureService? = null
+    private val datasetCapture: RunDatasetCaptureService? = null,
+    private val officialSources: OfficialSourceCoordinator? = null
 ) {
     suspend fun runScan(): ScanRunEntity = coroutineScope {
         val started = System.currentTimeMillis()
@@ -92,6 +94,10 @@ class ScanRepository(
         val analyzed = workItems.map { it.analyzed }
         val barsByTicker = workItems.associate { it.analyzed.candidate.ticker to it.bars }
         val workItemsByTicker = workItems.associateBy { it.analyzed.candidate.ticker }
+        val insiderTickers = InsiderScanSelectionPolicy.select(analyzed.map { it.candidate })
+        val insiderRefresh = officialSources?.let { coordinator ->
+            runCatching { coordinator.refreshInsiders(insiderTickers) }.getOrNull()
+        }
 
         val runId = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.of("UTC"))
             .format(Instant.ofEpochMilli(started)) + "-" + UUID.randomUUID().toString().take(8)
@@ -131,6 +137,9 @@ class ScanRepository(
             if (cacheHits > 0) append(" + cache(").append(cacheHits).append(")")
             if (lowQualityCount > 0) append(" + quality-low(").append(lowQualityCount).append(")")
             if (unusableQualityCount > 0) append(" + quality-unusable(").append(unusableQualityCount).append(")")
+            insiderRefresh?.let {
+                append(" + SEC-insiders(").append(it.status.lowercase()).append(":").append(it.transactionCount).append(")")
+            }
         }
         val run = ScanRunEntity(
             runId = runId, startedAtUtc = started, finishedAtUtc = finished,
