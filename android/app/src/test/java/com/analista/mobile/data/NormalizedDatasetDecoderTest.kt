@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 class NormalizedDatasetDecoderTest {
     @Test
@@ -87,6 +88,40 @@ class NormalizedDatasetDecoderTest {
         assertEquals(chain.ticker, decoded.ticker)
         assertEquals(1000L, decoded.availableExpiries.single())
         assertEquals(0.02, decoded.expiries.single().contracts.single().gamma!!, 0.0001)
+    }
+
+    @Test
+    fun insiderRoundTripPreservesDirectionalTransactionEvidence() {
+        val transaction = SecEdgarClient.InsiderTransaction(
+            accessionNumber = "0001-26-000001",
+            ticker = "TEST",
+            ownerName = "Jane Doe",
+            isDirector = true,
+            isOfficer = false,
+            officerTitle = null,
+            securityTitle = "Common Stock",
+            transactionDate = LocalDate.of(2026, 7, 15),
+            transactionCode = "P",
+            acquiredDisposedCode = "A",
+            shares = 1_000.0,
+            pricePerShare = 25.5,
+            transactionValue = 25_500.0,
+            sharesOwnedFollowing = 5_000.0,
+            directOrIndirect = "D"
+        )
+        val snapshot = InsiderTransactionRegistry.Snapshot(
+            ticker = "test",
+            transactions = listOf(transaction),
+            status = "complete",
+            capturedAtUtc = 100L
+        )
+
+        val decoded = NormalizedDatasetDecoder.insiders(NormalizedDatasetCodec.insiders(snapshot))
+
+        assertEquals("TEST", decoded.ticker)
+        assertEquals("COMPLETE", decoded.status)
+        assertEquals(100L, decoded.capturedAtUtc)
+        assertEquals(transaction, decoded.transactions.single())
     }
 
     @Test
