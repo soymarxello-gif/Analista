@@ -21,18 +21,28 @@ class ScanService : Service() {
         super.onCreate()
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(channelId, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_DEFAULT))
-        startForeground(920, notification("Analista está ejecutando el scan premarket"))
+        startForeground(920, notification("Analista está preparando el universo dinámico"))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         scope.launch {
             DiagnosticsStore.markStart(this@ScanService)
-            val result = runCatching { (application as AnalistaApplication).repository.runScan() }
+            val app = application as AnalistaApplication
+            val result = runCatching {
+                val universe = app.dynamicScanCoordinator.prepare()
+                val run = app.repository.runScan()
+                run to universe
+            }
             val text = result.fold(
-                onSuccess = { "Scan ${it.trustStatus}: ${it.candidateCount} símbolos analizados" },
+                onSuccess = { (run, universe) ->
+                    "Scan ${run.trustStatus}: ${run.candidateCount}/${universe.symbols.size} · ${universe.status}"
+                },
                 onFailure = { "Scan fallido: ${it.message ?: "error desconocido"}" }
             )
-            DiagnosticsStore.markFinish(this@ScanService, result.fold(onSuccess = { it.status }, onFailure = { "FAILED" }))
+            DiagnosticsStore.markFinish(
+                this@ScanService,
+                result.fold(onSuccess = { it.first.status }, onFailure = { "FAILED" })
+            )
             getSystemService(NotificationManager::class.java).notify(921, notification(text))
             ScanScheduler.scheduleNext(this@ScanService)
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -45,7 +55,7 @@ class ScanService : Service() {
         .setSmallIcon(android.R.drawable.ic_popup_sync)
         .setContentTitle("Analista")
         .setContentText(text)
-        .setOngoing(text.contains("ejecutando"))
+        .setOngoing(text.contains("preparando"))
         .build()
 
     override fun onBind(intent: Intent?): IBinder? = null

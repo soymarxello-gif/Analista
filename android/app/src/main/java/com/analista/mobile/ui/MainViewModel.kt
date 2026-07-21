@@ -92,7 +92,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             runDefinition,
             replayDiagnostics
         ) { manifests, ranking, definition, replay ->
-            val base = ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, manifests)
+            val expected = definition?.universeSymbols
+                ?.split(',')
+                ?.count { it.isNotBlank() }
+                ?.takeIf { it > 0 }
+                ?: candidates.value.size.coerceAtLeast(ScanRepository.DEFAULT_TICKERS.size)
+            val base = ReproducibilityDiagnosticsEngine.summarize(expected, manifests)
             val definitionLabels = if (definition == null) {
                 setOf("Definición: NO_DATA")
             } else {
@@ -129,6 +134,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val alpacaFeed = MutableStateFlow(repository.alpacaCredentials()?.feed ?: "iex")
     val alpacaStatus = MutableStateFlow("NO_PROBADO")
     val testingAlpaca = MutableStateFlow(false)
+    val universeStatus = MutableStateFlow("NO_PREPARADO")
+    val universeSource = MutableStateFlow("NONE")
+    val universeCount = MutableStateFlow(0)
 
     init {
         viewModelScope.launch {
@@ -145,7 +153,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             running.value = true
             error.value = null
-            runCatching { repository.runScan() }
+            runCatching {
+                val universe = app.dynamicScanCoordinator.prepare()
+                universeStatus.value = universe.status
+                universeSource.value = universe.source
+                universeCount.value = universe.symbols.size
+                repository.runScan()
+            }
                 .onSuccess { run ->
                     selectedRunId.value = run.runId
                     replayRunning.value = true
@@ -196,5 +210,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         alpacaConfigured.value = false
         alpacaFeed.value = "iex"
         alpacaStatus.value = "BORRADO"
+        universeStatus.value = "NO_PREPARADO"
+        universeSource.value = "NONE"
+        universeCount.value = 0
     }
 }

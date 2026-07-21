@@ -26,6 +26,11 @@ class YahooFinanceClient(
 
     suspend fun dailyHistory(ticker: String, range: String = "1y"): FetchResult = withContext(Dispatchers.IO) {
         val safeTicker = yahooTicker(ticker)
+        DynamicScanRegistry.history(safeTicker)?.let { prepared ->
+            HistorySourceRegistry.record(safeTicker, prepared.source)
+            MarketHistoryRegistry.record(safeTicker, prepared.bars)
+            return@withContext prepared
+        }
         val cache = File(cacheDir, "${safeTicker.replace("^", "IDX_").replace("=", "_")}_$range.json")
         var retries = 0
         var lastError: Throwable? = null
