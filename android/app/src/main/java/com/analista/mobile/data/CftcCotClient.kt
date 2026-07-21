@@ -40,11 +40,11 @@ class CftcCotClient(
     ): List<Positioning> = withContext(Dispatchers.IO) {
         require(limit in 1..5_000)
         val builder = ENDPOINT.toHttpUrl().newBuilder()
-            .addQueryParameter("$limit", limit.toString())
-            .addQueryParameter("$order", "report_date_as_yyyy_mm_dd DESC")
+            .addQueryParameter("\$limit", limit.toString())
+            .addQueryParameter("\$order", "report_date_as_yyyy_mm_dd DESC")
         marketContains?.trim()?.takeIf { it.isNotBlank() }?.let { value ->
             val escaped = value.uppercase().replace("'", "''")
-            builder.addQueryParameter("$where", "upper(market_and_exchange_names) like '%$escaped%'")
+            builder.addQueryParameter("\$where", "upper(market_and_exchange_names) like '%$escaped%'")
         }
         val request = Request.Builder().url(builder.build())
             .header("Accept", "application/json")
