@@ -24,7 +24,20 @@ jobs:
           gradle-version: "8.11.1"
       - name: Unit tests
         working-directory: android
-        run: gradle :app:testDebugUnitTest --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --stacktrace 2>&1 | tee unit-test-output.log
+      - name: Upload unit test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unit-test-diagnostics
+          path: |
+            android/unit-test-output.log
+            android/app/build/test-results/testDebugUnitTest/**
+            android/app/build/reports/tests/testDebugUnitTest/**
+          if-no-files-found: warn
       - name: Assemble debug APK
         working-directory: android
         run: gradle :app:assembleDebug --stacktrace
