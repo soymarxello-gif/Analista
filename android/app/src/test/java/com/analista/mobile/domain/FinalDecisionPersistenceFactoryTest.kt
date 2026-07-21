@@ -15,7 +15,9 @@ class FinalDecisionPersistenceFactoryTest {
         quoteQuality: String = "HIGH",
         freshness: String = "FRESH",
         failedBreakout: Boolean = false,
-        actionability: String = "WAIT_TRIGGER"
+        actionability: String = "WAIT_TRIGGER",
+        executionSessionOpen: Boolean = true,
+        eligibilityVerified: Boolean = true
     ) = ScanCandidate(
         ticker = "TEST", signal = signal, score = 80.0, close = 100.0,
         sma20 = 98.0, sma50 = 95.0, rsi14 = 60.0, macd = 1.0, macdSignal = 0.5,
@@ -28,7 +30,9 @@ class FinalDecisionPersistenceFactoryTest {
         priorSessionBreakout = true, liveTriggerConfirmed = liveTrigger,
         breakoutHolding = liveTrigger, failedBreakout = failedBreakout,
         executionPrice = if (liveTrigger) 101.5 else 100.5,
-        quoteFreshnessStatus = freshness
+        quoteFreshnessStatus = freshness,
+        executionSessionOpen = executionSessionOpen,
+        eligibilityVerified = eligibilityVerified
     )
 
     private fun analysis(score: Double = 80.0) = CandidateAnalysisEntity(
@@ -97,6 +101,18 @@ class FinalDecisionPersistenceFactoryTest {
         assertEquals("STALE", result.decision.executionFreshness)
         assertEquals("WATCHLIST", result.decision.finalSignal)
         assertNull(result.contract)
+    }
+
+    @Test
+    fun closedSessionOrUnknownEligibilityNeverCreatesContract() {
+        listOf(
+            candidate(executionSessionOpen = false),
+            candidate(eligibilityVerified = false)
+        ).forEach { fixture ->
+            val result = create(candidate = fixture)
+            assertEquals("WATCHLIST", result.decision.finalSignal)
+            assertNull(result.contract)
+        }
     }
 
     @Test
