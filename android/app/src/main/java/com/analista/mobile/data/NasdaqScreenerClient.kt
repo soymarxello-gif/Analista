@@ -77,7 +77,7 @@ class NasdaqScreenerClient(
         if (raw is Number) return raw.toDouble().takeIf { it.isFinite() && it > 0.0 }?.toLong()
         val text = raw.toString().trim()
         if (text.isBlank() || text.equals("n/a", true) || text == "--") return null
-        val normalized = text.replace("$", "").replace(",", "").trim().uppercase()
+        val normalized = text.replace("\$", "").replace(",", "").trim().uppercase()
         val multiplier = when {
             normalized.endsWith("T") -> 1_000_000_000_000.0
             normalized.endsWith("B") -> 1_000_000_000.0
