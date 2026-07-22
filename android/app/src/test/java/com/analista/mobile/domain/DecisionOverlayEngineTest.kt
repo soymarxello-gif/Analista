@@ -109,9 +109,10 @@ class DecisionOverlayEngineTest {
     }
 
     @Test
-    fun vetoCanNeverExceedFortyNine() {
+    fun legacyVetoLabelCannotOverrideTechnicalScore() {
         val result = DecisionOverlayEngine.apply(candidate(signal = "VETO"), base(final = 95.0), macro(), enrichment(0.80))
-        assertTrue(result.finalTradeScore <= 49.0)
+        assertEquals(95.0, result.finalTradeScore, 0.001)
+        assertTrue("context_role=ADVISORY_ONLY_NEVER_FILTERS_OR_PENALIZES" in result.breakdown)
     }
 
     private fun chain(callOi: Long, putOi: Long, callVolume: Long, putVolume: Long) = OptionChainSnapshot(
