@@ -1,10 +1,15 @@
 # Analista
 
-Scanner avanzado para detectar setups **long-only** de swing trading en acciones comunes cotizadas en Estados Unidos.
+> El motor institucional point-in-time y su estado de implementación están documentados en
+> [`docs/INSTITUTIONAL_ARCHITECTURE.md`](docs/INSTITUTIONAL_ARCHITECTURE.md) y
+> [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). La matriz de pruebas está en
+> [`docs/VALIDATION_1.81.0.md`](docs/VALIDATION_1.81.0.md).
+
+Scanner avanzado para detectar setups **long-only** de swing trading en acciones y ETF cotizados en Estados Unidos.
 
 ## Estado funcional
 
-Versión auditada `0.2.0`. La salida del motor se normaliza antes de generar reportes para garantizar filtros duros, semántica de señales, calidad de cotización, niveles accionables y auditoría de ranking.
+Versión `1.81.0`. El backend institucional es el único flujo productivo. Android funciona como cliente de revisión; el motor Yahoo local solo puede ejecutarse con una opción legacy explícita y nunca actúa como fallback.
 
 ## Reglas operativas
 
@@ -12,14 +17,17 @@ Versión auditada `0.2.0`. La salida del motor se normaliza antes de generar rep
 - Horizonte: 4 a 21 sesiones.
 - Revisión y ejecución manual.
 - Sin construcción automática de cartera.
-- Fuente principal: Yahoo Finance/yfinance.
-- Fuentes secundarias previstas: Finviz, MarketWatch y TradingView.
+- Fuente operativa: store institucional point-in-time.
+- Acciones: security master Nasdaq Trader/Alpaca y datos SIP cuando están disponibles.
+- Fundamentales e insiders: SEC; macro: FRED/ALFRED; posicionamiento: CFTC/FINRA.
+- Opciones: OPRA para uso operativo.
+- Yahoo Finance queda limitado al modo legacy de investigación; TradingView no se usa como proveedor de datos.
 
 ## Universo
 
-Permitidos: acciones comunes listadas en Estados Unidos, ADRs líquidos y emisores extranjeros líquidos cotizados en Estados Unidos.
+Permitidos: acciones comunes, ETF, ADRs líquidos y emisores extranjeros líquidos cotizados en Estados Unidos.
 
-Excluidos: ETF, ETN, closed-end funds, preferred shares, warrants, rights, units, mutual funds, SPACs pre-deal y ADRs ilíquidos.
+Excluidos: ETN, closed-end funds, preferred shares, warrants, rights, units, mutual funds, SPACs pre-deal y ADRs ilíquidos.
 
 Filtros duros:
 
@@ -28,49 +36,44 @@ min_price: 10
 min_market_cap_usd: 1500000000
 ```
 
-Toda violación fuerza `VETO` y se acumula en `all_veto_reasons`.
+El mínimo de capitalización se aplica a acciones, no a ETF. Una capitalización confirmada bajo el mínimo fuerza `VETO`; si el dato no está disponible, el símbolo continúa con la advertencia `stock_market_cap_unavailable`.
 
 ## Pipeline
 
 ```text
-screener
-→ validación de universo
-→ metadata/fundamentales
-→ revalidación
-→ OHLCV e indicadores
-→ liquidez
-→ régimen y sector
-→ fuerza relativa
-→ setups y R:R
-→ opciones
-→ scoring legacy
-→ normalización auditada
-→ scoring operativo y auditoría de ranking
-→ CSV/JSON/dashboard
+Nasdaq Trader + Alpaca Assets + metadata de capitalización declarada
+→ ingestión Alpaca SIP point-in-time
+→ universo completo elegible, sin top-N
+→ discovery RSI6/RSI14 y features técnicas
+→ setup y geometría de riesgo
+→ selección y ranking exclusivamente técnicos
+→ macro, fundamentales y opciones como contexto posterior no eliminatorio
+→ lifecycle de decisión
+→ señal inmutable + shadow run + outcomes
+→ API autenticada
+→ Android para revisión manual
 ```
-
-La normalización auditada vive en `engine/audit_postprocessor.py`.
 
 ## Señales habilitadas
 
 | Señal | Lectura | Operable |
 |---|---|---:|
-| `VETO` | Falla crítica, filtro duro o setup inválido | No |
-| `AVOID` | Riesgo o estructura débil | No |
-| `WATCHLIST` | Interesante, pero incompleto | No |
-| `READY_WAIT_TRIGGER` | Setup válido sin trigger confirmado | No |
+| `HARD_VETO` | Falla crítica o filtro duro confirmado | No |
+| `DATA_BLOCKED` | Setup visible, pero falta un dato de grado operativo | No |
+| `SETUP_DISCOVERED` | Filtro técnico superado; plan aún incompleto | No |
+| `READY_FOR_NEXT_SESSION` | Setup y riesgo válidos con mercado cerrado | No |
+| `LIVE_TRIGGER_PENDING` | Sesión abierta; trigger aún no confirmado | No |
 | `TRIGGER_CONFIRMED` | Trigger confirmado, quote aceptable y R:R suficiente | Revisión manual |
 
-`BUY_SETUP_ACTIVE` está deshabilitado y no puede emitirse.
+El cierre del mercado no elimina un setup. La ausencia de macro, fundamentales u opciones se muestra como advertencia y no modifica el score, ranking, estado ni elegibilidad del candidato.
 
 Reglas:
 
 ```text
-READY_WAIT_TRIGGER => trigger_confirmed == false
+READY_FOR_NEXT_SESSION => market_session_open == false
+LIVE_TRIGGER_PENDING   => market_session_open == true && trigger_confirmed == false
 TRIGGER_CONFIRMED  => trigger_confirmed == true
-TRIGGER_CONFIRMED  => execution_quote_quality != LOW
-TRIGGER_CONFIRMED  => rr >= 2.0
-NO_VALID_SETUP     => VETO
+DATA_BLOCKED       => required_data_status in {UNAVAILABLE, STALE, ERROR}
 ```
 
 ## Calidad de cotización
@@ -124,9 +127,11 @@ final_trade_score
 score_breakdown
 ```
 
-`NO_VALID_SETUP` limita `final_trade_score` a 49.
+`setup_quality` es una puntuación de investigación separada de `data_confidence`, `regime_risk` y `execution_readiness`. Se marca explícitamente `UNCALIBRATED_RESEARCH_SCORE`: no es una probabilidad.
 
-Cuando no hay datos de opciones, `institutional_score` queda sin valor y su peso se redistribuye entre los componentes disponibles; no se interpreta la ausencia como neutralidad confirmada.
+`final_score` y `final_trade_score` se calculan solo con componentes técnicos disponibles. `context_score`, `institutional_score` y `fundamental_score` son evidencia descriptiva y nunca participan en selección o ranking.
+
+Cuando no hay contexto, el valor permanece ausente y se muestra una advertencia explícita; no se imputa neutralidad ni se rebaja la señal.
 
 ## Opciones
 
@@ -141,7 +146,7 @@ CROWDED_BEARISH
 UNKNOWN_OPTIONS_FLOW
 ```
 
-Las opciones funcionan como confirmación. La ausencia de datos se reporta como `UNKNOWN_OPTIONS_FLOW` con confianza `UNKNOWN`.
+Las opciones respaldan o advierten sobre un setup ya seleccionado. La ausencia se reporta como `UNKNOWN_OPTIONS_FLOW` y `Sin datos de opciones`, sin modificar score, ranking o señal.
 
 ## Auditoría de ranking
 
@@ -183,14 +188,20 @@ pip install -r requirements-dev.txt
 ## Ejecución
 
 ```powershell
-python run_scanner.py --verbose
+$env:APCA_API_KEY_ID="..."
+$env:APCA_API_SECRET_KEY="..."
+$env:APCA_DATA_FEED="sip"
+python run_scanner.py --ingest-live --json-out reports/latest_scan.json
 ```
 
-Con límite:
+Servicio para Android:
 
 ```powershell
-python run_scanner.py --max-candidates 300 --verbose
+$env:ANALISTA_API_TOKEN="token-largo-y-aleatorio"
+uvicorn institutional.api:app --host 0.0.0.0 --port 8000
 ```
+
+El acceso desde un teléfono debe publicarse detrás de HTTPS. El modo legacy se conserva exclusivamente para comparación: `python run_scanner.py --engine legacy`.
 
 Dashboard:
 
@@ -211,8 +222,9 @@ Los tests P0 cubren filtros duros, quotes inválidos, semántica de señales, `N
 
 ## Limitaciones
 
-- Las cotizaciones bid/ask de Yahoo pueden ser incompletas o stale.
-- Las métricas de opciones son heurísticas; no representan gamma exposure real.
+- SIP y OPRA requieren la suscripción correspondiente; IEX nunca confirma RVOL ni triggers.
+- Nasdaq Screener se rotula como metadata de capitalización de investigación; puede sustituirse por `ANALISTA_MARKET_CAP_FILE`.
+- Las métricas de opciones no se presentan como gamma real sin OPRA/modelo validado.
 - La capa auditada no sustituye revisión manual.
 - El ranking productivo no cambia hasta validar varias corridas.
 - No ejecuta órdenes.

@@ -6,14 +6,14 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
 object UniverseSelectionEngine {
-    const val VERSION = "universe-selection-2"
-    const val MODE = "us_listed_common_equities"
+    const val VERSION = "universe-selection-3"
+    const val MODE = "us_listed_common_equities_and_etfs"
     const val MIN_AVERAGE_DOLLAR_VOLUME = 20_000_000.0
     const val MAX_SPREAD_PCT = 1.0
 
-    private val allowedTypes = setOf("EQUITY", "COMMON_STOCK", "ADR", "FOREIGN_ISSUER")
+    private val allowedTypes = setOf("EQUITY", "COMMON_STOCK", "ETF", "ADR", "FOREIGN_ISSUER")
     private val excludedTypes = setOf(
-        "ETF", "ETN", "CLOSED_END_FUND", "CEF", "PREFERRED", "PREFERRED_SHARE",
+        "ETN", "CLOSED_END_FUND", "CEF", "PREFERRED", "PREFERRED_SHARE",
         "WARRANT", "RIGHT", "RIGHTS", "UNIT", "MUTUALFUND", "MUTUAL_FUND", "SPAC_PRE_DEAL"
     )
 
@@ -54,7 +54,7 @@ object UniverseSelectionEngine {
             input.price == null -> reasons += "price_unverified"
             input.price < TradingPolicy.MIN_PRICE -> reasons += "price_below_min"
         }
-        when {
+        if (type != "ETF") when {
             input.marketCap == null -> reasons += "market_cap_unverified"
             input.marketCap < TradingPolicy.MIN_MARKET_CAP -> reasons += "market_cap_below_min"
         }

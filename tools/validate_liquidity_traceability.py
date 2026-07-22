@@ -18,7 +18,9 @@ def _stub(module_name: str, **attrs) -> None:
 
 
 def _load_scanner_module():
-    noop = lambda *args, **kwargs: None
+    def noop(*args, **kwargs):
+        return None
+
     _stub("data.screener_client", run_screeners=noop)
     _stub("data.price_client", download_daily_prices=noop)
     _stub("data.fundamentals_client", enrich_metadata=noop)

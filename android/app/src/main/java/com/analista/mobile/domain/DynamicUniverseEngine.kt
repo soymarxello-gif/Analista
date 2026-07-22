@@ -5,13 +5,14 @@ import com.analista.mobile.data.NasdaqScreenerClient
 import com.analista.mobile.data.PriceBar
 
 object DynamicUniverseEngine {
-    const val VERSION = "dynamic-universe-1"
+    const val VERSION = "dynamic-universe-2"
 
     data class Selection(
         val symbol: String,
         val marketCap: Long,
         val sector: String?,
         val industry: String?,
+        val quoteType: String,
         val averageDollarVolume20: Double,
         val latestPrice: Double,
         val exchange: String?
@@ -21,8 +22,8 @@ object DynamicUniverseEngine {
         assets: List<AlpacaMarketDataClient.AlpacaAsset>,
         metadata: List<NasdaqScreenerClient.StockMetadata>,
         histories: Map<String, List<PriceBar>>,
-        maximumSymbols: Int = 80,
-        maximumPerSector: Int = 20
+        maximumSymbols: Int = Int.MAX_VALUE,
+        maximumPerSector: Int = Int.MAX_VALUE
     ): List<Selection> {
         require(maximumSymbols > 0)
         require(maximumPerSector > 0)
@@ -32,8 +33,9 @@ object DynamicUniverseEngine {
             .filter { asset -> asset.exchange?.let { it in ALLOWED_EXCHANGES } == true }
             .mapNotNull { asset ->
                 val info = metadataBySymbol[asset.symbol] ?: return@mapNotNull null
-                val cap = info.marketCap ?: return@mapNotNull null
-                if (cap < TradingPolicy.MIN_MARKET_CAP || excludedName(info.name)) return@mapNotNull null
+                val isEtf = isEtf(info.name)
+                val cap = info.marketCap ?: if (isEtf) 0L else return@mapNotNull null
+                if ((!isEtf && cap < TradingPolicy.MIN_MARKET_CAP) || excludedName(info.name)) return@mapNotNull null
                 val bars = histories[asset.symbol].orEmpty()
                 if (bars.size < MIN_BARS) return@mapNotNull null
                 val recent = bars.takeLast(20)
@@ -45,12 +47,13 @@ object DynamicUniverseEngine {
                     marketCap = cap,
                     sector = info.sector,
                     industry = info.industry,
+                    quoteType = if (isEtf) "ETF" else "EQUITY",
                     averageDollarVolume20 = adv,
                     latestPrice = price,
                     exchange = asset.exchange
                 )
             }
-            .sortedWith(compareByDescending<Selection> { it.averageDollarVolume20 }.thenByDescending { it.marketCap })
+            .sortedBy { it.symbol }
             .toList()
 
         val selected = mutableListOf<Selection>()
@@ -65,13 +68,29 @@ object DynamicUniverseEngine {
         return selected
     }
 
+    fun discover(
+        eligible: List<Selection>,
+        histories: Map<String, List<PriceBar>>
+    ): List<Selection> = eligible.filter { candidate ->
+        val closes = histories[candidate.symbol].orEmpty().map { it.close }
+        if (closes.size < MIN_BARS) return@filter false
+        val rsi6 = CanonicalAnalysisEngine.rsiWilder(closes, 6)
+        val rsi14 = CanonicalAnalysisEngine.rsiWilder(closes, 14)
+        rsi14 in 25.0..65.0 && rsi6 > rsi14
+    }
+
     private fun excludedName(name: String?): Boolean {
         val normalized = name?.uppercase().orEmpty()
         return EXCLUDED_NAME_TOKENS.any { token -> normalized.contains(token) }
     }
 
+    private fun isEtf(name: String?): Boolean {
+        val normalized = name?.uppercase().orEmpty()
+        return normalized.contains(" ETF") || normalized.contains("EXCHANGE TRADED FUND")
+    }
+
     private val ALLOWED_EXCHANGES = setOf("NASDAQ", "NYSE", "AMEX", "ARCA", "NYSEARCA")
-    private val EXCLUDED_NAME_TOKENS = setOf(" ETF", " ETN", " FUND", " WARRANT", " RIGHTS", " UNIT")
+    private val EXCLUDED_NAME_TOKENS = setOf(" ETN", " CLOSED-END FUND", " WARRANT", " RIGHTS", " UNIT")
     private const val MIN_BARS = 220
     private const val MIN_DOLLAR_VOLUME = 20_000_000.0
 }

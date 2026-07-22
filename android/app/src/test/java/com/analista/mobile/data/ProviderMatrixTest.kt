@@ -18,7 +18,7 @@ class ProviderMatrixTest {
     fun policyDefinesModuleSpecificPriorities() {
         assertEquals(listOf("ALPACA", "YAHOO"), ProviderMatrixPolicy.priorities.getValue("EXECUTION_QUOTE"))
         assertEquals(
-            listOf("YAHOO", "FINVIZ", "MARKETWATCH", "TRADINGVIEW"),
+            listOf("SEC_COMPANYFACTS_BACKEND", "YAHOO_RESEARCH_ONLY"),
             ProviderMatrixPolicy.priorities.getValue("FUNDAMENTAL")
         )
     }
@@ -29,8 +29,8 @@ class ProviderMatrixTest {
         val fundamental = rows.first { it.module == "FUNDAMENTAL" }
         assertEquals("UNAVAILABLE", fundamental.status)
         assertEquals(0.0, fundamental.coveragePct, 0.0)
-        assertTrue(fundamental.errorStatus!!.contains("FINVIZ_NOT_CONFIGURED"))
-        assertTrue(fundamental.errorStatus!!.contains("TRADINGVIEW_NOT_CONFIGURED"))
+        assertTrue(fundamental.errorStatus!!.contains("SEC_BACKEND_NOT_CONFIGURED"))
+        assertTrue(!fundamental.errorStatus!!.contains("TRADINGVIEW"))
     }
 
     @Test

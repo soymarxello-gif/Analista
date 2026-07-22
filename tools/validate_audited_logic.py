@@ -8,7 +8,6 @@ from scoring.final_score import calculate_final_score
 from scoring.options_score import score_options_flow
 from scoring.signal_classifier import classify_signal
 
-
 SIGNAL_CONFIG = {
     "filters": {"min_price": 10, "min_market_cap_usd": 1_500_000_000},
     "risk_reward": {"min_rr_absolute": 1.5},

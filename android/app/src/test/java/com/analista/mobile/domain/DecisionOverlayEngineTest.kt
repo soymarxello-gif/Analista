@@ -32,21 +32,22 @@ class DecisionOverlayEngineTest {
     }
 
     @Test
-    fun missingOptionsRemainUnknownAndReduceConfidence() {
+    fun missingOptionsRemainUnknownWithoutChangingTechnicalSelectionScore() {
         val result = DecisionOverlayEngine.apply(candidate(), base(), macro(), null)
         assertEquals("UNKNOWN_OPTIONS_FLOW", result.optionsBias)
         assertEquals("UNKNOWN", result.optionsCoverage)
-        assertTrue(result.confidencePenalty > 0.0)
+        assertEquals(0.0, result.confidencePenalty, 0.0)
+        assertEquals(base().finalTradeScore, result.finalTradeScore, 0.0)
     }
 
     @Test
-    fun crowdedBullishOptionsReceiveContrarianPenalty() {
+    fun crowdedBullishOptionsWarnButDoNotChangeTechnicalScore() {
         val crowded = enrichment(putCall = 0.20)
         val neutral = enrichment(putCall = 0.90)
         val crowdedResult = DecisionOverlayEngine.apply(candidate(), base(), macro(), crowded)
         val neutralResult = DecisionOverlayEngine.apply(candidate(), base(), macro(), neutral)
         assertEquals("CROWDED_BULLISH", crowdedResult.optionsBias)
-        assertTrue(crowdedResult.finalTradeScore < neutralResult.finalTradeScore)
+        assertEquals(neutralResult.finalTradeScore, crowdedResult.finalTradeScore, 0.0)
     }
 
     @Test
@@ -60,7 +61,7 @@ class DecisionOverlayEngineTest {
         val result = DecisionOverlayEngine.apply(candidate(), base(final = 85.0), macro(), enrichment(putCall = 0.40))
         assertEquals("CROWDED_BEARISH", result.optionsBias)
         assertEquals("HIGH", result.institutionalConflict)
-        assertTrue(result.finalTradeScore <= 59.0)
+        assertEquals(base(final = 85.0).finalTradeScore, result.finalTradeScore, 0.0)
         assertTrue(result.institutionalReasons.contains("institutional_conflict_high"))
     }
 

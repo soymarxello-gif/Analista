@@ -1,4 +1,3 @@
-\
 from __future__ import annotations
 
 from data.price_client import download_daily_prices

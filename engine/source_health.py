@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 DEFAULT_THRESHOLDS = {
     "degraded_failure_rate_pct": 10.0,
     "critical_failure_rate_pct": 35.0,

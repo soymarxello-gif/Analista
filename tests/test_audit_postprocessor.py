@@ -4,7 +4,6 @@ import pandas as pd
 
 from engine.audit_postprocessor import normalize_scan
 
-
 CONFIG = {
     "filters": {"min_price": 10, "min_market_cap_usd": 1_500_000_000},
     "liquidity": {"max_spread_pct": 0.03, "max_quote_distance_pct": 0.15},
@@ -82,6 +81,12 @@ def test_market_cap_filter_is_hard():
     result = normalize(candidate(market_cap=1_000_000_000))
     assert result.loc[0, "signal"] == "VETO"
     assert "market_cap_below_min" in result.loc[0, "all_veto_reasons"]
+
+
+def test_missing_market_cap_does_not_invalidate_an_otherwise_valid_setup():
+    result = normalize(candidate(market_cap=None))
+    assert result.loc[0, "signal"] != "VETO"
+    assert "market_cap_below_min" not in result.loc[0, "all_veto_reasons"]
 
 
 def test_ready_wait_trigger_semantics():

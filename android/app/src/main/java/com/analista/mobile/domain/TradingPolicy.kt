@@ -9,7 +9,7 @@ object TradingPolicy {
     const val MAX_QUOTE_DISTANCE_PCT = 3.0
 
     val allowedSignals = setOf("VETO", "AVOID", "WATCHLIST", "READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED")
-    val excludedQuoteTypes = setOf("ETF", "ETN", "MUTUALFUND", "WARRANT", "PREFERRED", "UNIT", "RIGHT")
+    val excludedQuoteTypes = setOf("ETN", "MUTUALFUND", "WARRANT", "PREFERRED", "UNIT", "RIGHT")
 
     data class QuoteAssessment(val status: String, val quality: String)
 
@@ -33,16 +33,19 @@ object TradingPolicy {
 
     fun hardVetoReasons(price: Double, marketCap: Long?, quoteType: String?): List<String> = buildList {
         if (price < MIN_PRICE) add("price_below_min")
-        if (marketCap != null && marketCap < MIN_MARKET_CAP) add("market_cap_below_min")
         val normalized = quoteType?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
+        if (normalized != "ETF" && marketCap != null && marketCap < MIN_MARKET_CAP) add("market_cap_below_min")
         if (normalized != null && normalized in excludedQuoteTypes) add("excluded_security_type")
     }
 
     fun eligibilityWarnings(marketCap: Long?, quoteType: String?): List<String> = buildList {
-        if (marketCap == null) add("market_cap_unverified")
-        if (quoteType.isNullOrBlank()) add("instrument_type_unverified")
+        val normalized = quoteType?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
+        if (normalized != "ETF" && marketCap == null) add("market_cap_unverified")
+        if (normalized == null) add("instrument_type_unverified")
     }
 
-    fun eligibilityVerified(marketCap: Long?, quoteType: String?): Boolean =
-        marketCap != null && !quoteType.isNullOrBlank()
+    fun eligibilityVerified(marketCap: Long?, quoteType: String?): Boolean {
+        val normalized = quoteType?.trim()?.uppercase()?.takeIf { it.isNotBlank() } ?: return false
+        return normalized == "ETF" || marketCap != null
+    }
 }

@@ -1,5 +1,5 @@
-\
 import pandas as pd
+
 
 def add_macd(df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
     out = df.copy()

@@ -15,7 +15,7 @@ import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v3-overlays-7"
+    const val ENGINE_VERSION = "android-v3-overlays-8-advisory"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -106,39 +106,8 @@ object DecisionOverlayEngine {
             inputs.insiderSnapshot
         )
 
-        var confidencePenalty = 0.0
-        confidencePenalty += when (fundamental.status) {
-            "COMPLETE" -> 0.0
-            "PARTIAL" -> 2.0
-            "STALE" -> 5.0
-            else -> 4.0
-        }
-        if (institutional.coverage != "COMPLETE") {
-            confidencePenalty += if (institutional.coverage == "PARTIAL") 2.0 else 4.0
-        }
-        confidencePenalty += when (context.confidence) {
-            "HIGH" -> 0.0
-            "PARTIAL" -> 2.0
-            "LOW" -> 4.0
-            else -> 6.0
-        }
-
-        var final = base.finalTradeScore +
-            0.10 * (context.macroScore - 50.0) +
-            0.15 * (fundamental.score - 50.0) +
-            0.15 * (institutional.score - 50.0) -
-            confidencePenalty
-
-        if (context.macroRegime == "RISK_OFF") final -= 5.0
-        if (context.ratesRegime == "RISING") final -= 2.0
-        if (context.liquidityRegime == "CONTRACTING") final -= 3.0
-        if (fundamental.earningsRiskStatus == "IMMINENT") final -= 5.0
-        if (fundamental.status == "STALE") final -= 3.0
-        if (institutional.bias == "CROWDED_BULLISH") final -= 8.0
-        if (institutional.conflict == "HIGH") final = minOf(final, 59.0)
-        if (candidate.signal == "VETO" || candidate.setupType == "NO_VALID_SETUP") final = minOf(final, 49.0)
-        if (candidate.executionQuoteQuality == "LOW") final = minOf(final, 59.0)
-        final = final.coerceIn(0.0, 100.0)
+        val confidencePenalty = 0.0
+        val final = base.finalTradeScore
 
         val breakdown = listOf(
             base.scoreBreakdown,
@@ -154,7 +123,8 @@ object DecisionOverlayEngine {
             "institutional_reasons=${institutional.reasons.joinToString("|")}",
             "officialContextVersion=${inputs.officialContext?.engineVersion ?: "UNAVAILABLE"}",
             "insiderEngineVersion=${InsiderAssessmentEngine.VERSION}",
-            "confidence_penalty=${round2(confidencePenalty)}"
+            "selection_score_unchanged=${round2(final)}",
+            "context_role=ADVISORY_ONLY_NEVER_FILTERS_OR_PENALIZES"
         ).joinToString(";")
 
         return OverlayResult(

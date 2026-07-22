@@ -28,20 +28,16 @@ class ScanService : Service() {
         scope.launch {
             DiagnosticsStore.markStart(this@ScanService)
             val app = application as AnalistaApplication
-            val result = runCatching {
-                val universe = app.dynamicScanCoordinator.prepare()
-                val run = app.repository.runScan()
-                run to universe
-            }
+            val result = runCatching { app.repository.runScan() }
             val text = result.fold(
-                onSuccess = { (run, universe) ->
-                    "Scan ${run.trustStatus}: ${run.candidateCount}/${universe.symbols.size} · ${universe.status}"
+                onSuccess = { run ->
+                    "Scan ${run.trustStatus}: ${run.candidateCount} señales · ${run.status}"
                 },
                 onFailure = { "Scan fallido: ${it.message ?: "error desconocido"}" }
             )
             DiagnosticsStore.markFinish(
                 this@ScanService,
-                result.fold(onSuccess = { it.first.status }, onFailure = { "FAILED" })
+                result.fold(onSuccess = { it.status }, onFailure = { "FAILED" })
             )
             getSystemService(NotificationManager::class.java).notify(921, notification(text))
             ScanScheduler.scheduleNext(this@ScanService)

@@ -5,10 +5,7 @@ import androidx.room.Room
 import com.analista.mobile.data.AlpacaCredentialsStore
 import com.analista.mobile.data.AlpacaMarketDataClient
 import com.analista.mobile.data.AnalistaDatabase
-import com.analista.mobile.data.DynamicScanCoordinator
 import com.analista.mobile.data.DynamicTickerList
-import com.analista.mobile.data.DynamicUniverseResolver
-import com.analista.mobile.data.DynamicUniverseStore
 import com.analista.mobile.data.MIGRATION_1_2
 import com.analista.mobile.data.MIGRATION_2_3
 import com.analista.mobile.data.MIGRATION_3_4
@@ -26,7 +23,8 @@ import com.analista.mobile.data.MIGRATION_14_15
 import com.analista.mobile.data.MIGRATION_15_16
 import com.analista.mobile.data.MIGRATION_16_17
 import com.analista.mobile.data.MarketDataGateway
-import com.analista.mobile.data.NasdaqScreenerClient
+import com.analista.mobile.data.InstitutionalEngineClient
+import com.analista.mobile.data.InstitutionalEngineCredentialsStore
 import com.analista.mobile.data.OfficialSourceCoordinator
 import com.analista.mobile.data.OfficialSourceSettingsStore
 import com.analista.mobile.data.RunDatasetCaptureService
@@ -63,33 +61,22 @@ class AnalistaApplication : Application() {
     private val datasetCapture by lazy { RunDatasetCaptureService(datasetStore) }
     val replayService by lazy { RunReplayService(database.replayDao(), datasetStore) }
     val credentialsStore by lazy { AlpacaCredentialsStore(this) }
+    val institutionalEngineCredentials by lazy { InstitutionalEngineCredentialsStore(this) }
+    val institutionalEngineClient by lazy { InstitutionalEngineClient(institutionalEngineCredentials) }
     val officialSourceSettings by lazy { OfficialSourceSettingsStore(this) }
     val officialSourceCoordinator by lazy { OfficialSourceCoordinator(officialSourceSettings) }
     val marketDataGateway by lazy {
         MarketDataGateway(yahoo, AlpacaMarketDataClient(), credentialsStore)
-    }
-    private val universeResolver by lazy {
-        DynamicUniverseResolver(
-            marketData = marketDataGateway,
-            nasdaq = NasdaqScreenerClient(),
-            store = DynamicUniverseStore(this)
-        )
-    }
-    val dynamicScanCoordinator by lazy {
-        DynamicScanCoordinator(
-            resolver = universeResolver,
-            emergencySymbols = ScanRepository.DEFAULT_TICKERS,
-            officialSources = officialSourceCoordinator
-        )
     }
     val repository by lazy {
         ScanRepository(
             database.dao(),
             yahoo,
             marketDataGateway,
-            tickers = DynamicTickerList(ScanRepository.DEFAULT_TICKERS),
+            tickers = DynamicTickerList(ScanRepository.LEGACY_RESEARCH_TICKERS),
             datasetCapture = datasetCapture,
-            officialSources = officialSourceCoordinator
+            officialSources = officialSourceCoordinator,
+            institutionalEngine = institutionalEngineClient
         )
     }
 }

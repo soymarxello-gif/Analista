@@ -8,7 +8,7 @@ import kotlin.math.max
 import kotlin.math.round
 
 object CanonicalAnalysisEngine {
-    const val ENGINE_VERSION = "android-v2-canonical-1"
+    const val ENGINE_VERSION = "android-v2-canonical-2"
 
     fun evaluate(bars: List<PriceBar>, candidate: ScanCandidate): CanonicalAnalysis {
         require(bars.size >= 220) { "At least 220 daily bars are required for EMA200" }
@@ -21,7 +21,7 @@ object CanonicalAnalysisEngine {
         val (macd, signal) = macd(closes)
         val atr14 = atrWilder(bars, 14)
         val close = closes.last()
-        val weeklyTrend = weeklyTrend(closes)
+        val weeklyTrend = weeklyTrend(bars)
         val stopAtrMultiple = if (candidate.theoreticalEntry != null && candidate.theoreticalStop != null && atr14 > 0) {
             abs(candidate.theoreticalEntry - candidate.theoreticalStop) / atr14
         } else 0.0
@@ -69,10 +69,11 @@ object CanonicalAnalysisEngine {
         }
         riskScore = riskScore.coerceIn(0.0, 100.0)
 
+        // Selection is technical-only. Context fields remain visible downstream as
+        // advisory evidence and cannot change this score.
         val contextScore = 50.0
         val institutionalScore = 50.0
-        var finalTrade = 0.25 * assetQuality + 0.40 * setupQuality +
-            0.10 * contextScore + 0.10 * institutionalScore + 0.15 * riskScore
+        var finalTrade = 0.3125 * assetQuality + 0.50 * setupQuality + 0.1875 * riskScore
         if (candidate.signal == "VETO" || candidate.setupType == "NO_VALID_SETUP") finalTrade = minOf(finalTrade, 49.0)
         if (candidate.executionQuoteQuality == "LOW") finalTrade -= 10.0
         if (candidate.penaltyReasons.isNotEmpty()) finalTrade -= minOf(15.0, candidate.penaltyReasons.size * 3.0)
@@ -81,9 +82,10 @@ object CanonicalAnalysisEngine {
         val breakdown = listOf(
             "asset=${round2(assetQuality)}",
             "setup=${round2(setupQuality)}",
-            "context=${round2(contextScore)}",
-            "institutional=${round2(institutionalScore)}",
-            "risk=${round2(riskScore)}"
+            "risk=${round2(riskScore)}",
+            "selection=TECHNICAL_SETUP_ONLY",
+            "context=ADVISORY_ONLY",
+            "institutional=ADVISORY_ONLY"
         ).joinToString(";")
 
         return CanonicalAnalysis(
@@ -148,8 +150,17 @@ object CanonicalAnalysisEngine {
         return macdValues.last() to signalSeries.last()
     }
 
-    fun weeklyTrend(dailyCloses: List<Double>): String {
-        val weekly = dailyCloses.chunked(5).map { it.last() }
+    fun weeklyTrend(bars: List<PriceBar>): String {
+        val weekly = bars
+            .groupBy {
+                java.time.Instant.ofEpochSecond(it.epochSeconds)
+                    .atZone(java.time.ZoneOffset.UTC)
+                    .toLocalDate()
+                    .with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.FRIDAY))
+            }
+            .toSortedMap()
+            .values
+            .map { sessions -> sessions.maxBy { it.epochSeconds }.close }
         if (weekly.size < 30) return "UNKNOWN"
         val ema10 = emaLast(weekly, 10)
         val ema30 = emaLast(weekly, 30)

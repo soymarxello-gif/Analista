@@ -14,24 +14,32 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     env:
       SCHEDULED_SLOT: ${{ github.event.schedule }}
       FORCE_ARG: ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+      APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+      APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+      APCA_DATA_FEED: sip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: cache/institutional.db
+          key: institutional-store-${{ github.run_id }}
+          restore-keys: institutional-store-
+      - name: Require institutional market-data credentials
+        run: test -n "$APCA_API_KEY_ID" && test -n "$APCA_API_SECRET_KEY"
       - name: Execute only at 09:20 New York on XNYS sessions
-        run: python tools/scheduled_scan.py --scheduled-slot "$SCHEDULED_SLOT" $FORCE_ARG
-      - name: Commit backtesting registry
-        run: |
-          if [ -n "$(git status --porcelain backtesting/)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add backtesting/
-            git commit -m "Record scheduled Analista scan for backtesting"
-            git push
-          fi
+        run: python tools/scheduled_scan.py --scheduled-slot "$SCHEDULED_SLOT" --ingest-live $FORCE_ARG
+      - uses: actions/upload-artifact@v4
+        with:
+          name: institutional-scan-${{ github.run_id }}
+          path: |
+            reports/latest_scan.json
+            cache/institutional.db
+          if-no-files-found: error

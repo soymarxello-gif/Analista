@@ -117,7 +117,7 @@ interface AnalistaDao {
         val createdAtUtc = System.currentTimeMillis()
         val liveUniverse = LiveUniverseSnapshotAssembler.assemble(
             runId = runId,
-            fallbackUniverse = ScanRepository.DEFAULT_TICKERS,
+            fallbackUniverse = ScanRepository.LEGACY_RESEARCH_TICKERS,
             effectiveDate = LocalDate.now(ZoneId.of("America/New_York")).toString(),
             createdAtUtc = createdAtUtc
         )
