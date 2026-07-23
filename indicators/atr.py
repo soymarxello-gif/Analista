@@ -1,5 +1,5 @@
-\
 import pandas as pd
+
 
 def add_atr(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     out = df.copy()

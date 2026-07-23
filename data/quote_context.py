@@ -5,7 +5,6 @@ from typing import Any
 
 import pandas as pd
 
-
 VALID_SESSIONS = {"PRE", "REGULAR", "POST", "CLOSED", "UNKNOWN"}
 
 

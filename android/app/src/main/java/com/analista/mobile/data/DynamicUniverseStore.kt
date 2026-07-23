@@ -10,7 +10,8 @@ class DynamicUniverseStore(context: Context) {
         val symbol: String,
         val marketCap: Long,
         val sector: String?,
-        val industry: String?
+        val industry: String?,
+        val quoteType: String = "EQUITY"
     )
 
     data class Snapshot(
@@ -35,6 +36,7 @@ class DynamicUniverseStore(context: Context) {
                     .put("marketCap", member.marketCap)
                     .put("sector", member.sector ?: JSONObject.NULL)
                     .put("industry", member.industry ?: JSONObject.NULL)
+                    .put("quoteType", member.quoteType)
             )
         }
         val payload = JSONObject()
@@ -60,13 +62,14 @@ class DynamicUniverseStore(context: Context) {
                 val value = values.optJSONObject(index) ?: continue
                 val symbol = normalize(value.optString("symbol"))
                 val marketCap = value.optLong("marketCap", 0L)
-                if (symbol.isBlank() || marketCap <= 0L) continue
+                if (symbol.isBlank() || marketCap < 0L) continue
                 add(
                     Member(
                         symbol = symbol,
                         marketCap = marketCap,
                         sector = value.optNullableString("sector"),
-                        industry = value.optNullableString("industry")
+                        industry = value.optNullableString("industry"),
+                        quoteType = value.optString("quoteType", "EQUITY").trim().uppercase()
                     )
                 )
             }

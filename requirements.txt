@@ -8,3 +8,5 @@ loguru>=0.7
 python-dateutil>=2.9
 pytz>=2024.1
 exchange-calendars>=4.5
+fastapi>=0.115
+uvicorn>=0.30

@@ -63,6 +63,8 @@ Corrección:
 
 ### P0-4. Datos generados permanecen versionados
 
+**Estado al 2026-07-21: RESUELTO.** Se retiraron del índice caches, logs, reportes, ZIP y notas de parches; `validate_repository_hygiene.py` impide su reintroducción en CI.
+
 Aunque `.gitignore` excluye `cache/`, `logs/` y reportes generados, el repositorio contiene archivos históricos ya rastreados.
 
 Impacto:

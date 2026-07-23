@@ -20,39 +20,29 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.11.1"
-      - name: Unit tests
+      - name: Unit tests and Android lint
         working-directory: android
-        run: gradle :app:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug --stacktrace
       - name: Assemble debug APK
         working-directory: android
-        run: gradle :app:assembleDebug --stacktrace
-      - name: Sign stable sideload APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Prepare auditable debug artifact
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL 'https://android.googlesource.com/platform/build/+/refs/heads/master/target/product/security/testkey.pk8?format=TEXT' | base64 -d > /tmp/testkey.pk8
-          curl -fsSL 'https://android.googlesource.com/platform/build/+/refs/heads/master/target/product/security/testkey.x509.pem?format=TEXT' | base64 -d > /tmp/testkey.x509.pem
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          "$APKSIGNER" sign \
-            --key /tmp/testkey.pk8 \
-            --cert /tmp/testkey.x509.pem \
-            --out android/app/build/outputs/apk/debug/analista-stable.apk \
-            android/app/build/outputs/apk/debug/app-debug.apk
-          "$APKSIGNER" verify --verbose --print-certs android/app/build/outputs/apk/debug/analista-stable.apk
-      - name: Build release acceptance bundle
+          cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/analista-debug.apk
+      - name: Build debug acceptance bundle
         shell: bash
         run: |
           set -euo pipefail
           APK_DIR="android/app/build/outputs/apk/debug"
-          APK="$APK_DIR/analista-stable.apk"
+          APK="$APK_DIR/analista-debug.apk"
           VERSION_NAME="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)"
           VERSION_CODE="$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' android/app/build.gradle.kts | head -1)"
           APPLICATION_ID="$(sed -n 's/.*applicationId = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)"
           SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}"
           APK_SHA256="$(sha256sum "$APK" | awk '{print $1}')"
-          printf '%s  %s\n' "$APK_SHA256" "analista-stable.apk" > "$APK_DIR/analista-stable.apk.sha256"
+          printf '%s  %s\n' "$APK_SHA256" "analista-debug.apk" > "$APK_DIR/analista-debug.apk.sha256"
           cat > "$APK_DIR/release-manifest.txt" <<EOF
           product=Analista Android V3
           applicationId=$APPLICATION_ID
@@ -65,15 +55,15 @@ jobs:
           strategyDirection=long_only
           buySetupActiveEnabled=false
           portfolioConstructionEnabled=false
-          signing=AOSP_test_key_for_sideload_validation
+          signing=ANDROID_DEBUG_KEY_NOT_FOR_PRODUCTION
           EOF
           cp android/DEVICE_ACCEPTANCE_HYPEROS.md "$APK_DIR/DEVICE_ACCEPTANCE_HYPEROS.md"
       - uses: actions/upload-artifact@v4
         with:
-          name: analista-stable-apk
+          name: analista-debug-apk
           path: |
-            android/app/build/outputs/apk/debug/analista-stable.apk
-            android/app/build/outputs/apk/debug/analista-stable.apk.sha256
+            android/app/build/outputs/apk/debug/analista-debug.apk
+            android/app/build/outputs/apk/debug/analista-debug.apk.sha256
             android/app/build/outputs/apk/debug/release-manifest.txt
             android/app/build/outputs/apk/debug/DEVICE_ACCEPTANCE_HYPEROS.md
           if-no-files-found: error

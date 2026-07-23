@@ -34,9 +34,11 @@ def hard_filter_reasons(row: dict, config: dict) -> list[str]:
     ]
     price = _num(row.get("price"))
     market_cap = _num(row.get("market_cap"))
+    quote_type = str(row.get("quote_type") or "").strip().upper()
+    is_etf = quote_type == "ETF"
     if price is not None and price < min_price:
         reasons.append("price_below_min")
-    if market_cap is None or market_cap < min_market_cap:
+    if not is_etf and market_cap is not None and market_cap < min_market_cap:
         reasons.append("market_cap_below_min")
     return list(dict.fromkeys(reasons))
 

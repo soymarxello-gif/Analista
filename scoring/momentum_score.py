@@ -1,5 +1,5 @@
-\
 import numpy as np
+
 
 def score_momentum(df, config):
     if df is None or df.empty:

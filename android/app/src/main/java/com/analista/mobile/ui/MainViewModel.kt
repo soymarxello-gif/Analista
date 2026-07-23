@@ -11,6 +11,7 @@ import com.analista.mobile.data.CandidateEntity
 import com.analista.mobile.data.CandidateEnrichmentEntity
 import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.FinalDecisionEntity
+import com.analista.mobile.data.InstitutionalEngineCredentialsStore
 import com.analista.mobile.data.MarketSnapshotEntity
 import com.analista.mobile.data.RankingComparisonEntity
 import com.analista.mobile.data.ReplayResultEntity
@@ -96,7 +97,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ?.split(',')
                 ?.count { it.isNotBlank() }
                 ?.takeIf { it > 0 }
-                ?: candidates.value.size.coerceAtLeast(ScanRepository.DEFAULT_TICKERS.size)
+                ?: candidates.value.size
             val base = ReproducibilityDiagnosticsEngine.summarize(expected, manifests)
             val definitionLabels = if (definition == null) {
                 setOf("Definición: NO_DATA")
@@ -114,7 +115,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            ReproducibilityDiagnosticsEngine.summarize(ScanRepository.DEFAULT_TICKERS.size, emptyList()).copy(
+            ReproducibilityDiagnosticsEngine.summarize(0, emptyList()).copy(
                 providers = setOf(
                     RankingDiagnosticsPresenter.present(null).compactLabel,
                     "Definición: NO_DATA",
@@ -134,6 +135,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val alpacaFeed = MutableStateFlow(repository.alpacaCredentials()?.feed ?: "iex")
     val alpacaStatus = MutableStateFlow("NO_PROBADO")
     val testingAlpaca = MutableStateFlow(false)
+    val institutionalEngineConfigured = MutableStateFlow(app.institutionalEngineCredentials.isConfigured())
+    val institutionalEngineStatus = MutableStateFlow("NO_PROBADO")
+    val testingInstitutionalEngine = MutableStateFlow(false)
     val universeStatus = MutableStateFlow("NO_PREPARADO")
     val universeSource = MutableStateFlow("NONE")
     val universeCount = MutableStateFlow(0)
@@ -158,21 +162,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             running.value = true
             error.value = null
             runCatching {
-                val universe = app.dynamicScanCoordinator.prepare()
-                officialSources.value = OfficialSourceUiState.fromSettings(app.officialSourceCoordinator.loadSettings()).copy(
-                    status = "REFRESHED_BEFORE_SCAN",
-                    refreshedAtUtc = System.currentTimeMillis()
-                )
-                universeStatus.value = universe.status
-                universeSource.value = universe.source
-                universeCount.value = universe.symbols.size
                 repository.runScan()
             }
                 .onSuccess { run ->
+                    universeStatus.value = run.status
+                    universeSource.value = "INSTITUTIONAL_POINT_IN_TIME_API"
+                    universeCount.value = repository.lastInstitutionalUniverseCount
                     selectedRunId.value = run.runId
-                    replayRunning.value = true
-                    app.replayService.replay(run.runId)
-                    replayRunning.value = false
                 }
                 .onFailure {
                     replayRunning.value = false
@@ -180,6 +176,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             running.value = false
         }
+    }
+
+    fun saveAndTestInstitutionalEngine(baseUrl: String, bearerToken: String) {
+        if (testingInstitutionalEngine.value) return
+        viewModelScope.launch {
+            testingInstitutionalEngine.value = true
+            error.value = null
+            runCatching {
+                app.institutionalEngineCredentials.save(
+                    InstitutionalEngineCredentialsStore.Credentials(baseUrl.trim(), bearerToken.trim())
+                )
+                val status = app.institutionalEngineClient.test()
+                institutionalEngineConfigured.value = true
+                institutionalEngineStatus.value = status.uppercase()
+            }.onFailure {
+                app.institutionalEngineCredentials.clear()
+                institutionalEngineConfigured.value = false
+                institutionalEngineStatus.value = "ERROR"
+                error.value = it.message ?: "No fue posible conectar con el motor institucional"
+            }
+            testingInstitutionalEngine.value = false
+        }
+    }
+
+    fun clearInstitutionalEngine() {
+        app.institutionalEngineCredentials.clear()
+        institutionalEngineConfigured.value = false
+        institutionalEngineStatus.value = "BORRADO"
     }
 
     fun replaySelected() {

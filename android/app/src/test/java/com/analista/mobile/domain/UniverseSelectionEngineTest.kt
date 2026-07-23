@@ -50,9 +50,18 @@ class UniverseSelectionEngineTest {
         )
         assertFalse(result.eligible)
         assertEquals(
-            setOf("price_below_min", "market_cap_below_min", "dollar_volume_below_min", "spread_unacceptable", "excluded_security_type"),
+            setOf("price_below_min", "dollar_volume_below_min", "spread_unacceptable"),
             result.reasons.toSet()
         )
+    }
+
+    @Test
+    fun liquidEtfIsEligibleWithoutCompanyMarketCap() {
+        val result = UniverseSelectionEngine.assess(
+            input(type = "ETF", marketCap = null, dollarVolume = 50_000_000.0, spread = 0.20)
+        )
+        assertTrue(result.eligible)
+        assertFalse("market_cap_unverified" in result.reasons)
     }
 
     @Test

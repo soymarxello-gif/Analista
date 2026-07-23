@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
 from typing import Any
-import json
 
 from engine.source_health import build_health_summary
 

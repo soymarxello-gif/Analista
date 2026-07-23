@@ -23,6 +23,8 @@ jobs:
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
       - name: Validate project structure
         run: python tools/validate_project.py
+      - name: Validate repository hygiene
+        run: python tools/validate_repository_hygiene.py
       - name: Validate audited config
         run: python -c "from tools.validate_audited_logic import validate_config; validate_config()"
       - name: Validate final score
@@ -61,7 +63,9 @@ jobs:
         run: python tools/validate_market_clock.py
       - name: Validate immutable backtest registry
         run: python tools/validate_backtest_registry.py
+      - name: Validate institutional point-in-time engine
+        run: python tools/validate_institutional_engine.py
       - name: Run pytest regression suite
         run: pytest -q
-      - name: Ruff critical import and syntax check
-        run: ruff check . --select E9,F63,F7,F82
+      - name: Ruff full lint
+        run: ruff check .

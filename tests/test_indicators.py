@@ -1,5 +1,7 @@
 import pandas as pd
+
 from indicators.pipeline import add_all_indicators
+
 
 def test_indicators_basic():
     df = pd.DataFrame({

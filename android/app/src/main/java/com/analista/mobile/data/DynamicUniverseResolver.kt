@@ -33,35 +33,37 @@ class DynamicUniverseResolver(
                 .filter { it.tradable && it.status == "active" && it.assetClass == "us_equity" }
                 .mapNotNull { asset ->
                     val info = metadataBySymbol[asset.symbol] ?: return@mapNotNull null
-                    val cap = info.marketCap ?: return@mapNotNull null
-                    if (cap < TradingPolicy.MIN_MARKET_CAP) return@mapNotNull null
-                    asset.symbol to cap
+                    val isEtf = info.name?.uppercase()?.let { it.contains(" ETF") || it.contains("EXCHANGE TRADED FUND") } == true
+                    val cap = info.marketCap ?: if (isEtf) 0L else return@mapNotNull null
+                    if (!isEtf && cap < TradingPolicy.MIN_MARKET_CAP) return@mapNotNull null
+                    asset.symbol
                 }
-                .sortedByDescending { it.second }
-                .take(PRELIMINARY_LIMIT)
-                .map { it.first }
+                .distinct()
+                .sorted()
                 .toList()
             if (preliminary.isNotEmpty()) {
                 val historyBatch = marketData.dailyHistories(preliminary)
-                val selected = DynamicUniverseEngine.select(
+                val eligible = DynamicUniverseEngine.select(
                     assets = catalog.assets,
                     metadata = metadata,
-                    histories = historyBatch.histories.mapValues { it.value.bars },
-                    maximumSymbols = MAXIMUM_SYMBOLS,
-                    maximumPerSector = MAXIMUM_PER_SECTOR
+                    histories = historyBatch.histories.mapValues { it.value.bars }
                 )
-                if (selected.size >= MINIMUM_DYNAMIC_SYMBOLS) {
-                    val members = selected.map {
-                        DynamicUniverseStore.Member(it.symbol, it.marketCap, it.sector, it.industry)
+                if (historyBatch.histories.isNotEmpty()) {
+                    val discovered = DynamicUniverseEngine.discover(
+                        eligible = eligible,
+                        histories = historyBatch.histories.mapValues { it.value.bars }
+                    )
+                    val members = discovered.map {
+                        DynamicUniverseStore.Member(it.symbol, it.marketCap, it.sector, it.industry, it.quoteType)
                     }
-                    store.save(DynamicUniverseStore.Snapshot(members, LIVE_SOURCE, nowUtc))
+                    if (members.isNotEmpty()) store.save(DynamicUniverseStore.Snapshot(members, LIVE_SOURCE, nowUtc))
                     recordMetadata(members, LIVE_SOURCE, nowUtc)
                     val symbols = members.map { it.symbol }
                     return@coroutineScope Resolution(
                         symbols = symbols,
                         histories = historyBatch.histories.filterKeys { it in symbols },
                         source = LIVE_SOURCE,
-                        status = "LIVE",
+                        status = if (symbols.isEmpty()) "LIVE_NO_SETUPS" else "LIVE",
                         fallbackUsed = historyBatch.fallbackCount > 0,
                         catalogStatus = catalog.status,
                         historyStatus = historyBatch.primarySource
@@ -107,7 +109,7 @@ class DynamicUniverseResolver(
                 SecurityMetadataRegistry.Metadata(
                     ticker = it.symbol,
                     marketCap = it.marketCap,
-                    quoteType = "EQUITY",
+                    quoteType = it.quoteType,
                     sector = it.sector,
                     industry = it.industry,
                     source = source,
@@ -119,10 +121,6 @@ class DynamicUniverseResolver(
 
     companion object {
         const val LIVE_SOURCE = "ALPACA_ASSETS+NASDAQ_METADATA+ALPACA_BARS"
-        private const val PRELIMINARY_LIMIT = 350
-        private const val MAXIMUM_SYMBOLS = 80
-        private const val MAXIMUM_PER_SECTOR = 20
-        private const val MINIMUM_DYNAMIC_SYMBOLS = 20
         private const val MINIMUM_FALLBACK_SYMBOLS = 10
         private const val MINIMUM_HISTORY_BARS = 220
     }
