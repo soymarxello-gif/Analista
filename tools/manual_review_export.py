@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from engine.report_engine import recommendation_for_row
+
 
 MANUAL_REVIEW_COLUMNS = [
     "rank",
@@ -20,6 +22,23 @@ MANUAL_REVIEW_COLUMNS = [
     "manual_quote_check_required",
     "quote_recheck_priority",
     "quote_recheck_reason",
+    "operational_readiness_score",
+    "operational_readiness_bucket",
+    "asset_attractiveness_score",
+    "timing_quality_score",
+    "momentum_confirmation_score",
+    "scenario_quality_adjustment",
+    "timing_penalty_reason",
+    "momentum_penalty_reason",
+    "engine_block_reason",
+    "execution_readiness_status",
+    "operational_readiness_reason",
+    "technical_prefilter_status",
+    "technical_prefilter_reason",
+    "daily_macd_prefilter_status",
+    "weekly_macd_prefilter_status",
+    "ema20_extension_prefilter_status",
+    "ema20_extension_reference_source",
     "final_trade_score",
     "setup_quality_score",
     "final_score",
@@ -37,6 +56,7 @@ MANUAL_REVIEW_COLUMNS = [
     "execution_quote_quality",
     "options_bias",
     "options_confidence",
+    "options_scoring_status",
     "sector",
     "industry",
     "penalty_reasons",
@@ -51,7 +71,23 @@ MANUAL_REVIEW_COLUMNS = [
     "scenario_guardrail_reason",
     "momentum_state",
     "extension_state",
+    "ema20_extension_status",
     "entry_timing_status",
+    "macd_histogram_state",
+    "weekly_macd_histogram_state",
+    "weekly_macd_hist_improving",
+    "weekly_macd_hist",
+    "weekly_macd_hist_change_1w",
+    "weekly_macd_hist_change_2w",
+    "sector_benchmark_symbol",
+    "sector_weekly_macd_hist",
+    "sector_weekly_macd_slope_1w",
+    "sector_weekly_macd_prev_slope_1w",
+    "sector_weekly_macd_acceleration",
+    "sector_weekly_macd_state",
+    "sector_weekly_macd_acceleration_state",
+    "sector_context_status",
+    "sector_context_reason",
     "required_confirmation",
     "engine_recommendation",
     "shadow_entry",
@@ -60,6 +96,11 @@ MANUAL_REVIEW_COLUMNS = [
     "shadow_rr",
     "shadow_stop_atr_multiple",
     "shadow_level_status",
+    "technical_ema20",
+    "technical_distance_ema20_pct",
+    "technical_distance_ema20_atr",
+    "technical_ema20_slope_5d_pct",
+    "technical_macd_hist_change_3d",
 ]
 
 
@@ -115,6 +156,14 @@ def build_manual_review_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     if "recommendation" not in out.columns:
         out["recommendation"] = ""
+    else:
+        out["recommendation"] = out["recommendation"].fillna("").astype(str)
+
+    missing_recommendation = out["recommendation"].str.strip().eq("")
+    if missing_recommendation.any():
+        out.loc[missing_recommendation, "recommendation"] = out.loc[
+            missing_recommendation
+        ].apply(lambda row: recommendation_for_row(row.to_dict()), axis=1)
 
     out["_review_group"] = out.apply(lambda row: _review_group(row.to_dict()), axis=1)
 

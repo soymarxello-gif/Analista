@@ -17,6 +17,7 @@ env/
 Thumbs.db
 .vscode/
 .idea/
+.codex/
 
 # Secrets
 .env

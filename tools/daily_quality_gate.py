@@ -4,6 +4,7 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -94,6 +95,33 @@ def _parse_status_from_text(text: str) -> str:
     return "UNKNOWN"
 
 
+def _effective_daily_validation_status(summary_status: str, progress_path: Path) -> str:
+    if not progress_path.exists():
+        return summary_status
+    try:
+        data = json.loads(progress_path.read_text(encoding="utf-8"))
+    except Exception:
+        return summary_status
+    if isinstance(data, dict) and str(data.get("status", "")).upper() == "RUNNING":
+        phase = str(data.get("phase", "")).lower()
+        current_step = str(data.get("current_step", "")).lower()
+        terminal_summary = str(summary_status or "").upper() in {"PASS", "WARN", "FAIL"}
+        if (
+            terminal_summary
+            and phase == "final_refresh_steps"
+            and current_step
+            in {
+                "daily_run_manifest",
+                "daily_quality_gate",
+                "daily_operator_index",
+                "release_readiness_audit",
+            }
+        ):
+            return summary_status
+        return "RUNNING"
+    return summary_status
+
+
 def _safe_read_csv(path: Path) -> tuple[pd.DataFrame, str]:
     if not path.exists():
         return pd.DataFrame(), "missing"
@@ -177,9 +205,51 @@ def _collect_scan_snapshot(scan_df: pd.DataFrame, manual_df: pd.DataFrame) -> di
     return snapshot
 
 
-def _collect_artifact_freshness(scan_path: Path, manual_path: Path) -> dict:
+def _modified_datetime(path: Path) -> datetime | None:
+    if not path.exists():
+        return None
+    return datetime.fromtimestamp(path.stat().st_mtime)
+
+
+def _age_hours(modified: datetime | None, now: datetime) -> float | None:
+    if modified is None:
+        return None
+    return round(max((now - modified).total_seconds(), 0.0) / 3600.0, 2)
+
+
+def _collect_artifact_freshness(
+    scan_path: Path,
+    manual_path: Path,
+    macro_path: Path | None = None,
+    *,
+    now: datetime | None = None,
+    local_timezone: str = "America/Santiago",
+) -> dict:
+    local_now = now or datetime.now()
+    if local_now.tzinfo is None:
+        local_now = local_now.replace(tzinfo=ZoneInfo(local_timezone))
+    local_now = local_now.astimezone(ZoneInfo(local_timezone))
+
     scan_modified = scan_path.stat().st_mtime if scan_path.exists() else None
     manual_modified = manual_path.stat().st_mtime if manual_path.exists() else None
+    macro_modified = macro_path.stat().st_mtime if macro_path is not None and macro_path.exists() else None
+    scan_dt = _modified_datetime(scan_path)
+    manual_dt = _modified_datetime(manual_path)
+    macro_dt = _modified_datetime(macro_path) if macro_path is not None else None
+    scan_local = scan_dt.replace(tzinfo=ZoneInfo(local_timezone)).astimezone(ZoneInfo(local_timezone)) if scan_dt else None
+    scan_age_hours = _age_hours(scan_dt, local_now.replace(tzinfo=None))
+    manual_age_hours = _age_hours(manual_dt, local_now.replace(tzinfo=None))
+    macro_age_hours = _age_hours(macro_dt, local_now.replace(tzinfo=None))
+    scan_is_current_local_date = bool(scan_local and scan_local.date() == local_now.date())
+    is_business_day = local_now.weekday() < 5
+    scan_too_old = bool(scan_age_hours is not None and scan_age_hours > 30.0)
+    scan_freshness_status = "MISSING"
+    if scan_dt is not None:
+        scan_freshness_status = (
+            "WARN"
+            if scan_too_old or (is_business_day and not scan_is_current_local_date)
+            else "PASS"
+        )
     manual_is_stale = bool(
         scan_modified is not None
         and manual_modified is not None
@@ -192,7 +262,15 @@ def _collect_artifact_freshness(scan_path: Path, manual_path: Path) -> dict:
         "manual_review_modified": datetime.fromtimestamp(manual_modified).isoformat(timespec="seconds")
         if manual_modified is not None
         else "",
+        "macro_modified": datetime.fromtimestamp(macro_modified).isoformat(timespec="seconds")
+        if macro_modified is not None
+        else "",
         "manual_review_is_stale": manual_is_stale,
+        "scan_age_hours": scan_age_hours,
+        "manual_review_age_hours": manual_age_hours,
+        "macro_age_hours": macro_age_hours,
+        "scan_is_current_local_date": scan_is_current_local_date,
+        "scan_freshness_status": scan_freshness_status,
     }
 
 
@@ -237,9 +315,26 @@ def _scan_logic_checks(scan_df: pd.DataFrame, issues: list[dict]) -> dict:
             )
 
     if {"setup_type", "signal"}.issubset(scan_df.columns):
+        technical_prefilter_failed = (
+            scan_df.get("technical_prefilter_status", pd.Series("", index=scan_df.index))
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .eq("FAIL")
+        )
+        allowed_technical_avoid = (
+            technical_prefilter_failed
+            & scan_df["signal"].fillna("").astype(str).str.upper().eq("AVOID")
+            & scan_df.get("recommendation", pd.Series("", index=scan_df.index))
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .eq("AVOID_FOR_NOW")
+        )
         mask = (
             scan_df["setup_type"].fillna("").astype(str).eq("NO_VALID_SETUP")
             & ~scan_df["signal"].fillna("").astype(str).eq("VETO")
+            & ~allowed_technical_avoid
         )
         checks["no_valid_setup_not_veto_rows"] = int(mask.sum())
 
@@ -281,13 +376,14 @@ def _scan_logic_checks(scan_df: pd.DataFrame, issues: list[dict]) -> dict:
     return checks
 
 
-def collect_daily_quality_gate(root: Path = ROOT) -> dict:
+def collect_daily_quality_gate(root: Path = ROOT, now: datetime | None = None) -> dict:
     root = root.resolve()
     reports = root / "reports"
 
     issues: list[dict] = []
 
     daily_summary_path = reports / "daily_validation_summary.txt"
+    daily_progress_path = reports / "daily_validation_progress_latest.json"
     scan_path = reports / "latest_scan_audited.csv"
     manual_path = reports / "manual_review_latest.csv"
 
@@ -315,7 +411,11 @@ def collect_daily_quality_gate(root: Path = ROOT) -> dict:
             )
 
     daily_text, daily_error = _read_text(daily_summary_path)
-    daily_status = _parse_status_from_text(daily_text) if not daily_error else "MISSING"
+    daily_summary_status = _parse_status_from_text(daily_text) if not daily_error else "MISSING"
+    daily_status = _effective_daily_validation_status(
+        daily_summary_status,
+        daily_progress_path,
+    )
 
     if daily_error:
         _add_issue(
@@ -323,6 +423,13 @@ def collect_daily_quality_gate(root: Path = ROOT) -> dict:
             "FAIL",
             "daily_validation_summary.txt",
             f"No se pudo leer daily_validation_summary.txt: {daily_error}",
+        )
+    elif daily_status == "RUNNING":
+        _add_issue(
+            issues,
+            "WARN",
+            "daily_validation_summary.txt",
+            "daily_validation esta en curso; usando progreso incremental.",
         )
     elif daily_status == "FAIL":
         _add_issue(
@@ -480,13 +587,25 @@ def collect_daily_quality_gate(root: Path = ROOT) -> dict:
 
     logic_checks = _scan_logic_checks(scan_df, issues)
     snapshot = _collect_scan_snapshot(scan_df, manual_df)
-    artifact_freshness = _collect_artifact_freshness(scan_path, manual_path)
+    artifact_freshness = _collect_artifact_freshness(
+        scan_path,
+        manual_path,
+        reports / "macro_event_context_latest.json",
+        now=now,
+    )
     if artifact_freshness["manual_review_is_stale"]:
         _add_issue(
             issues,
             "WARN",
             "manual_review_latest.csv",
             "manual_review_latest.csv es anterior al scan actual; regenerar reportes derivados.",
+        )
+    if artifact_freshness["scan_freshness_status"] == "WARN":
+        _add_issue(
+            issues,
+            "WARN",
+            "latest_scan_audited.csv",
+            "El scan auditado no corresponde al día local actual o tiene más de 30 horas.",
         )
 
     status = _derive_status(issues)
@@ -500,7 +619,9 @@ def collect_daily_quality_gate(root: Path = ROOT) -> dict:
         "components": {
             "daily_validation": {
                 "status": daily_status,
+                "summary_status": daily_summary_status,
                 "path": _relative(daily_summary_path, root),
+                "progress_path": _relative(daily_progress_path, root),
                 "error": daily_error,
             },
             "project_preflight": {
@@ -534,6 +655,11 @@ def collect_daily_quality_gate(root: Path = ROOT) -> dict:
         },
         "scan_snapshot": snapshot,
         "artifact_freshness": artifact_freshness,
+        "scan_age_hours": artifact_freshness.get("scan_age_hours"),
+        "manual_review_age_hours": artifact_freshness.get("manual_review_age_hours"),
+        "macro_age_hours": artifact_freshness.get("macro_age_hours"),
+        "scan_is_current_local_date": artifact_freshness.get("scan_is_current_local_date", False),
+        "scan_freshness_status": artifact_freshness.get("scan_freshness_status", "UNKNOWN"),
         "logic_checks": logic_checks,
         "issues": issues,
         "files": files,
@@ -625,6 +751,12 @@ def build_daily_quality_gate_markdown(data: dict) -> str:
     lines.append("")
     lines.append(f"- scan_modified: {freshness.get('scan_modified', '')}")
     lines.append(f"- manual_review_modified: {freshness.get('manual_review_modified', '')}")
+    lines.append(f"- macro_modified: {freshness.get('macro_modified', '')}")
+    lines.append(f"- scan_age_hours: {freshness.get('scan_age_hours', '')}")
+    lines.append(f"- manual_review_age_hours: {freshness.get('manual_review_age_hours', '')}")
+    lines.append(f"- macro_age_hours: {freshness.get('macro_age_hours', '')}")
+    lines.append(f"- scan_is_current_local_date: {freshness.get('scan_is_current_local_date', False)}")
+    lines.append(f"- scan_freshness_status: {freshness.get('scan_freshness_status', 'UNKNOWN')}")
     lines.append(f"- manual_review_is_stale: {freshness.get('manual_review_is_stale', False)}")
     lines.append("")
 

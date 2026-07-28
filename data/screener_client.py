@@ -9,8 +9,10 @@ import pandas as pd
 
 try:
     import yfinance as yf
+    from yfinance import EquityQuery
 except Exception:  # pragma: no cover
     yf = None
+    EquityQuery = None
 
 
 @dataclass
@@ -86,6 +88,96 @@ def _quote_to_row(q: dict, channel_name: str, rank_in_channel: int, channel_weig
     }
 
 
+def _custom_query_from_config(query_cfg: dict) -> Any:
+    if yf is None or EquityQuery is None:
+        return None
+
+    exchanges = query_cfg.get("exchanges", ["NMS", "NYQ", "ASE"])
+    min_market_cap = query_cfg.get("min_market_cap_usd", 2_500_000_000)
+    min_price = query_cfg.get("min_price", 10)
+    min_avg_volume_3m = query_cfg.get("min_avg_volume_3m", 250_000)
+
+    operands = [
+        EquityQuery("is-in", ["exchange", *exchanges]),
+        EquityQuery("eq", ["region", query_cfg.get("region", "us")]),
+        EquityQuery("gte", ["intradaymarketcap", min_market_cap]),
+        EquityQuery("gte", ["intradayprice", min_price]),
+        EquityQuery("gte", ["avgdailyvol3m", min_avg_volume_3m]),
+    ]
+    return EquityQuery("and", operands)
+
+
+def _run_custom_query(
+    *,
+    query_name: str,
+    query_cfg: dict,
+    screener_cfg: dict,
+    cache_dir: Path,
+    warnings: list[str],
+) -> list[dict]:
+    if yf is None or EquityQuery is None:
+        warnings.append(f"Custom screener '{query_name}' no disponible: yfinance EquityQuery ausente.")
+        return []
+
+    query = _custom_query_from_config(query_cfg)
+    if query is None:
+        return []
+
+    target_size = int(query_cfg.get("target_size", screener_cfg.get("target_size", 0)) or 0)
+    page_size = min(int(query_cfg.get("page_size", screener_cfg.get("page_size", 250))), 250)
+    max_pages = int(query_cfg.get("max_pages", screener_cfg.get("max_pages_per_custom_query", 40)) or 40)
+    sort_field = query_cfg.get("sort_field", screener_cfg.get("sort_field", "avgdailyvol3m"))
+    sort_asc = bool(query_cfg.get("sort_asc", screener_cfg.get("sort_asc", False)))
+    channel_weight = _channel_weight(query_name, screener_cfg)
+    rows: list[dict] = []
+    rank_offset = 0
+
+    offset = 0
+    page = 0
+    while True:
+        if target_size > 0 and offset >= target_size:
+            break
+        if target_size <= 0 and page >= max_pages:
+            warnings.append(
+                f"Custom screener '{query_name}' alcanzó el límite técnico de {max_pages} páginas."
+            )
+            break
+        size = page_size if target_size <= 0 else min(page_size, target_size - offset)
+        if size <= 0:
+            break
+        try:
+            payload = yf.screen(
+                query,
+                offset=offset,
+                size=size,
+                sortField=sort_field,
+                sortAsc=sort_asc,
+            )
+            if screener_cfg.get("save_raw_screener_response", True):
+                with (cache_dir / f"{query_name}_{offset}.json").open("w", encoding="utf-8") as f:
+                    json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
+
+            quotes = _extract_quotes(payload)
+            if not quotes:
+                warnings.append(f"Custom screener '{query_name}' sin quotes en offset {offset}.")
+                break
+
+            for rank, q in enumerate(quotes, start=rank_offset + 1):
+                row = _quote_to_row(q, query_name, rank_in_channel=rank, channel_weight=channel_weight)
+                if row:
+                    rows.append(row)
+            rank_offset += len(quotes)
+            if len(quotes) < size:
+                break
+        except Exception as exc:
+            warnings.append(f"Fallo custom screener '{query_name}' offset {offset}: {exc}")
+            break
+        offset += size
+        page += 1
+
+    return rows
+
+
 def _aggregate_rows(df: pd.DataFrame, screener_cfg: dict) -> pd.DataFrame:
     if df.empty:
         return df
@@ -159,7 +251,7 @@ def _aggregate_rows(df: pd.DataFrame, screener_cfg: dict) -> pd.DataFrame:
         out = out.sort_values(sort_cols, ascending=ascending).reset_index(drop=True)
 
     max_universe = screener_cfg.get("max_universe_after_dedupe")
-    if max_universe:
+    if max_universe is not None and int(max_universe or 0) > 0:
         out = out.head(int(max_universe)).reset_index(drop=True)
 
     return out
@@ -178,6 +270,20 @@ def run_screeners(config: dict) -> ScreenerResult:
     if yf is None:
         warnings.append("yfinance no está disponible. Se usará lista fallback.")
     else:
+        custom_queries = screener_cfg.get("custom_queries", {})
+        for query_name, query_cfg in custom_queries.items():
+            if not query_cfg or not query_cfg.get("enabled", False):
+                continue
+            rows.extend(
+                _run_custom_query(
+                    query_name=query_name,
+                    query_cfg=query_cfg,
+                    screener_cfg=screener_cfg,
+                    cache_dir=cache_dir,
+                    warnings=warnings,
+                )
+            )
+
         for channel_name, channel_cfg in channels.items():
             if not channel_cfg or not channel_cfg.get("enabled", False):
                 continue

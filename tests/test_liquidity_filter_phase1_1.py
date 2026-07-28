@@ -46,6 +46,8 @@ def test_valid_wide_spread_can_fail_if_configured():
 
     assert result["bid_ask_valid"] is True
     assert result["liquidity_pass"] is False
+    assert result["liquidity_core_pass"] is True
+    assert result["liquidity_spread_pass"] is False
 
 
 def test_nominal_share_volume_is_not_a_hard_filter_when_dollar_volume_passes():
@@ -93,4 +95,38 @@ def test_long_term_dollar_volume_below_floor_fails():
     assert result["dollar_volume_20d"] >= 20_000_000
     assert result["dollar_volume_60d"] < 18_000_000
     assert result["liquidity_pass"] is False
-    assert "dollar_volume_60d" in result["liquidity_warning"]
+    assert "liquidity_60d" in result["liquidity_warning"]
+
+
+def test_market_cap_adjusted_turnover_can_pass_instead_of_raw_dollar_floor():
+    df = pd.DataFrame(
+        {
+            "close": [100.0] * 80,
+            "volume": [450_000] * 80,
+        }
+    )
+    cfg = {
+        "liquidity": {
+            "min_price": 10,
+            "min_dollar_volume_20d": 60_000_000,
+            "min_dollar_volume_60d": 55_000_000,
+            "min_median_to_mean_volume_ratio": 0.5,
+            "use_market_cap_adjusted_liquidity": True,
+            "market_cap_tiers": {
+                "mega": 100_000_000_000,
+                "large": 10_000_000_000,
+                "mid": 2_500_000_000,
+            },
+            "min_turnover_20d": {"large": 0.00045, "default": 0.0008},
+            "min_turnover_60d": {"large": 0.00035, "default": 0.00065},
+        }
+    }
+
+    result = compute_liquidity("LARGE_CAP", df, cfg, {"market_cap": 10_000_000_000})
+
+    assert result["dollar_volume_20d"] < 60_000_000
+    assert result["dollar_volume_60d"] < 55_000_000
+    assert result["liquidity_formula_pass_20d"] is True
+    assert result["liquidity_formula_pass_60d"] is True
+    assert result["liquidity_market_cap_tier"] == "large"
+    assert result["liquidity_pass"] is True

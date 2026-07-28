@@ -113,7 +113,9 @@ def select_canonical_daily_top_five(data: pd.DataFrame) -> pd.DataFrame:
         else:
             canonical["_canonical_score"] = pd.to_numeric(
                 canonical.get(
-                    "final_trade_score",
+                    "operational_readiness_score"
+                    if "operational_readiness_score" in canonical.columns
+                    else "final_trade_score",
                     pd.Series(index=canonical.index, dtype=float),
                 ),
                 errors="coerce",

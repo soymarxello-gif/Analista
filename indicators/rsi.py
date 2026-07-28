@@ -1,9 +1,12 @@
 \
 import pandas as pd
 
+from .adjusted import price_series
+
+
 def add_rsi(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     out = df.copy()
-    delta = out["close"].diff()
+    delta = price_series(out, "close", "adj_close").diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
     avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()

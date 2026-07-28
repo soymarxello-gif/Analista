@@ -2,7 +2,7 @@
 
 ## System Objective
 
-Analista is a conservative, auditable scanner for long-only swing trading candidates in US-listed stocks and ETFs. Its purpose is to rank and explain candidates for human review, not to automate trading.
+Analista is a conservative, auditable scanner for long-only swing trading candidates in US-listed stocks. ETFs can remain available as market, sector, or macro context when configured, but the current operating configuration does not treat ETFs as automatic tradable candidates. Its purpose is to rank and explain candidates for human review, not to automate trading.
 
 The system combines:
 
@@ -95,19 +95,14 @@ git -c safe.directory="*" status --short
 3. `reports/live_quote_recheck_latest.md`
 4. `reports/trade_decision_checklist_latest.md`
 5. `reports/trade_candidate_cards_latest.md`
-6. `reports/paper_trading_journal_latest.md`
-7. `reports/paper_trade_followup_latest.md`
-8. `reports/paper_trade_close_latest.md`
-9. `reports/paper_trading_cycle_audit_latest.md`
-10. `reports/gui_weekly_operational_review_latest.md`
-11. `reports/gui_evidence_collection_window_latest.md`
-12. `reports/manual_review_top.md`
-13. `reports/daily_run_manifest_latest.md`
-14. `reports/release_readiness_latest.md`
-15. `reports/ui_data_contract_audit_latest.md`
-16. `reports/streamlit_smoke_test_latest.md`
-17. `reports/gui_actions_audit_latest.md`
-18. `reports/daily_validation_summary.txt`
+6. `reports/simple_candidate_posttest_latest.md`
+7. `reports/manual_review_top.md`
+8. `reports/daily_run_manifest_latest.md`
+9. `reports/release_readiness_latest.md`
+10. `reports/ui_data_contract_audit_latest.md`
+11. `reports/streamlit_smoke_test_latest.md`
+12. `reports/gui_actions_audit_latest.md`
+13. `reports/daily_validation_summary.txt`
 
 ## Signals
 
@@ -143,78 +138,44 @@ Recommendations are not orders and do not authorize automatic execution.
 
 `trade_candidate_cards` converts checklist rows into readable per-ticker manual cards. Cards include operational levels, quote state, scores, options context, warnings, blockers, required actions, and a pending manual decision.
 
-## Paper Trading Journal
+## Operational Readiness
 
-`paper_trading_journal` imports reviewed candidates into an auditable simulated journal.
+Analista separates attractive candidates from candidates that are timely enough
+for manual execution review. `final_trade_score` and `final_score` keep their
+original meaning, while these derived fields describe current operability:
+
+- `operational_readiness_score`: conservative timing/readiness score used to
+  rank manual review candidates.
+- `asset_attractiveness_score`: quality of the asset without implying that the
+  current entry is timely.
+- `timing_quality_score`: timing quality based on extension, trigger location,
+  and distance from moving-average context.
+- `momentum_confirmation_score`: quality of current momentum confirmation.
+- `ema20_extension_status`: `HEALTHY`, `CAUTION`, `OVEREXTENDED`, or
+  `LATE_ENTRY`.
+- `macd_histogram_state`: MACD histogram direction, including bullish
+  inflection below zero.
+
+Late entries, overextension above EMA20, weak momentum, deteriorating MACD
+histogram, invalid structure, and scenario conflicts can degrade or block a
+candidate even when the score remains attractive. This layer can only degrade or
+preserve a candidate; it must not promote a setup into `TRIGGER_CONFIRMED`.
+
+## Automatic Simple Posttest
+
+`simple_candidate_posttest` is the preferred automatic feedback loop. It selects only candidates saved with `automatic_posttest_status = BUY_NOW` from previous reported sessions and evaluates what happened after 5, 10, and 15 sessions.
 
 ```powershell
-python .\tools\paper_trading_journal.py --import-today
+python .\tools\simple_candidate_posttest.py
 ```
 
 The tool writes:
 
-- `data/paper_trading_journal.csv`
-- `reports/paper_trading_journal_latest.csv`
-- `reports/paper_trading_journal_latest.md`
-- `reports/paper_trading_journal_latest.json`
+- `reports/simple_candidate_posttest_latest.csv`
+- `reports/simple_candidate_posttest_latest.md`
+- `reports/simple_candidate_posttest_latest.json`
 
-Allowed manual decisions are `PENDING_REVIEW`, `PAPER_WATCH`, `PAPER_ENTER`, `SKIP`, `BLOCKED`, and `NEEDS_LIVE_QUOTE_RECHECK`. `PAPER_ENTER` is paper-only and requires simulated entry, stop, and target levels. Candidates marked `BLOCKED` cannot be paper-entered, and candidates marked `NEEDS_LIVE_QUOTE_RECHECK` require explicit live quote confirmation before any simulated entry.
-
-The journal does not connect to a broker and does not modify scanner outputs, scores, config, weights, thresholds, or signals.
-
-## Paper Trade Follow-Up
-
-`paper_trade_followup` reviews open paper trades against latest price, simulated entry, stop, and target.
-
-```powershell
-python .\tools\paper_trade_followup.py
-```
-
-The tool writes:
-
-- `reports/paper_trade_followup_latest.csv`
-- `reports/paper_trade_followup_latest.md`
-- `reports/paper_trade_followup_latest.json`
-
-Follow-up decisions are review labels only: hold paper, review near stop, review near target, stop hit review close, target hit review close, data unavailable, or invalidated review. The tool does not close trades automatically, does not modify `data/paper_trading_journal.csv`, does not connect to a broker, and does not send orders.
-
-## Paper Trade Close
-
-`paper_trade_close` lists open paper trades, closes a selected paper trade only when `--close` is explicitly supplied, and optionally exports closed paper trades to calibration outcomes only when `--export-outcomes` is supplied.
-
-```powershell
-python .\tools\paper_trade_close.py --list-open
-python .\tools\paper_trade_close.py --close JOURNAL_ID --exit-price 123.45 --reason TARGET_REACHED_MANUAL
-python .\tools\paper_trade_close.py --export-outcomes
-python .\tools\paper_trade_close.py --summary
-```
-
-The tool writes:
-
-- `reports/paper_trade_close_latest.csv`
-- `reports/paper_trade_close_latest.md`
-- `reports/paper_trade_close_latest.json`
-
-With `--close`, it updates only the selected row in `data/paper_trading_journal.csv` with exit date, exit price, close reason, close timestamp, PnL percent, R multiple, and export markers. With `--export-outcomes`, it appends non-duplicated closed paper trades to `data/trade_outcomes.csv`.
-
-The daily workflow runs `paper_trade_close --summary` only. No paper trade is closed or exported by daily validation. The tool is paper trading only, uses no broker connection, sends no real orders, and does not modify scanner outputs, scores, config, weights, thresholds, or signals.
-
-## Paper Trading Cycle Audit
-
-`paper_trading_cycle_audit` verifies that the paper workflow can flow from candidate review to journal, follow-up, manual close, outcome export, calibration, and observational recommendations.
-
-```powershell
-python .\tools\paper_trading_cycle_audit.py
-```
-
-The tool writes:
-
-- `reports/paper_trading_cycle_audit_latest.md`
-- `reports/paper_trading_cycle_audit_latest.json`
-
-It checks required journal columns, pending review rows, open paper trades, closed paper trades, pending exports, exported outcomes, duplicate `source_journal_id` values, exported journal rows without matching outcomes, orphan paper outcomes, calibration status, recommendation status, no-real-order notices, and broker/order guardrails.
-
-The audit is read-only. It does not modify `data/paper_trading_journal.csv`, `data/trade_outcomes.csv`, scanner outputs, scores, config, weights, thresholds, or signals.
+The report is observational. It uses only automatic scanner memory, does not modify scanner outputs, scores, config, weights, thresholds, signals, trade outcomes, or execution state.
 
 ## UI Data Contract
 
@@ -229,11 +190,15 @@ The tool writes:
 - `reports/ui_data_contract_audit_latest.md`
 - `reports/ui_data_contract_audit_latest.json`
 
-This phase does not build Streamlit, does not create buttons, does not modify journal/outcomes, does not connect to a broker, does not send orders, and does not change scanner outputs, scoring, config, weights, thresholds, or signals.
+This phase does not build Streamlit, does not create buttons, does not modify outcomes, does not connect to a broker, does not send orders, and does not change scanner outputs, scoring, config, weights, thresholds, or signals.
 
 ## Streamlit Dashboard MVP
 
-`app.py` is a Streamlit dashboard that renders the UI data contract and exposes controlled paper-trading actions. Report data is loaded through `ui.report_loader.load_all_ui_sources` and `ui.view_models`; paper actions are routed through `ui.actions`.
+`app.py` is the Streamlit operating cockpit. It renders the UI data contract,
+shows the current watchlist, macro context, report health, calibration context,
+and exposes controlled read-only actions. Report data is loaded through
+`ui.report_loader.load_all_ui_sources` and `ui.view_models`; actions are routed
+through `ui.actions`.
 
 ```powershell
 streamlit run .\app.py
@@ -248,7 +213,60 @@ The smoke and GUI action audits write:
 - `reports/gui_actions_audit_latest.md`
 - `reports/gui_actions_audit_latest.json`
 
-The dashboard can write only through explicit paper-trading actions after confirmation: import candidates to the paper journal, set a paper decision, refresh follow-up reports, manually close a paper trade, and export already closed paper trades to outcomes. Every action is paper trading only; no real order. The dashboard does not run the scanner, does not connect to a broker, does not send orders, and does not change scoring, weights, thresholds, config, or signals. GUI actions are logged in `data/ui_action_log.csv`.
+The cockpit has three primary sections:
+
+- `Resumen`: daily status, quality gate, release readiness, candidate counts,
+  quote quality and a compact macro context summary.
+- `Candidatos`: selectable watchlist, per-ticker operational card, single-ticker
+  deep dive, second-opinion prompt, and full-width analytics.
+- `Control`: quality rules, macro context, calibration, simple posttest, and
+  report-source status.
+
+The dashboard can trigger only controlled actions: refresh generated reports
+through daily validation and run the single-ticker deep dive, which writes only
+its own report files. Every action is manual-review only; no real order. The
+dashboard does not run the full scanner directly, does not connect to a broker,
+does not send orders, and does not change scoring, weights, thresholds, config,
+or signals. GUI actions are logged in `data/ui_action_log.csv`.
+
+## Single-Ticker Deep Dive
+
+`tools/single_ticker_deep_dive.py` provides an on-demand read-only analysis for
+one ticker. It is available from `Candidatos -> Consulta puntual por ticker` in
+the cockpit and from the command line:
+
+```powershell
+python .\tools\single_ticker_deep_dive.py AAPL
+```
+
+The tool uses the deep technical/scenario layer for the requested ticker:
+
+- OHLCV history and indicators.
+- Structure/setup detection.
+- Momentum, extension and entry-timing diagnostics.
+- Entry, stop, target, R/R and shadow level diagnostics.
+- Metadata/fundamentals when available.
+- Options context when enabled and available.
+
+It intentionally does not run the full universe screener, does not use the
+candidate funnel, does not apply macro context as an operative blocker, and does
+not create scanner signals. Its outputs are:
+
+- `reports/single_ticker_deep_dive_latest.json`
+- `reports/single_ticker_deep_dive_latest.md`
+
+Guardrails:
+
+- `manual_review_only = True`.
+- `execution_enabled = False`.
+- `creates_trading_signal = False`.
+- It does not create `TRIGGER_CONFIRMED`.
+- It does not modify scanner reports, watchlists, outcomes,
+  scoring weights, thresholds, or config.
+
+Use it to inspect a ticker that is not currently in the watchlist or to compare
+human intuition against the engine's scenario diagnostics. Treat the result as a
+manual research card, not as an execution instruction.
 
 ## Live Quote Recheck
 
@@ -270,30 +288,20 @@ The tool does not modify scanner outputs and cannot create entry signals.
 
 Use calibration only after closed trades are recorded.
 
-## Four-day thesis posttest
+## Automatic engine posttest
 
-The historical posttest evaluates only candidates with non-veto signals, an
-operational recommendation, `quote_status VALID`,
-`execution_quote_quality HIGH`, and valid actionable entry, stop and target
-levels. It does not assume an entry: the proposed entry must be reached during
-the first two sessions after the scan.
-
-The principal horizon is four trading sessions from the executed entry. The
-audit separates target hits, stop hits, profitable four-day closes, negative
-closes, ambiguous daily bars where target and stop were both touched, and
-proposed entries that were never reached.
+The current diagnostic posttest is fully automatic. It reads the scanner memory
+created by `trade_decision_checklist`, keeps only `BUY_NOW` posttest candidates,
+and reviews what happened after 5, 10 and 15 sessions. It reports recurring
+successes and failures without changing scoring, thresholds or signals.
 
 Run:
 
 ```powershell
-python .\tools\run_posttest_batch.py --horizons 4
-python .\tools\posttest_thesis_audit.py
+python .\tools\simple_candidate_posttest.py
 ```
 
-Review `reports/posttest_thesis_audit_latest.md` for overall and per-ticker win
-rates, recurring successes, recurring failures, entry-level quality and
-diagnostic hints. Results are observational and never modify scoring,
-thresholds or signals automatically.
+Review `reports/simple_candidate_posttest_latest.md`.
 
 ```powershell
 python .\tools\trade_score_calibration.py
@@ -360,7 +368,7 @@ If there is any conflict between setup quality and quote quality, quote quality 
 If a candidate cannot be verified manually, do not use it operationally.
 ## GUI visuals
 
-- `app.py` puede mostrar metricas y graficos de revision manual sobre candidatos, calidad, paper trading, follow-up, ciclo y calibracion.
+- `app.py` puede mostrar metricas y graficos de revision manual sobre candidatos, calidad, macro, posttest simple y calibracion.
 - Los graficos deben construirse desde `ui.view_models` y `ui.charts`; no deben leer reportes directamente ni escribir datos operativos.
 - Validar cambios visuales con `python .\tools\gui_visuals_audit.py`.
 - La calibracion mostrada en GUI sigue siendo observacional; no cambia pesos automaticamente.
@@ -373,30 +381,9 @@ If a candidate cannot be verified manually, do not use it operationally.
 - Validar el release candidate de GUI con `python .\tools\gui_release_audit.py`.
 - La interfaz no debe ejecutar scanner, cambiar scoring, cambiar thresholds, conectar servicios de ejecucion ni enviar ordenes reales.
 
-## GUI supervised operation
-
-- `tools/gui_supervised_session.py` registra una sesion diaria supervisada de uso GUI paper-only.
-- La bitacora queda en `data/gui_supervised_sessions.csv`.
-- Los reportes quedan en `reports/gui_supervised_session_latest.json` y `reports/gui_supervised_session_latest.md`.
-- Comandos principales: `--start`, `--status`, `--note`, `--summary`, `--close --result PASS|WARN|FAIL|ABORTED`.
-- La herramienta solo lee reportes existentes y el log de acciones GUI; no abre Streamlit, no ejecuta scanner, no modifica journal/outcomes y no envia ordenes reales.
-- Validar con `python .\tools\gui_supervised_session_audit.py`.
-## Daily GUI Operating Checklist
-
-`tools/gui_daily_operating_checklist.py` creates and maintains the daily GUI operating checklist. It is a manual review artifact for paper trading only. It can initialize today's checklist, show status, mark individual steps as `DONE`, `SKIPPED`, or `BLOCKED`, attach notes, close the checklist with `PASS`, `WARN`, `FAIL`, or `ABORTED`, and regenerate summary reports.
-
-The checklist is intentionally read/manual in spirit: it does not execute scanner runs, does not start Streamlit, does not modify scoring, does not modify paper journal or trade outcomes, does not connect to any execution venue, and does not send real orders. Always keep the notice: paper trading only; no real order.
-
-Primary outputs:
-
-- `reports/gui_daily_operating_checklist_latest.md`
-- `reports/gui_daily_operating_checklist_latest.json`
-- `reports/gui_daily_operating_checklist_audit_latest.md`
-- `reports/gui_daily_operating_checklist_audit_latest.json`
-
 ## Alpaca Read-Only Connectivity Audit
 
-`tools/alpaca_readonly_connectivity_audit.py` validates whether Alpaca credentials can read account status, market clock, and IEX latest quote data. This is diagnostic only. It does not place orders, does not enable execution, does not connect the scanner to execution, and does not modify scores, thresholds, config, signals, journal, or outcomes.
+`tools/alpaca_readonly_connectivity_audit.py` validates whether Alpaca credentials can read account status, market clock, and IEX latest quote data. This is diagnostic only. It does not place orders, does not enable execution, does not connect the scanner to execution, and does not modify scores, thresholds, config, signals, or outcomes.
 
 Use:
 
@@ -407,76 +394,58 @@ Review:
 - `reports/alpaca_readonly_connectivity_latest.md`
 - `reports/alpaca_readonly_connectivity_latest.json`
 
-## Operational Decision Log
+## Resilient FRED Macro Context
 
-`tools/gui_operational_decision_log.py` records human operating decisions made while reviewing the GUI. It is a bitacora for manual reasoning, not a trading engine. It can record ticker, journal id, session id, checklist id, decision type, reason, observed context, perceived risk, follow-up plan, checklist alignment, and later post-session review notes or lessons.
+`tools/macro_event_context.py` retrieves official rates, yield curves,
+liquidity, inflation, employment, volatility, credit, dollar, and oil series.
+It uses pandas-datareader first, direct FRED CSV second, and a local stale
+cache only when both network paths fail.
 
-`tools/gui_post_session_review.py` summarizes the day's decisions, decisions without post review, paper-enter decisions, skipped decisions, recheck decisions, high-risk notes, missing reasons, checklist alignment gaps, lessons, and consistency with the UI action log.
+Use:
 
-Primary outputs:
+- `python .\tools\macro_event_context.py`
 
-- `reports/gui_operational_decision_log_latest.md`
-- `reports/gui_operational_decision_log_latest.json`
-- `reports/gui_post_session_review_latest.md`
-- `reports/gui_post_session_review_latest.json`
-- `reports/gui_operational_decision_log_audit_latest.md`
-- `reports/gui_operational_decision_log_audit_latest.json`
+Review provider and freshness per series in:
 
-The bitacora does not modify scanner outputs, scoring, thresholds, config, signals, paper journal rows, trade outcomes, or execution state.
+- `reports/macro_event_context_latest.md`
+- `reports/macro_event_context_latest.json`
 
-## Decision Quality Review
+Yahoo comparisons are informational. Macro data remains read-only context and
+cannot modify scores, signals, quote quality, or execution status.
 
-`tools/gui_decision_quality_review.py` evaluates the quality of recorded operating decisions without changing trading logic. It computes a 0-100 `decision_quality_score`, assigns a bucket from `A_DISCIPLINED` through `D_UNDISCIPLINED`, and flags missing reasons, missing post-session reviews, missing follow-up plans, checklist misalignment, low quote quality, missing paper-only confirmation, and repeated ticker reviews without context.
+In the cockpit, macro appears in two places:
 
-Primary outputs:
+- `Resumen`: compact event/liquidity summary for daily situational awareness.
+- `Control -> Contexto macro`: full source, freshness, FRED series and economic
+  calendar view.
 
-- `reports/gui_decision_quality_review_latest.md`
-- `reports/gui_decision_quality_review_latest.json`
-- `reports/gui_decision_quality_review_latest.csv`
-- `reports/gui_decision_quality_audit_latest.md`
-- `reports/gui_decision_quality_audit_latest.json`
+Macro context helps the operator avoid blind review during major event risk, but
+it is not an automatic blocker in single-ticker deep dive and it never relaxes
+P0 execution rules.
 
-The review is observational only; no automatic trading changes are applied.
+## Nasdaq Risk Regime
 
-## Weekly GUI Operational Review
+`tools/nasdaq_risk_regime_audit.py` integrates the Nasdaq semaforo model as a
+read-only regime audit. It combines Yahoo Finance market series, Cboe aggregate
+equity put/call data, credit/volatility/breadth pressure, and QQQ trend context.
 
-`tools/gui_weekly_operational_review.py` summarizes the GUI and paper trading operating cycle over a configurable window. It computes a 0-100 `weekly_operational_score`, a weekly bucket, and an observational recommendation from supervised sessions, daily checklists, GUI decisions, UI action logs, paper journal, outcomes, decision quality, cycle audit, and calibration reports.
+Use:
 
-```powershell
-python .\tools\gui_weekly_operational_review.py
-python .\tools\gui_weekly_operational_review.py --days 5
-python .\tools\gui_weekly_operational_review_audit.py
-```
+- `python .\tools\nasdaq_risk_regime_audit.py`
 
-Primary outputs:
+Review:
 
-- `data/gui_weekly_operational_reviews.csv`
-- `reports/gui_weekly_operational_review_latest.md`
-- `reports/gui_weekly_operational_review_latest.json`
-- `reports/gui_weekly_operational_review_latest.csv`
-- `reports/gui_weekly_operational_review_audit_latest.md`
-- `reports/gui_weekly_operational_review_audit_latest.json`
+- `reports/nasdaq_risk_regime_latest.md`
+- `reports/nasdaq_risk_regime_latest.json`
 
-The review is observational only. It does not modify `data/gui_operational_decisions.csv`, `data/paper_trading_journal.csv`, `data/trade_outcomes.csv`, scanner logic, scoring, thresholds, config, weights, or signals. It can mark `READY_FOR_CALIBRATION_REVIEW` only as a human review label, never as an automatic calibration or trading action.
+The regimes are operational context only:
 
-## Evidence Collection Window
+- `NASDAQ_NORMAL`
+- `NASDAQ_DISTRIBUTION_OMEGA`
+- `NASDAQ_SYSTEMIC_SIGMA`
+- `NASDAQ_CAPITULATION_PHI`
 
-`tools/gui_evidence_collection_window.py` consolidates multi-session evidence before any human calibration, ranking, or weight review. It reads supervised sessions, daily checklists, GUI decisions, weekly operational reviews, UI action logs, paper journal, paper outcomes, decision quality, cycle audit, and calibration reports.
-
-```powershell
-python .\tools\gui_evidence_collection_window.py
-python .\tools\gui_evidence_collection_window.py --days 20
-python .\tools\gui_evidence_collection_window.py --min-sessions 10 --min-decisions 40 --min-paper-enters 10 --min-closed-trades 5
-python .\tools\gui_evidence_collection_audit.py
-```
-
-Primary outputs:
-
-- `data/gui_evidence_collection_windows.csv`
-- `reports/gui_evidence_collection_window_latest.md`
-- `reports/gui_evidence_collection_window_latest.json`
-- `reports/gui_evidence_collection_window_latest.csv`
-- `reports/gui_evidence_collection_audit_latest.md`
-- `reports/gui_evidence_collection_audit_latest.json`
-
-Readiness states are `INSUFFICIENT_SAMPLE`, `COLLECT_MORE_EVIDENCE`, `PROCESS_REVIEW_REQUIRED`, `READY_FOR_CALIBRATION_REVIEW`, and `NOT_READY_GUARDRAIL_FAILURE`. They are observational labels only. The tool does not modify scanner logic, scoring, thresholds, config, journal rows, outcomes, ranking, calibration, or signals.
+The audit does not modify scanner rows, scoring, signals, thresholds,
+`quote_status`, `execution_quote_quality`, or broker execution. Sigma/Phi/Omega
+language must be read as risk context for manual review, never as an automatic
+buy, sell, liquidation, or entry instruction.

@@ -30,6 +30,40 @@ Recommended fields include:
 
 Only closed trades are used for calibration metrics.
 
+## Simple Automatic Candidate Posttest
+
+The primary feedback loop is now automatic and does not require manual simulated
+trades. It takes the best reported candidates from 5, 10, and 15 reported
+sessions ago and evaluates whether the thesis worked.
+
+Run:
+
+```powershell
+python .\tools\simple_candidate_posttest.py
+```
+
+Outputs:
+
+- `reports/simple_candidate_posttest_latest.csv`
+- `reports/simple_candidate_posttest_latest.json`
+- `reports/simple_candidate_posttest_latest.md`
+
+The posttest focuses only on rows saved as automatic `BUY_NOW` memory by the
+checklist. Those rows must have valid actionable levels and execution-quality
+guardrails. It checks whether the proposed entry was reached, whether stop or
+target were touched, and the outcome after 5, 10, and 15 sessions.
+
+Use it to identify recurring engine issues such as:
+
+- late or overextended entries;
+- weak momentum despite high score;
+- false breakouts;
+- stops too tight or too wide;
+- targets too ambitious for the four-session thesis.
+
+Posttest findings are observational. They can suggest what to inspect next, but
+they do not change weights, thresholds, levels, signals, or recommendations.
+
 ## Run Trade Score Calibration
 
 ```powershell

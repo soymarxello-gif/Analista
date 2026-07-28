@@ -21,9 +21,6 @@ def test_charts_module_imports_and_empty_models_are_safe():
         charts.build_recommendation_distribution_chart_data,
         charts.build_quote_quality_chart_data,
         charts.build_candidate_score_chart_data,
-        charts.build_paper_status_chart_data,
-        charts.build_followup_decision_chart_data,
-        charts.build_closed_outcomes_chart_data,
         charts.build_r_multiple_chart_data,
         charts.build_calibration_bucket_chart_data,
     ]
@@ -53,40 +50,30 @@ def test_candidate_score_chart_top_20_sorted_by_final_trade_score():
     assert frame.iloc[-1]["ticker"] == "T05"
 
 
-def test_paper_status_counts_manual_decision_and_followup_status():
-    result = charts.build_paper_status_chart_data(
-        _model(
-            [
-                {"manual_decision": "PAPER_ENTER", "followup_status": "ENTERED_PAPER"},
-                {"manual_decision": "PAPER_ENTER", "followup_status": "OPEN_MONITORING"},
-                {"manual_decision": "BLOCKED", "followup_status": "BLOCKED"},
-            ]
-        )
+def test_horizontal_chart_uses_nominal_y_and_quantitative_x():
+    source = charts.build_signal_distribution_chart_data(
+        _model([{"signal": "WATCHLIST"}, {"signal": "VETO"}])
     )
-    rows = result["dataframe"].to_dict(orient="records")
-    assert {"metric": "manual_decision", "value": "PAPER_ENTER", "count": 2} in rows
-    assert {"metric": "followup_status", "value": "OPEN_MONITORING", "count": 1} in rows
+    chart = charts.build_horizontal_bar_chart(source)
+    assert chart is not None
+    spec = chart.to_dict()
+    encoding = spec["layer"][0]["encoding"]
+    assert encoding["y"]["type"] == "nominal"
+    assert encoding["x"]["type"] == "quantitative"
 
 
-def test_followup_decision_counts_are_available():
-    result = charts.build_followup_decision_chart_data(
-        _model(
-            [
-                {"followup_decision": "HOLD_PAPER"},
-                {"followup_decision": "HOLD_PAPER"},
-                {"followup_decision": "DATA_UNAVAILABLE"},
-            ]
-        )
-    )
-    rows = result["dataframe"].to_dict(orient="records")
-    assert {"metric": "followup_decision", "value": "HOLD_PAPER", "count": 2} in rows
-    assert {"metric": "followup_decision", "value": "DATA_UNAVAILABLE", "count": 1} in rows
+def test_horizontal_chart_rejects_empty_or_zero_only_data():
+    assert charts.build_horizontal_bar_chart({"dataframe": pd.DataFrame()}) is None
+    zero_data = {"dataframe": pd.DataFrame([{"value": "EMPTY", "count": 0}])}
+    assert charts.build_horizontal_bar_chart(zero_data) is None
 
 
 def test_app_uses_charts_module_and_has_no_order_execution_terms():
     text = (ROOT / "app.py").read_text(encoding="utf-8")
     assert "from ui import charts as ui_charts" in text
     assert "ui_charts." in text
+    assert "st.bar_chart" not in text
+    assert "build_horizontal_bar_chart" in text
     lower = text.lower()
     assert "shell=true" not in lower
     for term in ["send_order", "place_order", "buy_order", "sell_order"]:

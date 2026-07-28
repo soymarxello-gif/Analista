@@ -26,13 +26,19 @@ from engine.scenario_engine import (
     apply_scenario_guardrail,
     calculate_shadow_levels,
 )
+from engine.technical_prefilter import evaluate_technical_prefilter
 from indicators.pipeline import add_all_indicators
 from market.market_regime import classify_market_regime
-from market.sector_rotation import calculate_sector_rotation
+from market.sector_rotation import (
+    calculate_sector_benchmark_context,
+    calculate_sector_rotation,
+    sector_benchmark_symbols_for_meta,
+)
 from scoring.final_score import calculate_final_score, calculate_trade_score_breakdown
 from scoring.fundamental_score import score_fundamentals
 from scoring.momentum_score import score_momentum
 from scoring.operational_priority import calculate_operational_priority
+from scoring.operational_readiness import calculate_operational_readiness
 from scoring.options_score import calculate_options_score_adjustment, score_options_flow
 from scoring.relative_strength import add_relative_strength_scores
 from scoring.risk_reward_score import score_risk_reward
@@ -71,8 +77,218 @@ def _safe_float(value, default=None):
         return default
 
 
+def _performance_report_path(config: dict) -> Path:
+    return Path(
+        config.get("performance", {}).get(
+            "scan_report_path",
+            "reports/scan_performance_latest.json",
+        )
+    )
+
+
+def _public_performance_payload(performance: dict) -> dict:
+    return {key: value for key, value in performance.items() if not str(key).startswith("_")}
+
+
+def _write_scan_performance(performance: dict) -> None:
+    path = performance.get("_report_path")
+    if not path:
+        return
+    try:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(_public_performance_payload(performance), ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        logger.warning(f"No se pudo guardar scan performance: {exc}")
+
+
+def _stage_start(performance: dict, name: str) -> None:
+    performance["status"] = "RUNNING"
+    performance["current_stage"] = name
+    performance["updated_at"] = datetime.now(timezone.utc).isoformat()
+    _write_scan_performance(performance)
+
+
 def _stage_done(performance: dict, name: str, started: float) -> None:
     performance.setdefault("stage_seconds", {})[name] = round(perf_counter() - started, 4)
+    performance["last_completed_stage"] = name
+    performance["current_stage"] = ""
+    performance["updated_at"] = datetime.now(timezone.utc).isoformat()
+    _write_scan_performance(performance)
+
+
+def apply_operational_signal_guardrails(row: dict, penalty_reasons: list[str]) -> dict:
+    """Apply post-scenario operational demotions without promoting signals."""
+    guarded = dict(row)
+    signal = str(guarded.get("signal") or "").upper().strip()
+    macd_state = str(guarded.get("macd_histogram_state") or "").upper().strip()
+
+    if macd_state == "MACD_HIST_DETERIORATING" and signal not in {"VETO", "AVOID"}:
+        guarded["signal"] = "AVOID"
+        if "macd_histogram_deteriorating" not in penalty_reasons:
+            penalty_reasons.append("macd_histogram_deteriorating")
+
+    return guarded
+
+
+def _build_technical_prefilter_reject_row(
+    *,
+    ticker: str,
+    source_meta: dict,
+    prefilter: dict,
+    liquidity: dict,
+    scan_timestamp: str,
+) -> dict:
+    reason = str(prefilter.get("technical_prefilter_reason") or "technical_prefilter_failed")
+    latest_price = liquidity.get("price") or prefilter.get("technical_close")
+    return {
+        "scan_timestamp": scan_timestamp,
+        "ticker": ticker,
+        "company": source_meta.get("company"),
+        "exchange": source_meta.get("exchange"),
+        "quote_type": source_meta.get("quote_type"),
+        "country": source_meta.get("country"),
+        "sector": source_meta.get("sector"),
+        "industry": source_meta.get("industry"),
+        "market_cap": source_meta.get("market_cap"),
+        "final_score": 0.0,
+        "asset_attractiveness_score": 0.0,
+        "asset_quality_score": 0.0,
+        "setup_quality_score": 0.0,
+        "context_score": 0.0,
+        "institutional_score": 0.0,
+        "final_trade_score": 0.0,
+        "score_breakdown": "{}",
+        "deep_analysis_selected": False,
+        "deep_analysis_rank": None,
+        "deep_analysis_score": None,
+        "deep_analysis_reason": "technical_prefilter_failed",
+        "trend_score": 0.0,
+        "trend_status": "NOT_EVALUATED",
+        "volume_score": 0.0,
+        "sector_score": 0.0,
+        "structure_score": 0.0,
+        "rr_score": 0.0,
+        "liquidity_pass": bool(liquidity.get("liquidity_pass", False)),
+        "liquidity_score": liquidity.get("liquidity_score", 0.0),
+        "momentum_score": 0.0,
+        "fundamental_score": 0.0,
+        "options_score": 0.5,
+        "options_scoring_status": "CONTEXT_ONLY_NOT_SCORED",
+        "options_bias": "UNKNOWN_OPTIONS_FLOW",
+        "options_confidence": "UNKNOWN",
+        "options_coverage_status": "NOT_SELECTED_TECHNICAL_PREFILTER",
+        "options_priority_selected": False,
+        "options_priority_reason": "technical_prefilter_failed",
+        "setup_type": "NO_VALID_SETUP",
+        "trigger_confirmed": False,
+        "trigger_level": None,
+        "entry": None,
+        "stop": None,
+        "target": None,
+        "rr": None,
+        "theoretical_entry": None,
+        "theoretical_stop": None,
+        "theoretical_target": None,
+        "actionable_entry": None,
+        "actionable_stop": None,
+        "actionable_target": None,
+        "scenario_entry": None,
+        "scenario_stop": None,
+        "scenario_target": None,
+        "shadow_entry": None,
+        "shadow_stop": None,
+        "shadow_target": None,
+        "shadow_rr": None,
+        "shadow_stop_atr_multiple": None,
+        "shadow_level_status": "NOT_ELIGIBLE",
+        "stop_method": None,
+        "target_method": None,
+        "risk_pct": None,
+        "reward_pct": None,
+        "atr": prefilter.get("technical_atr"),
+        "atr_pct": prefilter.get("technical_atr_pct"),
+        "stop_atr_multiple": None,
+        "stop_atr_status": "NOT_AVAILABLE",
+        "relative_volume": prefilter.get("technical_relative_volume"),
+        "price": latest_price,
+        "adjusted_close": latest_price,
+        "price_adjustment_factor": None,
+        "technical_price_basis": "ADJUSTED_OHLC" if latest_price is not None else "UNKNOWN",
+        "avg_volume_20d": liquidity.get("avg_volume_20d"),
+        "avg_volume_60d": liquidity.get("avg_volume_60d"),
+        "median_volume_20d": liquidity.get("median_volume_20d"),
+        "mean_volume_20d": liquidity.get("mean_volume_20d"),
+        "dollar_volume_20d": liquidity.get("dollar_volume_20d"),
+        "dollar_volume_60d": liquidity.get("dollar_volume_60d"),
+        "liquidity_turnover_20d": liquidity.get("liquidity_turnover_20d"),
+        "liquidity_turnover_60d": liquidity.get("liquidity_turnover_60d"),
+        "liquidity_market_cap_tier": liquidity.get("liquidity_market_cap_tier"),
+        "liquidity_required_turnover_20d": liquidity.get("liquidity_required_turnover_20d"),
+        "liquidity_required_turnover_60d": liquidity.get("liquidity_required_turnover_60d"),
+        "liquidity_formula_pass_20d": liquidity.get("liquidity_formula_pass_20d"),
+        "liquidity_formula_pass_60d": liquidity.get("liquidity_formula_pass_60d"),
+        "liquidity_dollar_pass_20d": liquidity.get("liquidity_dollar_pass_20d"),
+        "liquidity_dollar_pass_60d": liquidity.get("liquidity_dollar_pass_60d"),
+        "liquidity_core_pass": liquidity.get("liquidity_core_pass"),
+        "liquidity_spread_pass": liquidity.get("liquidity_spread_pass"),
+        "median_to_mean_volume_ratio": liquidity.get("median_to_mean_volume_ratio"),
+        "spread_pct": None,
+        "bid": None,
+        "ask": None,
+        "bid_ask_valid": False,
+        "bid_ask_warning": "technical_prefilter_failed_before_quote_enrichment",
+        "spread_validated_pct": None,
+        "quote_status": "MISSING",
+        "execution_quote_quality": "LOW",
+        "quote_source": "NOT_REQUESTED_TECHNICAL_PREFILTER",
+        "analysis_price": latest_price,
+        "analysis_bid": None,
+        "analysis_ask": None,
+        "analysis_spread_pct": None,
+        "analysis_quote_source": "OHLCV_TECHNICAL_PREFILTER",
+        "analysis_quote_timestamp": scan_timestamp,
+        "analysis_quote_freshness": "DELAYED_OR_EOD",
+        "analysis_quote_confidence": "LOW" if latest_price is not None else "UNKNOWN",
+        "secondary_data_sources_used": "",
+        "secondary_data_notes": "ticker excluded from expensive enrichment by early technical prefilter",
+        "metadata_source": "NOT_REQUESTED_TECHNICAL_PREFILTER",
+        "metadata_confidence": "UNKNOWN",
+        "warnings": reason,
+        "data_quality_score": 0.0,
+        "data_quality_confidence": "LOW",
+        "pre_veto_signal": "AVOID",
+        "signal": "AVOID",
+        "recommendation": "AVOID_FOR_NOW",
+        "all_veto_reasons": "",
+        "veto_reasons": "",
+        "penalty_reasons": reason,
+        "reason_summary": f"Technical prefilter failed: {reason}",
+        "scenario_status": "NOT_SELECTED_FOR_DEEP_ANALYSIS",
+        "scenario_confidence": "LOW",
+        "scenario_operability": "DO_NOT_ADVANCE",
+        "scenario_eligible_for_backtest": False,
+        "scenario_guardrail_applied": True,
+        "scenario_guardrail_reason": "technical_prefilter_failed",
+        "momentum_state": "WEAK_MOMENTUM",
+        "extension_state": prefilter.get("ema20_extension_status", "UNKNOWN"),
+        "entry_timing_status": "NOT_OPERABLE",
+        "required_confirmation": "daily_and_weekly_macd_histogram_resume_rising",
+        "invalidation_reason": reason,
+        "engine_recommendation": "DO_NOT_ADVANCE",
+        "engine_block_reason": "technical_prefilter_failed",
+        "execution_readiness_status": "NOT_OPERABLE",
+        "operational_readiness_score": 0.0,
+        "operational_readiness_bucket": "BLOCKED",
+        "operational_readiness_reason": reason,
+        "scenario_quality_adjustment": 0.0,
+        "timing_penalty_reason": reason if "ema20_extension" in reason else "",
+        "momentum_penalty_reason": reason,
+        **prefilter,
+    }
 
 
 def _run_scan_impl(
@@ -84,6 +300,7 @@ def _run_scan_impl(
 
     # 1. Screener and first universe validation.
     stage_started = perf_counter()
+    _stage_start(performance, "screener_and_initial_validation")
     screen = run_screeners(config)
     meta = validate_universe(screen.dataframe, config)
 
@@ -102,6 +319,14 @@ def _run_scan_impl(
     price_cfg = config.get("price_data", {})
     price_stats: dict = {}
     stage_started = perf_counter()
+    _stage_start(performance, "bulk_price_download")
+
+    def _price_progress(stats: dict) -> None:
+        performance["current_stage"] = "bulk_price_download"
+        performance["updated_at"] = datetime.now(timezone.utc).isoformat()
+        performance["price_download"] = stats
+        _write_scan_performance(performance)
+
     raw_prices = download_daily_prices(
         tickers,
         period=price_cfg.get("daily_period", "1y"),
@@ -111,18 +336,22 @@ def _run_scan_impl(
         timeout_seconds=int(price_cfg.get("timeout_seconds", 15)),
         max_individual_fallbacks=int(price_cfg.get("max_individual_fallbacks", 10)),
         stats=price_stats,
+        progress_callback=_price_progress,
     )
     performance["price_download"] = price_stats
     _stage_done(performance, "bulk_price_download", stage_started)
 
     prices: dict[str, pd.DataFrame] = {}
     pre_liquidity_rows: list[dict] = []
+    technical_prefilter_rows: dict[str, dict] = {}
+    initial_meta_by_ticker = meta.set_index("ticker").to_dict(orient="index")
     scan_timestamp = datetime.now(timezone.utc).isoformat()
     rows: list[dict] = []
     base_rows: list[dict] = []
 
-    # 3. Fast in-memory liquidity funnel. Bid/ask is intentionally excluded here.
+    # 3. Fast in-memory liquidity and technical funnel. Bid/ask is intentionally excluded here.
     stage_started = perf_counter()
+    _stage_start(performance, "technical_preliquidity_prefilter")
     for ticker in tickers:
         df = raw_prices.get(ticker)
 
@@ -132,14 +361,15 @@ def _run_scan_impl(
 
         ind = add_all_indicators(df, config)
         prices[ticker] = ind
-        pre_liquidity_rows.append(
-            compute_liquidity(
-                ticker,
-                ind,
-                config,
-                metadata={},
-            )
+        prefilter = evaluate_technical_prefilter(ind)
+        technical_prefilter_rows[ticker] = prefilter
+        liquidity = compute_liquidity(
+            ticker,
+            ind,
+            config,
+            metadata={},
         )
+        pre_liquidity_rows.append({**liquidity, **prefilter})
 
     pre_liquidity = pd.DataFrame(pre_liquidity_rows)
 
@@ -147,20 +377,59 @@ def _run_scan_impl(
         logger.warning("No hay datos de liquidez. Retornando DataFrame vacío.")
         return pd.DataFrame()
 
-    pre_liquid_tickers = set(
-        pre_liquidity.loc[pre_liquidity["liquidity_pass"], "ticker"].astype(str)
+    liquid_mask = pre_liquidity["liquidity_pass"].fillna(False).astype(bool)
+    technical_pass_mask = (
+        pre_liquidity.get("technical_prefilter_status", pd.Series("", index=pre_liquidity.index))
+        .fillna("")
+        .astype(str)
+        .str.upper()
+        .eq("PASS")
     )
-    meta = meta[meta["ticker"].astype(str).isin(pre_liquid_tickers)].copy()
-    pre_metrics = pre_liquidity[pre_liquidity["ticker"].astype(str).isin(pre_liquid_tickers)].copy()
+    pre_liquid_tickers = set(pre_liquidity.loc[liquid_mask, "ticker"].astype(str))
+    technical_pass_tickers = set(
+        pre_liquidity.loc[liquid_mask & technical_pass_mask, "ticker"].astype(str)
+    )
+    technical_reject_rows = [
+        _build_technical_prefilter_reject_row(
+            ticker=str(row.get("ticker")),
+            source_meta=initial_meta_by_ticker.get(str(row.get("ticker")), {}),
+            prefilter=technical_prefilter_rows.get(str(row.get("ticker")), {}),
+            liquidity=row.to_dict(),
+            scan_timestamp=scan_timestamp,
+        )
+        for _, row in pre_liquidity.loc[liquid_mask & ~technical_pass_mask].iterrows()
+    ]
+    meta = meta[meta["ticker"].astype(str).isin(technical_pass_tickers)].copy()
+    pre_metrics = pre_liquidity[pre_liquidity["ticker"].astype(str).isin(technical_pass_tickers)].copy()
     meta = meta.drop(columns=["price"], errors="ignore").merge(pre_metrics, on="ticker", how="inner")
-    prices = {ticker: frame for ticker, frame in prices.items() if ticker in pre_liquid_tickers}
+    prices = {ticker: frame for ticker, frame in prices.items() if ticker in technical_pass_tickers}
     performance["counts"]["price_history_rows"] = int(len(prices))
-    performance["counts"]["pre_liquidity_rows"] = int(len(meta))
-    _stage_done(performance, "technical_preliquidity", stage_started)
+    performance["counts"]["pre_liquidity_rows"] = int(len(pre_liquid_tickers))
+    performance["counts"]["technical_prefilter_pass_rows"] = int(len(technical_pass_tickers))
+    performance["counts"]["technical_prefilter_fail_rows"] = int(len(technical_reject_rows))
+    performance["technical_prefilter_counts"] = {
+        "technical_prefilter_status": pre_liquidity.get(
+            "technical_prefilter_status",
+            pd.Series(dtype=str),
+        ).fillna("MISSING").astype(str).value_counts().to_dict(),
+        "daily_macd_prefilter_status": pre_liquidity.get(
+            "daily_macd_prefilter_status",
+            pd.Series(dtype=str),
+        ).fillna("MISSING").astype(str).value_counts().to_dict(),
+        "weekly_macd_prefilter_status": pre_liquidity.get(
+            "weekly_macd_prefilter_status",
+            pd.Series(dtype=str),
+        ).fillna("MISSING").astype(str).value_counts().to_dict(),
+        "ema20_extension_prefilter_status": pre_liquidity.get(
+            "ema20_extension_prefilter_status",
+            pd.Series(dtype=str),
+        ).fillna("MISSING").astype(str).value_counts().to_dict(),
+    }
+    _stage_done(performance, "technical_preliquidity_prefilter", stage_started)
 
     if meta.empty:
-        logger.warning("Todos los tickers fallaron preliquidez.")
-        return pd.DataFrame()
+        logger.warning("Todos los tickers fallaron preliquidez o prefiltro técnico.")
+        return pd.DataFrame(technical_reject_rows)
 
     # 4. Expensive metadata/fundamentals only for liquid survivors.
     logger.info(
@@ -182,24 +451,39 @@ def _run_scan_impl(
     )
     metadata_stats: dict = {}
     stage_started = perf_counter()
-    meta = enrich_metadata(meta, config, stats=metadata_stats)
+    _stage_start(performance, "metadata_and_fundamentals")
+
+    def _metadata_progress(stats: dict) -> None:
+        performance["current_stage"] = "metadata_and_fundamentals"
+        performance["updated_at"] = datetime.now(timezone.utc).isoformat()
+        performance["metadata_enrichment"] = stats
+        _write_scan_performance(performance)
+
+    try:
+        meta = enrich_metadata(meta, config, stats=metadata_stats, progress_callback=_metadata_progress)
+    except TypeError as exc:
+        if "progress_callback" not in str(exc):
+            raise
+        meta = enrich_metadata(meta, config, stats=metadata_stats)
     performance["metadata_enrichment"] = metadata_stats
     _stage_done(performance, "metadata_and_fundamentals", stage_started)
 
     # 4b. Strict universe validation after enrichment.
     stage_started = perf_counter()
+    _stage_start(performance, "strict_universe_validation")
     meta = validate_universe(meta, config, strict_metadata=True)
     performance["counts"]["post_metadata_rows"] = int(len(meta))
     _stage_done(performance, "strict_universe_validation", stage_started)
     if meta.empty:
         logger.warning("No hay tickers tras enriquecimiento y revalidación de universo.")
-        return pd.DataFrame()
+        return pd.DataFrame(technical_reject_rows)
 
     tickers = meta["ticker"].dropna().astype(str).str.upper().unique().tolist()
     logger.info(f"Tickers tras screener/liquidez/enriquecimiento: {len(tickers)}")
 
     # 5. Final liquidity/quote evaluation with enriched bid/ask.
     stage_started = perf_counter()
+    _stage_start(performance, "final_quote_liquidity")
     meta_by_ticker = meta.set_index("ticker").to_dict(orient="index")
     final_liquidity_rows = [
         compute_liquidity(
@@ -214,11 +498,14 @@ def _run_scan_impl(
     final_liquidity = pd.DataFrame(final_liquidity_rows)
     if final_liquidity.empty:
         logger.warning("No hay datos para validación final de liquidez y quote.")
-        return pd.DataFrame()
+        return pd.DataFrame(technical_reject_rows)
     liquidity_columns = [column for column in final_liquidity.columns if column != "ticker"]
     meta = meta.drop(columns=liquidity_columns, errors="ignore")
     meta = meta.merge(final_liquidity, on="ticker", how="inner")
-    meta = meta[meta["liquidity_pass"]].reset_index(drop=True)
+    if "liquidity_core_pass" in meta.columns:
+        meta = meta[meta["liquidity_core_pass"]].reset_index(drop=True)
+    else:
+        meta = meta[meta["liquidity_pass"]].reset_index(drop=True)
     tickers = meta["ticker"].dropna().astype(str).str.upper().tolist()
     prices = {ticker: frame for ticker, frame in prices.items() if ticker in set(tickers)}
     performance["counts"]["final_liquidity_rows"] = int(len(meta))
@@ -227,15 +514,70 @@ def _run_scan_impl(
 
     if meta.empty:
         logger.warning("Todos los tickers fallaron liquidez.")
-        return pd.DataFrame()
+        return pd.DataFrame(technical_reject_rows)
 
+    stage_started = perf_counter()
     analysis_quote_tickers = select_analysis_quote_fallback_tickers(meta.to_dict(orient="records"))
+    _stage_start(performance, "analysis_quote_fallbacks")
     analysis_quote_fallbacks = build_analysis_quote_fallbacks(analysis_quote_tickers, config)
+    analysis_quote_source_counts: dict[str, int] = {}
+    for quote in analysis_quote_fallbacks.values():
+        source = str(quote.get("analysis_quote_source") or "UNKNOWN")
+        analysis_quote_source_counts[source] = analysis_quote_source_counts.get(source, 0) + 1
+    performance["analysis_quote_fallbacks"] = {
+        "requested_tickers": int(len(analysis_quote_tickers)),
+        "returned_tickers": int(len(analysis_quote_fallbacks)),
+        "source_counts": analysis_quote_source_counts,
+        "execution_fields_unchanged": True,
+    }
+    _stage_done(performance, "analysis_quote_fallbacks", stage_started)
 
     # 4. Market regime and sector rotation.
     regime = classify_market_regime(config)
 
     sector_df = calculate_sector_rotation(meta, prices)
+    sector_context_cfg = config.get("sector_context", {})
+    sector_context_df = pd.DataFrame()
+    if sector_context_cfg.get("enabled", True):
+        stage_started = perf_counter()
+        _stage_start(performance, "sector_benchmark_context")
+        sector_benchmark_symbols = sector_benchmark_symbols_for_meta(meta, config)
+        sector_download_stats: dict = {}
+        sector_prices: dict[str, pd.DataFrame] = {}
+        if sector_benchmark_symbols:
+            try:
+                sector_prices = download_daily_prices(
+                    sector_benchmark_symbols,
+                    period=sector_context_cfg.get("daily_period", "1y"),
+                    interval=sector_context_cfg.get("daily_interval", "1d"),
+                    batch_size=int(sector_context_cfg.get("batch_size", 50)),
+                    retry_batch_size=int(sector_context_cfg.get("retry_batch_size", 25)),
+                    timeout_seconds=int(sector_context_cfg.get("timeout_seconds", 15)),
+                    max_individual_fallbacks=int(sector_context_cfg.get("max_individual_fallbacks", 3)),
+                    stats=sector_download_stats,
+                )
+            except Exception as exc:
+                sector_download_stats["fatal_error"] = f"{type(exc).__name__}:{exc}"
+                sector_prices = {}
+        sector_context_df = calculate_sector_benchmark_context(meta, sector_prices, config)
+        performance["sector_benchmark_context"] = {
+            "enabled": True,
+            "benchmark_symbols": sector_benchmark_symbols,
+            "downloaded_symbols": sorted(sector_prices.keys()),
+            "source": "yfinance",
+            "data_freshness": "DELAYED_OR_EOD",
+            "state_counts": (
+                sector_context_df["sector_weekly_macd_state"].value_counts(dropna=False).to_dict()
+                if not sector_context_df.empty and "sector_weekly_macd_state" in sector_context_df.columns
+                else {}
+            ),
+            "download_stats": sector_download_stats,
+            "benchmarks_are_not_tradable_universe": True,
+        }
+        _stage_done(performance, "sector_benchmark_context", stage_started)
+
+    if not sector_context_df.empty:
+        sector_df = sector_df.merge(sector_context_df, on="ticker", how="left")
     sector_map = (
         sector_df.set_index("ticker").to_dict(orient="index")
         if not sector_df.empty
@@ -250,8 +592,9 @@ def _run_scan_impl(
         if df is None or len(df) < 64:
             continue
 
-        ret20 = df["close"].iloc[-1] / df["close"].iloc[-21] - 1 if len(df) >= 21 else 0
-        ret63 = df["close"].iloc[-1] / df["close"].iloc[-64] - 1 if len(df) >= 64 else ret20
+        close_for_returns = df["adj_close"] if "adj_close" in df.columns else df["close"]
+        ret20 = close_for_returns.iloc[-1] / close_for_returns.iloc[-21] - 1 if len(df) >= 21 else 0
+        ret63 = close_for_returns.iloc[-1] / close_for_returns.iloc[-64] - 1 if len(df) >= 64 else ret20
 
         base_rows.append(
             {
@@ -517,6 +860,7 @@ def _run_scan_impl(
             "macro_timestamp": regime.get("macro_timestamp"),
             "macro_data_freshness": regime.get("macro_data_freshness"),
             "final_score": round(final_score, 2),
+            "asset_attractiveness_score": trade_scores["asset_quality_score"],
             "asset_quality_score": trade_scores["asset_quality_score"],
             "setup_quality_score": trade_scores["setup_quality_score"],
             "context_score": trade_scores["context_score"],
@@ -530,11 +874,29 @@ def _run_scan_impl(
                 "deep_analysis_reason",
                 "outside_deep_analysis_budget",
             ),
+            "technical_prefilter_status": m.get("technical_prefilter_status"),
+            "technical_prefilter_reason": m.get("technical_prefilter_reason"),
+            "daily_macd_prefilter_status": m.get("daily_macd_prefilter_status"),
+            "weekly_macd_prefilter_status": m.get("weekly_macd_prefilter_status"),
+            "ema20_extension_prefilter_status": m.get("ema20_extension_prefilter_status"),
+            "ema20_extension_reference_source": m.get("ema20_extension_reference_source"),
+            "technical_prefilter_guardrail": m.get("technical_prefilter_guardrail"),
             "rs_score": round(scores["rs_score"], 3),
             "trend_score": round(trend_score, 3),
             "trend_status": trend_status,
             "volume_score": round(volume_score, 3),
             "sector_score": round(sector_score, 3),
+            "sector_benchmark_symbol": sector_info.get("sector_benchmark_symbol"),
+            "sector_weekly_macd_hist": sector_info.get("sector_weekly_macd_hist"),
+            "sector_weekly_macd_slope_1w": sector_info.get("sector_weekly_macd_slope_1w"),
+            "sector_weekly_macd_prev_slope_1w": sector_info.get("sector_weekly_macd_prev_slope_1w"),
+            "sector_weekly_macd_acceleration": sector_info.get("sector_weekly_macd_acceleration"),
+            "sector_weekly_macd_state": sector_info.get("sector_weekly_macd_state"),
+            "sector_weekly_macd_acceleration_state": sector_info.get(
+                "sector_weekly_macd_acceleration_state"
+            ),
+            "sector_context_status": sector_info.get("sector_context_status"),
+            "sector_context_reason": sector_info.get("sector_context_reason"),
             "structure_score": round(structure.get("structure_score", 0.5), 3),
             "rr_score": round(rr_data.get("rr_score", 0.0), 3),
             "liquidity_pass": bool(m.get("liquidity_pass", False)),
@@ -600,12 +962,26 @@ def _run_scan_impl(
             "stop_atr_status": rr_data.get("stop_atr_status"),
             "relative_volume": latest.get("relative_volume"),
             "price": latest.get("close"),
+            "adjusted_close": latest.get("adj_close"),
+            "price_adjustment_factor": latest.get("adj_factor"),
+            "technical_price_basis": "ADJUSTED_OHLC" if "adj_close" in latest.index else "RAW_OHLC",
             "avg_volume_20d": m.get("avg_volume_20d"),
             "avg_volume_60d": m.get("avg_volume_60d"),
             "median_volume_20d": m.get("median_volume_20d"),
             "mean_volume_20d": m.get("mean_volume_20d"),
             "dollar_volume_20d": m.get("dollar_volume_20d"),
             "dollar_volume_60d": m.get("dollar_volume_60d"),
+            "liquidity_turnover_20d": m.get("liquidity_turnover_20d"),
+            "liquidity_turnover_60d": m.get("liquidity_turnover_60d"),
+            "liquidity_market_cap_tier": m.get("liquidity_market_cap_tier"),
+            "liquidity_required_turnover_20d": m.get("liquidity_required_turnover_20d"),
+            "liquidity_required_turnover_60d": m.get("liquidity_required_turnover_60d"),
+            "liquidity_formula_pass_20d": m.get("liquidity_formula_pass_20d"),
+            "liquidity_formula_pass_60d": m.get("liquidity_formula_pass_60d"),
+            "liquidity_dollar_pass_20d": m.get("liquidity_dollar_pass_20d"),
+            "liquidity_dollar_pass_60d": m.get("liquidity_dollar_pass_60d"),
+            "liquidity_core_pass": m.get("liquidity_core_pass"),
+            "liquidity_spread_pass": m.get("liquidity_spread_pass"),
             "median_to_mean_volume_ratio": m.get("median_to_mean_volume_ratio"),
             "spread_pct": m.get("spread_pct"),
             "bid": m.get("bid"),
@@ -813,17 +1189,16 @@ def _run_scan_impl(
         elif stop_atr_status == "WIDE":
             penalty_reasons.append("wide_stop")
 
-        options_risk_flag = str(row.get("options_risk_flag") or "").strip()
-        if options_risk_flag == "crowded_bullish_contrarian":
-            penalty_reasons.append("crowded_bullish_contrarian")
-        elif options_risk_flag == "options_bearish_with_data":
-            penalty_reasons.append("options_bearish_with_data")
+        row["options_scoring_status"] = "CONTEXT_ONLY_NOT_SCORED"
 
         row["signal"] = signal
         scenario_guardrail = apply_scenario_guardrail(row)
         row.update(scenario_guardrail)
         if row.get("scenario_guardrail_reason"):
             penalty_reasons.append(str(row["scenario_guardrail_reason"]))
+
+        row = apply_operational_signal_guardrails(row, penalty_reasons)
+
         row["all_veto_reasons"] = ", ".join(veto)
         row["veto_reasons"] = row["all_veto_reasons"]  # backward compatibility
         row["penalty_reasons"] = ", ".join(penalty_reasons)
@@ -847,8 +1222,12 @@ def _run_scan_impl(
 
         priority = calculate_operational_priority(row, config)
         row.update(priority)
+        row.update(calculate_operational_readiness(row, config))
 
         rows.append(row)
+
+    if technical_reject_rows:
+        rows.extend(technical_reject_rows)
 
     out = pd.DataFrame(rows)
 
@@ -933,6 +1312,7 @@ def _run_scan_impl(
         "_signal_order",
         "_recommendation_order",
         "_quote_quality_order",
+        "operational_readiness_score",
         "final_trade_score",
         "setup_quality_score",
         "final_score",
@@ -944,6 +1324,7 @@ def _run_scan_impl(
         "_signal_order": True,
         "_recommendation_order": True,
         "_quote_quality_order": True,
+        "operational_readiness_score": False,
         "final_trade_score": False,
         "setup_quality_score": False,
         "final_score": False,
@@ -974,21 +1355,8 @@ def _run_scan_impl(
 
 
 def _save_scan_performance(performance: dict, config: dict) -> None:
-    relative_path = (
-        config.get("performance", {}).get(
-            "scan_report_path",
-            "reports/scan_performance_latest.json",
-        )
-    )
-    path = Path(relative_path)
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(performance, ensure_ascii=False, indent=2, default=str),
-            encoding="utf-8",
-        )
-    except Exception as exc:
-        logger.warning(f"No se pudo guardar scan performance: {exc}")
+    performance["_report_path"] = _performance_report_path(config)
+    _write_scan_performance(performance)
 
 
 def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
@@ -1007,7 +1375,9 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
         "counts": {},
         "stage_seconds": {},
         "guardrails_modified": False,
+        "_report_path": _performance_report_path(config),
     }
+    _write_scan_performance(performance)
     try:
         output = _run_scan_impl(config, max_candidates, performance)
         performance["status"] = "PASS"
@@ -1031,8 +1401,8 @@ def _reason_summary(row: dict) -> str:
 
     options_bias = row.get("options_bias")
     options_text = f" | opt {options_bias}" if options_bias else ""
-    options_reason = row.get("options_score_reason")
-    options_reason_text = f" | {options_reason}" if options_reason else ""
+    options_status = row.get("options_scoring_status") or "CONTEXT_ONLY_NOT_SCORED"
+    options_status_text = f" ({options_status})" if options_bias else ""
     scenario_status = row.get("scenario_status")
     scenario_text = f" | scenario {scenario_status}" if scenario_status else ""
     scenario_reason = row.get("scenario_guardrail_reason")
@@ -1042,5 +1412,5 @@ def _reason_summary(row: dict) -> str:
         f"{row.get('setup_type')} | score {row.get('final_score')} | "
         f"RS {row.get('rs_score')} | trend {row.get('trend_score')} | "
         f"R:R {rr_text}{scenario_text}{scenario_reason_text}"
-        f"{options_text}{options_reason_text}"
+        f"{options_text}{options_status_text}"
     )

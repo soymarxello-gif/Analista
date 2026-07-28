@@ -51,13 +51,15 @@ def test_veto_strong_candidate_remains_visible_but_penalized():
     assert "candidato fuerte bloqueado por veto" in result["operational_priority_warning"]
 
 
-def test_crowded_options_penalty():
+def test_options_do_not_change_operational_priority_until_data_is_reliable():
     normal = calculate_operational_priority(base_row(), {})
 
     row = base_row()
     row["options_crowded_bullish"] = True
+    row["options_score"] = 0.0
+    row["options_confidence"] = "LOW"
 
     crowded = calculate_operational_priority(row, {})
 
-    assert crowded["operational_priority_score"] < normal["operational_priority_score"]
-    assert "options crowded bullish" in crowded["operational_priority_warning"]
+    assert crowded["operational_priority_score"] == normal["operational_priority_score"]
+    assert "options" not in crowded["operational_priority_warning"].lower()

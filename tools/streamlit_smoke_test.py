@@ -16,9 +16,6 @@ from ui.report_loader import load_all_ui_sources
 from ui.view_models import (
     build_calibration_model,
     build_candidate_table_model,
-    build_cycle_audit_model,
-    build_followup_model,
-    build_paper_trading_model,
     build_quality_gate_model,
     build_status_overview,
 )
@@ -53,7 +50,6 @@ def _scan_app_guardrails(app_path: Path) -> dict:
         "place_order",
         "buy_order",
         "sell_order",
-        "data/paper_trading_journal.csv",
         "data/trade_outcomes.csv",
         "run_scanner",
         "to_csv(",
@@ -91,9 +87,6 @@ def collect_streamlit_smoke_test(root: Path = ROOT) -> dict:
             "status_overview": build_status_overview,
             "candidate_table": build_candidate_table_model,
             "quality_gate": build_quality_gate_model,
-            "paper_trading": build_paper_trading_model,
-            "followup": build_followup_model,
-            "cycle_audit": build_cycle_audit_model,
             "calibration": build_calibration_model,
         }
         for name, builder in builders.items():
@@ -130,9 +123,6 @@ def collect_streamlit_smoke_test(root: Path = ROOT) -> dict:
         "available_sources": int(sources.get("summary", {}).get("available_sources", 0) or 0),
         "missing_sources": int(sources.get("summary", {}).get("missing_sources", 0) or 0),
         "candidate_rows": int(models.get("candidate_table", {}).get("rows_count", 0) or 0),
-        "paper_journal_rows": int(
-            models.get("paper_trading", {}).get("summary", {}).get("journal_rows", 0) or 0
-        ),
         "guardrails": guardrails,
         "errors": errors,
     }
@@ -150,7 +140,6 @@ def build_streamlit_smoke_markdown(data: dict) -> str:
         f"- available_sources: {data.get('available_sources')}",
         f"- missing_sources: {data.get('missing_sources')}",
         f"- candidate_rows: {data.get('candidate_rows')}",
-        f"- paper_journal_rows: {data.get('paper_journal_rows')}",
         "",
         "## Errors",
         "",

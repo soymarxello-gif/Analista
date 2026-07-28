@@ -13,5 +13,6 @@ def test_indicators_basic():
     })
     out = add_all_indicators(df, {"indicators": {"moving_averages": [20, 50, 200]}})
     assert "sma20" in out
+    assert "ema20" in out
     assert "rsi" in out
     assert "atr" in out

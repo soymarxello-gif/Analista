@@ -17,14 +17,11 @@ from ui.view_models import (
     VIEW_STATUSES,
     build_calibration_model,
     build_candidate_table_model,
-    build_cycle_audit_model,
-    build_followup_model,
-    build_paper_trading_model,
     build_quality_gate_model,
     build_status_overview,
 )
 
-NO_REAL_ORDER_NOTICE = "paper trading only; no real order"
+NO_REAL_ORDER_NOTICE = "manual review only; no real order"
 
 
 def _utc_now() -> str:
@@ -91,9 +88,6 @@ def collect_ui_data_contract_audit(root: Path = ROOT) -> dict:
         "status_overview": build_status_overview(sources),
         "candidate_table": build_candidate_table_model(sources),
         "quality_gate": build_quality_gate_model(sources),
-        "paper_trading": build_paper_trading_model(sources),
-        "followup": build_followup_model(sources),
-        "cycle_audit": build_cycle_audit_model(sources),
         "calibration": build_calibration_model(sources),
     }
 
@@ -115,7 +109,6 @@ def collect_ui_data_contract_audit(root: Path = ROOT) -> dict:
         issues.append(f"invalid_sources:{summary.get('invalid_sources')}")
 
     candidate_rows = int(models["candidate_table"].get("rows_count", 0) or 0)
-    paper_summary = models["paper_trading"].get("summary", {})
 
     status = "PASS"
     if issues:
@@ -131,7 +124,6 @@ def collect_ui_data_contract_audit(root: Path = ROOT) -> dict:
         "invalid_sources": int(summary.get("invalid_sources", 0) or 0),
         "empty_sources": int(summary.get("empty_sources", 0) or 0),
         "candidate_rows": candidate_rows,
-        "paper_journal_rows": int(paper_summary.get("journal_rows", 0) or 0),
         "models": models,
         "issues": issues,
         "warnings": warnings,
@@ -156,7 +148,6 @@ def build_ui_data_contract_markdown(data: dict) -> str:
     lines.append(f"- missing_sources: {data.get('missing_sources')}")
     lines.append(f"- invalid_sources: {data.get('invalid_sources')}")
     lines.append(f"- candidate_rows: {data.get('candidate_rows')}")
-    lines.append(f"- paper_journal_rows: {data.get('paper_journal_rows')}")
     lines.append(f"- notice: {NO_REAL_ORDER_NOTICE}")
     lines.append("")
     lines.append("## Guardrails")
@@ -222,7 +213,6 @@ def main() -> int:
     print(f"Missing sources: {result['missing_sources']}")
     print(f"Invalid sources: {result['invalid_sources']}")
     print(f"Candidate rows: {result['candidate_rows']}")
-    print(f"Paper journal rows: {result['paper_journal_rows']}")
     print(f"JSON: {result['json_out']}")
     print(f"Markdown: {result['markdown_out']}")
     return 0 if result["status"] in {"PASS", "WARN"} else 1

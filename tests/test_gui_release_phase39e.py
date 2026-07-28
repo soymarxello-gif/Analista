@@ -13,40 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_guards_and_formatters_import_without_error():
-    assert guards.NO_REAL_ORDER_NOTICE == "paper trading only; no real order"
+    assert guards.NO_REAL_ORDER_NOTICE == "manual review only; no real order"
     assert formatters.format_status_badge("pass") == "PASS"
-
-
-def test_validate_paper_enter_payload_requires_entry_stop_target():
-    result = guards.validate_paper_enter_payload(
-        manual_decision="PAPER_ENTER",
-        entry="",
-        stop=None,
-        target=0,
-        confirmed=True,
-    )
-    assert result["ok"] is False
-    assert "entry_required" in result["errors"]
-    assert "stop_required" in result["errors"]
-    assert "target_required" in result["errors"]
-
-
-def test_validate_close_payload_requires_exit_price_and_reason():
-    result = guards.validate_close_payload(
-        journal_id="J1",
-        exit_price="",
-        reason="",
-        confirmed=True,
-    )
-    assert result["ok"] is False
-    assert "exit_price_required" in result["errors"]
-    assert "reason_required" in result["errors"]
-
-
-def test_validate_export_confirmation_requires_confirmation():
-    result = guards.validate_export_confirmation(False)
-    assert result["ok"] is False
-    assert result["errors"] == ["confirmation_required"]
 
 
 def test_scan_file_for_forbidden_terms_detects_terms(tmp_path: Path):
@@ -79,9 +47,9 @@ def test_app_imports_without_error():
 def test_app_uses_expected_ui_modules_and_has_no_direct_writes_or_order_terms():
     text = (ROOT / "app.py").read_text(encoding="utf-8")
     lower = text.lower()
-    assert "from ui import guards as ui_guards" in text
     assert "from ui import formatters as ui_formatters" in text
     assert "from ui import layout as ui_layout" in text
+    assert "from ui import guards as ui_guards" not in text
     assert "shell=true" not in lower
     assert "to_csv(" not in lower
     assert "write_text(" not in lower

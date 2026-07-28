@@ -28,8 +28,9 @@ def calculate_final_score(scores: dict, config: dict) -> float:
     """
     Legacy/global score.
 
-    Keep this unchanged in behavior for backward compatibility.
-    Existing ranking still uses final_score during Phase 4.
+    Options flow is intentionally excluded until options data coverage is reliable.
+    The configured options weight is redistributed over the active non-options
+    components so the score remains on the same 0-100 scale.
     """
     w = config.get("scoring_weights", {})
     components = {
@@ -42,11 +43,19 @@ def calculate_final_score(scores: dict, config: dict) -> float:
         "risk_reward_atr": scores.get("rr_score", 0.5),
         "liquidity": scores.get("liquidity_score", 0.5),
         "momentum": scores.get("momentum_score", 0.5),
-        "options_flow": scores.get("options_score", 0.5),
         "fundamentals": scores.get("fundamental_score", 0.5),
         "sentiment": scores.get("sentiment_score", 0.5),
     }
-    return float(sum(w.get(k, 0) * max(0, min(float(v), 1)) for k, v in components.items()))
+    total_weight = sum(float(v or 0.0) for v in w.values())
+    active_weight = sum(float(w.get(k, 0.0) or 0.0) for k in components)
+    if active_weight <= 0:
+        return 0.0
+    weighted = sum(
+        float(w.get(k, 0.0) or 0.0) * _clip01(v)
+        for k, v in components.items()
+    )
+    scale = total_weight / active_weight if total_weight > 0 else 1.0
+    return float(weighted * scale)
 
 
 def calculate_trade_score_breakdown(scores: dict, row_context: dict | None = None) -> dict:
@@ -102,12 +111,10 @@ def calculate_trade_score_breakdown(scores: dict, row_context: dict | None = Non
     }
 
     institutional_components = {
-        "options": scores.get("options_score", 0.5),
         "sentiment": scores.get("sentiment_score", 0.5),
     }
     institutional_weights = {
-        "options": 0.75,
-        "sentiment": 0.25,
+        "sentiment": 1.00,
     }
 
     asset_quality = _weighted_average(asset_components, asset_weights)
@@ -141,6 +148,7 @@ def calculate_trade_score_breakdown(scores: dict, row_context: dict | None = Non
                 for k, v in institutional_components.items()
             },
             "options_adjustment": {
+                "options_scoring_status": "CONTEXT_ONLY_NOT_SCORED",
                 "options_score_adjustment": round(float(scores.get("options_score_adjustment", 0.0) or 0.0), 4),
                 "options_score_reason": scores.get("options_score_reason", ""),
                 "options_contrarian_adjustment": round(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pandas as pd
@@ -27,6 +28,19 @@ def _append_unique(items: list[str], value: str) -> None:
         items.append(value)
 
 
+def _contains_excluded_name_term(company: str, excluded_terms: list[str]) -> bool:
+    if not company:
+        return False
+    for term in excluded_terms:
+        term = str(term or "").strip()
+        if not term:
+            continue
+        pattern = rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])"
+        if re.search(pattern, company, flags=re.IGNORECASE):
+            return True
+    return False
+
+
 def validate_universe(df: pd.DataFrame, config: dict, strict_metadata: bool = False) -> pd.DataFrame:
     """
     Validate tradable universe.
@@ -52,7 +66,7 @@ def validate_universe(df: pd.DataFrame, config: dict, strict_metadata: bool = Fa
     filters_cfg = config.get("filters", {})
     liquidity_cfg = config.get("liquidity", {})
 
-    excluded_terms = [str(x).lower() for x in universe_cfg.get("exclude_name_contains", [])]
+    excluded_terms = [str(x) for x in universe_cfg.get("exclude_name_contains", [])]
     allowed_quote_types = {str(x).upper() for x in universe_cfg.get("allowed_quote_types", ["EQUITY"])}
     allowed_exchanges = {str(x).upper() for x in universe_cfg.get("allowed_exchanges", [])}
 
@@ -109,8 +123,7 @@ def validate_universe(df: pd.DataFrame, config: dict, strict_metadata: bool = Fa
             warn.append(f"exchange no permitido/configurado: {exchange}")
 
         # Name-based exclusions.
-        name_l = company.lower()
-        if any(term in name_l for term in excluded_terms):
+        if _contains_excluded_name_term(company, excluded_terms):
             status = "FAIL"
             _append_unique(reasons, "excluded_security_type")
             warn.append("nombre contiene término excluido")

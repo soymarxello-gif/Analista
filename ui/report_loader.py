@@ -9,42 +9,31 @@ SOURCE_SPECS = {
     "daily_operator_index": ("markdown", "reports/daily_operator_index.md"),
     "daily_run_manifest": ("json", "reports/daily_run_manifest_latest.json"),
     "daily_quality_gate": ("json", "reports/daily_quality_gate_latest.json"),
+    "macro_event_context": ("json", "reports/macro_event_context_latest.json"),
+    "nasdaq_risk_regime": ("json", "reports/nasdaq_risk_regime_latest.json"),
+    "engine_feedback": ("json", "reports/engine_feedback_latest.json"),
+    "simple_candidate_posttest": ("json", "reports/simple_candidate_posttest_latest.json"),
+    "portfolio_concentration": ("json", "reports/portfolio_concentration_latest.json"),
     "release_readiness": ("json", "reports/release_readiness_latest.json"),
     "ui_data_contract": ("json", "reports/ui_data_contract_audit_latest.json"),
     "streamlit_smoke_test": ("json", "reports/streamlit_smoke_test_latest.json"),
     "gui_actions_audit": ("json", "reports/gui_actions_audit_latest.json"),
     "gui_visuals_audit": ("json", "reports/gui_visuals_audit_latest.json"),
     "gui_release_audit": ("json", "reports/gui_release_audit_latest.json"),
-    "gui_supervised_session": ("json", "reports/gui_supervised_session_latest.json"),
-    "gui_supervised_session_audit": ("json", "reports/gui_supervised_session_audit_latest.json"),
-    "gui_daily_operating_checklist": ("json", "reports/gui_daily_operating_checklist_latest.json"),
-    "gui_daily_operating_checklist_audit": ("json", "reports/gui_daily_operating_checklist_audit_latest.json"),
     "alpaca_readonly_connectivity": ("json", "reports/alpaca_readonly_connectivity_latest.json"),
-    "gui_operational_decision_log": ("json", "reports/gui_operational_decision_log_latest.json"),
-    "gui_post_session_review": ("json", "reports/gui_post_session_review_latest.json"),
-    "gui_operational_decision_log_audit": ("json", "reports/gui_operational_decision_log_audit_latest.json"),
-    "gui_decision_quality_review": ("json", "reports/gui_decision_quality_review_latest.json"),
-    "gui_decision_quality_audit": ("json", "reports/gui_decision_quality_audit_latest.json"),
-    "gui_weekly_operational_review": ("json", "reports/gui_weekly_operational_review_latest.json"),
-    "gui_weekly_operational_review_audit": ("json", "reports/gui_weekly_operational_review_audit_latest.json"),
-    "gui_evidence_collection_window": ("json", "reports/gui_evidence_collection_window_latest.json"),
-    "gui_evidence_collection_audit": ("json", "reports/gui_evidence_collection_audit_latest.json"),
     "manual_review_top": ("csv", "reports/manual_review_top.csv"),
     "manual_review_latest": ("csv", "reports/manual_review_latest.csv"),
     "trade_candidate_cards": ("json", "reports/trade_candidate_cards_latest.json"),
     "trade_decision_checklist": ("csv", "reports/trade_decision_checklist_latest.csv"),
     "live_quote_recheck": ("csv", "reports/live_quote_recheck_latest.csv"),
-    "paper_trading_journal": ("csv", "reports/paper_trading_journal_latest.csv"),
-    "paper_trade_followup": ("csv", "reports/paper_trade_followup_latest.csv"),
-    "paper_trade_close": ("csv", "reports/paper_trade_close_latest.csv"),
-    "paper_trading_cycle_audit": ("json", "reports/paper_trading_cycle_audit_latest.json"),
     "trade_outcome_analytics": ("csv", "reports/trade_outcome_analytics_latest.csv"),
     "trade_score_calibration": ("json", "reports/trade_score_calibration_latest.json"),
     "calibration_recommendations": ("json", "reports/calibration_recommendations_latest.json"),
     "latest_scan_audited": ("csv", "reports/latest_scan_audited.csv"),
     "ai_review_latest": ("json", "reports/ai_review_latest.json"),
+    "single_ticker_deep_dive": ("json", "reports/single_ticker_deep_dive_latest.json"),
 }
-OPTIONAL_SOURCE_NAMES = {"ai_review_latest"}
+OPTIONAL_SOURCE_NAMES = {"ai_review_latest", "single_ticker_deep_dive"}
 
 VALID_SOURCE_STATUSES = {"AVAILABLE", "MISSING", "INVALID", "EMPTY"}
 
@@ -144,7 +133,7 @@ def _source_from_json(name: str, path: Path, root: Path) -> dict:
         "modified": loaded.get("modified"),
         "error": loaded.get("error", ""),
         "data": data,
-        "rows_count": int(data.get("rows", 0) or data.get("journal_rows", 0) or 0)
+        "rows_count": int(data.get("rows", 0) or data.get("record_rows", 0) or 0)
         if isinstance(data, dict)
         else 0,
     }

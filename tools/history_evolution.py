@@ -185,7 +185,6 @@ def load_history_scans(history_root: Path) -> pd.DataFrame:
 def _manual_recheck_mask(group: pd.DataFrame) -> pd.Series:
     manual_required = (
         group.get("manual_quote_check_required", pd.Series(False, index=group.index))
-        .fillna(False)
         .map(_bool)
     )
 

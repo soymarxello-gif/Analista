@@ -219,9 +219,27 @@ def audit_latest_scan() -> list[str]:
             issues.append("TRIGGER_CONFIRMED con execution_quote_quality LOW")
 
     if {"signal", "setup_type"}.issubset(df.columns):
+        recommendation = (
+            df["recommendation"].astype(str).str.upper()
+            if "recommendation" in df.columns
+            else pd.Series("", index=df.index)
+        )
+        technical_prefilter_failed = (
+            df.get("technical_prefilter_status", pd.Series("", index=df.index))
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .eq("FAIL")
+        )
+        allowed_prefilter_avoid = (
+            technical_prefilter_failed
+            & df["signal"].astype(str).str.upper().eq("AVOID")
+            & recommendation.eq("AVOID_FOR_NOW")
+        )
         bad_setup = df[
             (df["setup_type"].astype(str) == "NO_VALID_SETUP")
             & (df["signal"].astype(str) != "VETO")
+            & ~allowed_prefilter_avoid
         ]
         if len(bad_setup) > 0:
             issues.append("NO_VALID_SETUP fuera de VETO")

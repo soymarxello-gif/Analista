@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -39,6 +40,62 @@ SUMMARY_COLUMNS = [
     "options_confidence",
     "all_veto_reasons",
     "penalty_reasons",
+    "reason_summary",
+]
+
+SCAN_JSON_SUMMARY_COUNT_COLUMNS = [
+    "signal",
+    "recommendation",
+    "execution_readiness_status",
+    "quote_status",
+    "execution_quote_quality",
+    "setup_type",
+    "scenario_status",
+    "technical_prefilter_status",
+    "daily_macd_prefilter_status",
+    "weekly_macd_prefilter_status",
+    "ema20_extension_prefilter_status",
+    "sector_weekly_macd_state",
+    "sector_weekly_macd_acceleration_state",
+    "sector_context_status",
+    "momentum_state",
+    "extension_state",
+    "sector",
+]
+
+SCAN_JSON_TOP_COLUMNS = [
+    "rank",
+    "ticker",
+    "company",
+    "sector",
+    "industry",
+    "signal",
+    "recommendation",
+    "execution_readiness_status",
+    "operational_readiness_score",
+    "final_trade_score",
+    "setup_type",
+    "scenario_status",
+    "technical_prefilter_status",
+    "technical_prefilter_reason",
+    "daily_macd_prefilter_status",
+    "weekly_macd_prefilter_status",
+    "ema20_extension_prefilter_status",
+    "sector_benchmark_symbol",
+    "sector_weekly_macd_state",
+    "sector_weekly_macd_acceleration_state",
+    "sector_context_status",
+    "sector_context_reason",
+    "momentum_state",
+    "extension_state",
+    "ema20_extension_status",
+    "weekly_macd_histogram_state",
+    "quote_status",
+    "execution_quote_quality",
+    "actionable_entry",
+    "actionable_stop",
+    "actionable_target",
+    "rr",
     "reason_summary",
 ]
 
@@ -280,6 +337,65 @@ def _save_html_summary(df: pd.DataFrame, path: Path) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _value_counts(df: pd.DataFrame, column: str) -> dict[str, int]:
+    if df.empty or column not in df.columns:
+        return {}
+    return {
+        str(key): int(value)
+        for key, value in df[column].fillna("MISSING").astype(str).value_counts().items()
+    }
+
+
+def _compact_scan_payload(
+    df: pd.DataFrame,
+    *,
+    csv_path: Path,
+    markdown_path: Path,
+    html_path: Path,
+    top_rows: int = 150,
+) -> dict:
+    top_columns = [column for column in SCAN_JSON_TOP_COLUMNS if column in df.columns]
+    top = df[top_columns].head(top_rows).copy() if top_columns else pd.DataFrame()
+    return {
+        "schema_version": "compact_scan_summary_v1",
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "rows": int(len(df)),
+        "columns": list(df.columns),
+        "full_detail_csv": str(csv_path),
+        "markdown_summary": str(markdown_path),
+        "html_summary": str(html_path),
+        "json_is_compact": True,
+        "csv_is_full_audit_source": True,
+        "top_rows_limit": int(top_rows),
+        "counts": {
+            column: _value_counts(df, column)
+            for column in SCAN_JSON_SUMMARY_COUNT_COLUMNS
+            if column in df.columns
+        },
+        "top_candidates": top.to_dict(orient="records"),
+    }
+
+
+def _save_compact_json_summary(
+    df: pd.DataFrame,
+    path: Path,
+    *,
+    csv_path: Path,
+    markdown_path: Path,
+    html_path: Path,
+) -> None:
+    payload = _compact_scan_payload(
+        df,
+        csv_path=csv_path,
+        markdown_path=markdown_path,
+        html_path=html_path,
+    )
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+
 def save_reports(
     df: pd.DataFrame,
     config: dict,
@@ -322,15 +438,29 @@ def save_reports(
     output_df = add_recommendations(df)
     output_df = format_numeric_columns(output_df, decimals=2)
 
-    # Always save historical outputs first.
-    output_df.to_json(history_json, orient="records", indent=2, force_ascii=False)
+    # Always save historical outputs first. CSV keeps the full auditable detail;
+    # JSON is intentionally compact so the UI and manifests do not carry the
+    # whole universe twice.
+    _save_compact_json_summary(
+        output_df,
+        history_json,
+        csv_path=history_csv,
+        markdown_path=history_md,
+        html_path=history_html,
+    )
     output_df.to_csv(history_csv, index=False, float_format="%.2f")
     _save_markdown_summary(output_df, history_md)
     _save_html_summary(output_df, history_html)
 
     # Try updating latest JSON.
     try:
-        output_df.to_json(json_path, orient="records", indent=2, force_ascii=False)
+        _save_compact_json_summary(
+            output_df,
+            json_path,
+            csv_path=csv_path,
+            markdown_path=markdown_path,
+            html_path=html_path,
+        )
     except PermissionError:
         logger.warning(
             f"No se pudo sobrescribir {json_path}. "

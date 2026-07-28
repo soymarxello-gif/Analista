@@ -1,45 +1,31 @@
 from __future__ import annotations
 
 import csv
+import inspect
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-
-from tools.paper_trade_close import CLOSE_REASONS, save_paper_trade_close_reports
-from tools.paper_trade_followup import save_paper_trade_followup_reports
-from tools.paper_trading_journal import (
-    MANUAL_DECISIONS,
-    load_import_candidates,
-    save_paper_trading_journal,
-)
-from ui import guards
+from tools.single_ticker_deep_dive import clean_ticker, save_single_ticker_deep_dive_reports
+from tools.daily_validation import run_daily_validation
+from config_loader import load_config
 
 ROOT = Path(__file__).resolve().parents[1]
-NO_REAL_ORDER_NOTICE = guards.NO_REAL_ORDER_NOTICE
+NO_REAL_ORDER_NOTICE = "manual review only; no real order"
 ACTION_LOG_COLUMNS = [
     "action_id",
     "timestamp",
     "action_type",
     "user_visible_label",
     "ticker",
-    "journal_id",
+    "context_id",
     "status",
     "message",
     "no_real_order_notice",
 ]
-ALLOWED_MANUAL_DECISIONS = guards.ALLOWED_MANUAL_DECISIONS
-ALLOWED_FOLLOWUP_STATUSES = {
-    "OPEN_MONITORING",
-    "NOT_ENTERED",
-    "ENTERED_PAPER",
-    "CLOSED_PAPER",
-    "INVALIDATED",
-    "EXPIRED",
-}
 
 
 @dataclass(frozen=True)
@@ -84,16 +70,6 @@ def _clean_identifier(value: Any) -> str:
     return "".join(char for char in text if char.isalnum() or char in ".-_")
 
 
-def _clean_float(value: Any):
-    try:
-        if value is None or value == "":
-            return None
-        out = float(value)
-    except Exception:
-        return None
-    return out if out > 0 else None
-
-
 def _result(status: str, message: str, payload: dict[str, Any] | None = None) -> ActionResult:
     return ActionResult(
         status=str(status or "UNKNOWN").upper(),
@@ -108,7 +84,7 @@ def _log_action(
     action_type: str,
     label: str,
     ticker: str = "",
-    journal_id: str = "",
+    context_id: str = "",
     status: str,
     message: str,
 ) -> None:
@@ -121,7 +97,7 @@ def _log_action(
         "action_type": _clean_identifier(action_type),
         "user_visible_label": _clean_text(label, max_length=120),
         "ticker": _clean_symbol(ticker),
-        "journal_id": _clean_identifier(journal_id),
+        "context_id": _clean_identifier(context_id),
         "status": _clean_text(status, max_length=40).upper(),
         "message": _clean_text(message, max_length=500),
         "no_real_order_notice": NO_REAL_ORDER_NOTICE,
@@ -140,276 +116,130 @@ def _with_log(
     action_type: str,
     label: str,
     ticker: str = "",
-    journal_id: str = "",
+    context_id: str = "",
 ) -> dict[str, Any]:
     _log_action(
         root=root,
         action_type=action_type,
         label=label,
         ticker=ticker,
-        journal_id=journal_id,
+        context_id=context_id,
         status=result.status,
         message=result.message,
     )
     return result.to_dict()
 
 
-def _load_journal(root: Path) -> pd.DataFrame:
-    path = root / "data" / "paper_trading_journal.csv"
-    if not path.exists():
-        return pd.DataFrame()
+def _parse_summary_status(summary_out: Path) -> str:
+    if not summary_out.exists():
+        return "UNKNOWN"
     try:
-        return pd.read_csv(path, dtype=str).fillna("")
+        text = summary_out.read_text(encoding="utf-8", errors="ignore")
     except Exception:
-        return pd.DataFrame()
+        return "UNKNOWN"
+    for line in text.splitlines()[:20]:
+        clean = line.strip()
+        if clean.lower().startswith("status:"):
+            return _clean_identifier(clean.split(":", 1)[1]).upper() or "UNKNOWN"
+    return "UNKNOWN"
 
 
-def _resolve_ticker_run_date(
-    root: Path,
+def run_single_ticker_deep_dive(
     *,
-    ticker: str = "",
-    journal_id: str = "",
-) -> tuple[str, str | None, str]:
-    clean_ticker = _clean_symbol(ticker)
-    clean_journal_id = _clean_identifier(journal_id)
-    if clean_ticker:
-        return clean_ticker, None, clean_journal_id
-    if not clean_journal_id:
-        return "", None, ""
+    root: Path = ROOT,
+    ticker: str,
+    confirmed: bool = True,
+) -> dict[str, Any]:
+    clean = clean_ticker(ticker)
+    if not confirmed:
+        result = _result("FAIL", "confirmation_required")
+    elif not clean:
+        result = _result("FAIL", "ticker_required")
+    else:
+        try:
+            payload = save_single_ticker_deep_dive_reports(
+                clean,
+                config=load_config(str(root / "config.yaml")),
+                json_out=root / "reports" / "single_ticker_deep_dive_latest.json",
+                markdown_out=root / "reports" / "single_ticker_deep_dive_latest.md",
+            )
+            result = _result(
+                payload.get("status", "UNKNOWN"),
+                "single_ticker_deep_dive_completed",
+                {
+                    "ticker": payload.get("ticker", clean),
+                    "decision": payload.get("row", {}).get("manual_deep_dive_decision", ""),
+                    "scenario_status": payload.get("row", {}).get("scenario_status", ""),
+                    "final_trade_score": payload.get("row", {}).get("final_trade_score", ""),
+                    "quote_status": payload.get("row", {}).get("quote_status", ""),
+                    "execution_quote_quality": payload.get("row", {}).get("execution_quote_quality", ""),
+                    "json_out": payload.get("json_out", ""),
+                    "markdown_out": payload.get("markdown_out", ""),
+                    "manual_review_only": True,
+                    "creates_trading_signal": False,
+                    "row": payload.get("row", {}),
+                },
+            )
+        except Exception as exc:
+            result = _result("FAIL", f"single_ticker_deep_dive_failed:{exc}")
+    return _with_log(
+        result,
+        root=root,
+        action_type="single_ticker_deep_dive",
+        label="Single ticker deep dive",
+        ticker=clean,
+    )
 
-    journal = _load_journal(root)
-    if journal.empty or "journal_id" not in journal.columns:
-        return "", None, clean_journal_id
-    match = journal[journal["journal_id"].astype(str).eq(clean_journal_id)]
-    if match.empty:
-        return "", None, clean_journal_id
-    row = match.iloc[-1].to_dict()
-    return _clean_symbol(row.get("ticker")), _clean_text(row.get("run_date"), max_length=20) or None, clean_journal_id
 
-
-def import_today_candidates(*, root: Path = ROOT, confirmed: bool = False) -> dict[str, Any]:
+def refresh_all_data(*, root: Path = ROOT, confirmed: bool = True) -> dict[str, Any]:
     if not confirmed:
         result = _result("FAIL", "confirmation_required")
         return _with_log(
             result,
             root=root,
-            action_type="import_today_candidates",
-            label="Import today candidates",
+            action_type="refresh_all_data",
+            label="Refresh all data",
         )
 
-    before = _load_journal(root)
-    candidates, _source_report, _warning = load_import_candidates(
-        cards_json=root / "reports" / "trade_candidate_cards_latest.json",
-        checklist_csv=root / "reports" / "trade_decision_checklist_latest.csv",
-        manual_top_csv=root / "reports" / "manual_review_top.csv",
-        live_quote_csv=root / "reports" / "live_quote_recheck_latest.csv",
-    )
-    candidate_count = int(len(candidates)) if isinstance(candidates, pd.DataFrame) else 0
+    started = time.perf_counter()
+    summary_out = root / "reports" / "daily_validation_summary.txt"
     try:
-        payload = save_paper_trading_journal(root=root, import_today=True)
+        validation_kwargs = {}
+        if "scanner_timeout_seconds" in inspect.signature(run_daily_validation).parameters:
+            validation_kwargs["scanner_timeout_seconds"] = 420
+        exit_code = run_daily_validation(summary_out, **validation_kwargs)
+        duration = round(time.perf_counter() - started, 2)
+        summary_status = _parse_summary_status(summary_out)
+        status = summary_status if exit_code == 0 and summary_status in {"PASS", "WARN"} else "FAIL"
+        payload = {
+            "exit_code": exit_code,
+            "summary_status": summary_status,
+            "duration_seconds": duration,
+            "scanner_timeout_seconds": 420,
+            "summary_out": str(summary_out),
+            "reports_refreshed": True,
+            "manual_review_only": True,
+            "creates_trading_signal": False,
+        }
+        result = _result(status, "daily_validation_completed", payload)
     except Exception as exc:
-        result = _result("FAIL", f"import_failed:{exc}")
-        return _with_log(
-            result,
-            root=root,
-            action_type="import_today_candidates",
-            label="Import today candidates",
+        duration = round(time.perf_counter() - started, 2)
+        result = _result(
+            "FAIL",
+            f"daily_validation_failed:{exc}",
+            {
+                "duration_seconds": duration,
+                "scanner_timeout_seconds": 420,
+                "summary_out": str(summary_out),
+                "reports_refreshed": False,
+                "manual_review_only": True,
+                "creates_trading_signal": False,
+            },
         )
 
-    inserted = int(payload.get("imported_rows", 0) or 0)
-    after_rows = int(payload.get("rows", 0) or 0)
-    before_rows = int(len(before))
-    duplicate_rows = max(0, candidate_count - inserted)
-    if candidate_count == 0 and after_rows >= before_rows:
-        duplicate_rows = max(0, after_rows - before_rows - inserted)
-    payload = dict(payload)
-    payload["inserted_rows"] = inserted
-    payload["duplicate_rows"] = duplicate_rows
-    result = _result(payload.get("status", "PASS"), "import_completed", payload)
     return _with_log(
         result,
         root=root,
-        action_type="import_today_candidates",
-        label="Import today candidates",
-    )
-
-
-def set_paper_decision(
-    *,
-    root: Path = ROOT,
-    ticker: str = "",
-    journal_id: str = "",
-    manual_decision: str,
-    reason: str,
-    entry=None,
-    stop=None,
-    target=None,
-    confirmed: bool = False,
-    confirm_live_quote: bool = True,
-) -> dict[str, Any]:
-    clean_decision = _clean_identifier(manual_decision).upper()
-    clean_reason = _clean_text(reason, max_length=500)
-    clean_ticker, run_date, clean_journal_id = _resolve_ticker_run_date(
-        root,
-        ticker=ticker,
-        journal_id=journal_id,
-    )
-
-    if not confirmed:
-        result = _result("FAIL", "confirmation_required")
-    elif clean_decision not in ALLOWED_MANUAL_DECISIONS or clean_decision not in MANUAL_DECISIONS:
-        result = _result("FAIL", "invalid_manual_decision")
-    elif not clean_reason:
-        result = _result("FAIL", "reason_required")
-    elif not clean_ticker:
-        result = _result("FAIL", "ticker_or_journal_id_required")
-    elif clean_decision == "PAPER_ENTER" and (
-        _clean_float(entry) is None or _clean_float(stop) is None or _clean_float(target) is None
-    ):
-        result = _result("FAIL", "paper_enter_requires_entry_stop_target")
-    else:
-        try:
-            payload = save_paper_trading_journal(
-                root=root,
-                set_decision=(clean_ticker, clean_decision),
-                run_date=run_date,
-                reason=clean_reason,
-                entry=_clean_float(entry),
-                stop=_clean_float(stop),
-                target=_clean_float(target),
-                confirm_live_quote=confirm_live_quote,
-            )
-            result = _result(payload.get("status", "PASS"), payload.get("error") or "decision_updated", payload)
-        except Exception as exc:
-            result = _result("FAIL", f"decision_update_failed:{exc}")
-
-    return _with_log(
-        result,
-        root=root,
-        action_type="set_paper_decision",
-        label="Set paper decision",
-        ticker=clean_ticker,
-        journal_id=clean_journal_id,
-    )
-
-
-def set_paper_followup(
-    *,
-    root: Path = ROOT,
-    ticker: str = "",
-    journal_id: str = "",
-    followup_status: str,
-    notes: str = "",
-    confirmed: bool = False,
-) -> dict[str, Any]:
-    clean_status = _clean_identifier(followup_status).upper()
-    clean_ticker, run_date, clean_journal_id = _resolve_ticker_run_date(
-        root,
-        ticker=ticker,
-        journal_id=journal_id,
-    )
-    if not confirmed:
-        result = _result("FAIL", "confirmation_required")
-    elif clean_status not in ALLOWED_FOLLOWUP_STATUSES:
-        result = _result("FAIL", "invalid_followup_status")
-    elif not clean_ticker:
-        result = _result("FAIL", "ticker_or_journal_id_required")
-    else:
-        try:
-            payload = save_paper_trading_journal(
-                root=root,
-                set_followup=(clean_ticker, clean_status),
-                run_date=run_date,
-                notes=_clean_text(notes, max_length=500),
-            )
-            result = _result(payload.get("status", "PASS"), payload.get("error") or "followup_updated", payload)
-        except Exception as exc:
-            result = _result("FAIL", f"followup_update_failed:{exc}")
-
-    return _with_log(
-        result,
-        root=root,
-        action_type="set_paper_followup",
-        label="Set paper follow-up",
-        ticker=clean_ticker,
-        journal_id=clean_journal_id,
-    )
-
-
-def refresh_paper_followup(*, root: Path = ROOT) -> dict[str, Any]:
-    try:
-        payload = save_paper_trade_followup_reports(root=root)
-        result = _result(payload.get("status", "PASS"), payload.get("error") or "followup_report_refreshed", payload)
-    except Exception as exc:
-        result = _result("FAIL", f"followup_refresh_failed:{exc}")
-    return _with_log(
-        result,
-        root=root,
-        action_type="refresh_paper_followup",
-        label="Refresh paper follow-up",
-    )
-
-
-def close_paper_trade(
-    *,
-    root: Path = ROOT,
-    journal_id: str,
-    exit_price,
-    reason: str,
-    exit_date: str | None = None,
-    confirmed: bool = False,
-) -> dict[str, Any]:
-    clean_journal_id = _clean_identifier(journal_id)
-    clean_reason = _clean_identifier(reason).upper()
-    price = _clean_float(exit_price)
-    if not confirmed:
-        result = _result("FAIL", "confirmation_required")
-    elif not clean_journal_id:
-        result = _result("FAIL", "journal_id_required")
-    elif price is None:
-        result = _result("FAIL", "exit_price_required")
-    elif not clean_reason:
-        result = _result("FAIL", "reason_required")
-    elif clean_reason not in CLOSE_REASONS:
-        result = _result("FAIL", "invalid_close_reason")
-    else:
-        try:
-            payload = save_paper_trade_close_reports(
-                root=root,
-                close_identifier=clean_journal_id,
-                exit_price=price,
-                exit_date=_clean_text(exit_date, max_length=20) or None,
-                reason=clean_reason,
-            )
-            result = _result(payload.get("status", "PASS"), payload.get("error") or "paper_trade_close_recorded", payload)
-        except Exception as exc:
-            result = _result("FAIL", f"paper_trade_close_failed:{exc}")
-
-    return _with_log(
-        result,
-        root=root,
-        action_type="close_paper_trade",
-        label="Close paper trade",
-        journal_id=clean_journal_id,
-    )
-
-
-def export_closed_paper_outcomes(*, root: Path = ROOT, confirmed: bool = False) -> dict[str, Any]:
-    if not confirmed:
-        result = _result("FAIL", "confirmation_required")
-    else:
-        try:
-            payload = save_paper_trade_close_reports(root=root, export_outcomes=True)
-            export_result = payload.get("export_result", {}) or {}
-            payload = dict(payload)
-            payload["exported_count"] = int(export_result.get("exported_outcomes", 0) or 0)
-            payload["skipped_already_exported"] = int(export_result.get("skipped_already_exported", 0) or 0)
-            result = _result(payload.get("status", "PASS"), payload.get("error") or "closed_paper_outcomes_exported", payload)
-        except Exception as exc:
-            result = _result("FAIL", f"outcome_export_failed:{exc}")
-    return _with_log(
-        result,
-        root=root,
-        action_type="export_closed_paper_outcomes",
-        label="Export closed paper outcomes",
+        action_type="refresh_all_data",
+        label="Refresh all data",
     )

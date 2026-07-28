@@ -9,6 +9,7 @@ from engine.scenario_engine import (
     apply_scenario_guardrail,
     calculate_shadow_levels,
 )
+from engine import scenario_engine
 from indicators.pipeline import add_all_indicators
 
 
@@ -53,6 +54,7 @@ def _constructive_momentum(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     out.loc[out.index[-6], "rsi"] = 58.0
     out.loc[out.index[-1], "rsi"] = 63.0
+    out.loc[out.index[-3], "macd_hist"] = 0.05
     out.loc[out.index[-2], "macd_hist"] = 0.10
     out.loc[out.index[-1], "macd"] = 1.20
     out.loc[out.index[-1], "macd_signal"] = 1.00
@@ -60,8 +62,29 @@ def _constructive_momentum(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def test_breakout_near_trigger_with_volume_can_be_valid() -> None:
+def _weekly_macd_payload(state: str = "WEEKLY_MACD_HIST_IMPROVING") -> dict:
+    return {
+        "weekly_macd_histogram_state": state,
+        "weekly_macd_hist": 0.30,
+        "weekly_macd_hist_change_1w": 0.10 if state == "WEEKLY_MACD_HIST_IMPROVING" else -0.10,
+        "weekly_macd_hist_change_2w": 0.20 if state == "WEEKLY_MACD_HIST_IMPROVING" else -0.15,
+        "weekly_macd_hist_two_week_rising": state == "WEEKLY_MACD_HIST_IMPROVING",
+        "weekly_macd_hist_two_week_falling": state in {"WEEKLY_MACD_HIST_DECELERATING", "WEEKLY_MACD_HIST_BEARISH"},
+    }
+
+
+def test_breakout_near_trigger_with_volume_can_be_valid(monkeypatch) -> None:
+    monkeypatch.setattr(
+        scenario_engine,
+        "_weekly_macd_histogram_metrics",
+        lambda df: _weekly_macd_payload(),
+    )
     df = _constructive_momentum(_history())
+    last = df.index[-1]
+    df.loc[last, "close"] = float(df.loc[last, "ema20"]) + 0.35 * float(df.loc[last, "atr"])
+    df.loc[last, "open"] = df.loc[last, "close"] - 0.20
+    df.loc[last, "high"] = df.loc[last, "close"] + 0.30
+    df.loc[last, "low"] = df.loc[last, "close"] - 0.30
     trigger = float(df.iloc[-1]["close"]) * 0.995
 
     result = analyze_scenario(
@@ -74,6 +97,33 @@ def test_breakout_near_trigger_with_volume_can_be_valid() -> None:
     assert result["scenario_status"] == "VALID_TRIGGER"
     assert result["scenario_trigger_confirmed"] is True
     assert result["momentum_state"] in {"STRONG", "IMPROVING"}
+
+
+def test_weekly_macd_decelerating_blocks_valid_trigger(monkeypatch) -> None:
+    monkeypatch.setattr(
+        scenario_engine,
+        "_weekly_macd_histogram_metrics",
+        lambda df: _weekly_macd_payload("WEEKLY_MACD_HIST_DECELERATING"),
+    )
+    df = _constructive_momentum(_history())
+    last = df.index[-1]
+    df.loc[last, "close"] = float(df.loc[last, "ema20"]) + 0.35 * float(df.loc[last, "atr"])
+    df.loc[last, "open"] = df.loc[last, "close"] - 0.20
+    df.loc[last, "high"] = df.loc[last, "close"] + 0.30
+    df.loc[last, "low"] = df.loc[last, "close"] - 0.30
+    trigger = float(df.iloc[-1]["close"]) * 0.995
+
+    result = analyze_scenario(
+        df,
+        setup_type="BREAKOUT",
+        trigger_level=trigger,
+        market_regime="RISK_ON",
+    )
+
+    assert result["scenario_status"] == "WAIT_FOR_CONFIRMATION"
+    assert result["scenario_trigger_confirmed"] is False
+    assert result["weekly_macd_histogram_state"] == "WEEKLY_MACD_HIST_DECELERATING"
+    assert result["required_confirmation"] == "weekly_macd_histogram_resumes_rising"
 
 
 def test_breakout_far_above_trigger_is_late_entry() -> None:
@@ -90,6 +140,80 @@ def test_breakout_far_above_trigger_is_late_entry() -> None:
     assert result["scenario_status"] == "LATE_ENTRY_OVEREXTENDED"
     assert result["engine_recommendation"] == "DO_NOT_CHASE"
     assert result["scenario_trigger_confirmed"] is False
+
+
+def test_breakout_far_above_ema20_is_late_even_if_near_trigger() -> None:
+    df = _constructive_momentum(_history())
+    last = df.index[-1]
+    df.loc[last, "close"] = max(
+        float(df.loc[last, "ema20"]) * 1.08,
+        float(df.loc[last, "ema20"]) + 2.2 * float(df.loc[last, "atr"]),
+    )
+    df.loc[last, "high"] = df.loc[last, "close"] + 0.20
+    df.loc[last, "low"] = df.loc[last, "close"] - 0.20
+    trigger = float(df.loc[last, "close"]) * 0.995
+
+    result = analyze_scenario(
+        df,
+        setup_type="BREAKOUT",
+        trigger_level=trigger,
+        market_regime="RISK_ON",
+    )
+
+    assert result["scenario_status"] == "LATE_ENTRY_OVEREXTENDED"
+    assert result["ema20_extension_status"] == "LATE_ENTRY"
+    assert result["entry_timing_status"] == "LATE_ENTRY"
+
+
+def test_moderate_pct_above_ema20_is_caution_not_late() -> None:
+    df = _constructive_momentum(_history())
+    last = df.index[-1]
+    df.loc[last, "close"] = float(df.loc[last, "ema20"]) * 1.03
+    df.loc[last, "atr"] = (float(df.loc[last, "close"]) - float(df.loc[last, "ema20"])) / 1.35
+    df.loc[last, "open"] = df.loc[last, "close"] - 0.20
+    df.loc[last, "high"] = df.loc[last, "close"] + 0.20
+    df.loc[last, "low"] = df.loc[last, "close"] - 0.20
+
+    result = analyze_scenario(
+        df,
+        setup_type="RECLAIM",
+        trigger_level=float(df.loc[last, "sma20"]),
+        market_regime="RISK_ON",
+    )
+
+    assert result["extension_state"] == "CAUTION"
+    assert result["ema20_extension_status"] == "CAUTION"
+    assert result["scenario_status"] != "LATE_ENTRY_OVEREXTENDED"
+
+
+def test_macd_histogram_bullish_inflection_below_zero_is_constructive() -> None:
+    df = _history(final_volume=1_700_000)
+    last = df.index[-1]
+    df.loc[df.index[-6], "rsi"] = 51.0
+    df.loc[last, "rsi"] = 54.0
+    df.loc[last, "macd"] = -1.20
+    df.loc[last, "macd_signal"] = -1.00
+    df.loc[df.index[-4], "macd_hist"] = -0.45
+    df.loc[df.index[-3], "macd_hist"] = -0.40
+    df.loc[df.index[-2], "macd_hist"] = -0.30
+    df.loc[last, "macd_hist"] = -0.12
+    df.loc[last, "close"] = float(df.loc[last, "ema20"]) * 1.002
+    df.loc[last, "open"] = df.loc[last, "close"] - 0.20
+    df.loc[last, "high"] = df.loc[last, "close"] + 0.30
+    df.loc[last, "low"] = df.loc[last, "close"] - 0.30
+
+    result = analyze_scenario(
+        df,
+        setup_type="RECLAIM",
+        trigger_level=float(df.loc[last, "ema20"]),
+        market_regime="RISK_ON",
+    )
+
+    evidence = json.loads(result["scenario_evidence"])
+    assert result["macd_histogram_state"] == "MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO"
+    assert "macd_hist_bullish_inflection_below_zero" in evidence
+    assert result["momentum_state"] in {"IMPROVING", "STRONG"}
+    assert result["momentum_confirmation_score"] >= 74
 
 
 def test_pullback_without_rejection_waits_for_confirmation() -> None:
@@ -145,8 +269,18 @@ def test_unselected_candidate_is_not_deep_analyzed() -> None:
     assert result["engine_recommendation"] == "FUNNEL_ONLY"
 
 
-def test_risk_off_context_blocks_otherwise_valid_trigger() -> None:
+def test_risk_off_context_blocks_otherwise_valid_trigger(monkeypatch) -> None:
+    monkeypatch.setattr(
+        scenario_engine,
+        "_weekly_macd_histogram_metrics",
+        lambda df: _weekly_macd_payload(),
+    )
     df = _constructive_momentum(_history())
+    last = df.index[-1]
+    df.loc[last, "close"] = float(df.loc[last, "ema20"]) + 0.35 * float(df.loc[last, "atr"])
+    df.loc[last, "open"] = df.loc[last, "close"] - 0.20
+    df.loc[last, "high"] = df.loc[last, "close"] + 0.30
+    df.loc[last, "low"] = df.loc[last, "close"] - 0.30
     trigger = float(df.iloc[-1]["close"]) * 0.995
 
     result = analyze_scenario(

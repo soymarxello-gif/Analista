@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-NO_REAL_ORDER_NOTICE = "paper trading only; no real order"
+NO_REAL_ORDER_NOTICE = "no real order"
 
 
 def _read_text(path: Path) -> str:
@@ -63,20 +63,22 @@ def collect_gui_actions_audit(root: Path = ROOT) -> dict:
     order_hits = _contains_any(combined, forbidden_order_terms)
     api_hits = _contains_any(combined, external_api_terms)
     arbitrary_command_hits = _contains_any(actions_text, arbitrary_command_terms)
-    app_action_import_ok = "from ui import actions as paper_actions" in app_text
+    app_action_import_ok = "from ui import actions as ui_actions" in app_text
     actions_module_exists = actions_path.exists()
     app_exists = app_path.exists()
     shell_guardrail_ok = "shell=True" not in combined
     command_guardrail_ok = not arbitrary_command_hits
     broker_guardrail_ok = not order_hits and not api_hits
-    no_real_order_notice_present = NO_REAL_ORDER_NOTICE in actions_text or NO_REAL_ORDER_NOTICE in guards_text
-    confirmations = [
-        "Confirm paper-only import; no real order",
-        "Confirm paper-only decision; no real order",
-        "Confirm manual paper close; no real order",
-        "Confirm export to trade_outcomes.csv",
+    no_real_order_notice_present = (
+        NO_REAL_ORDER_NOTICE in app_text.lower()
+        or NO_REAL_ORDER_NOTICE in actions_text.lower()
+        or NO_REAL_ORDER_NOTICE in guards_text.lower()
+    )
+    controlled_actions = [
+        "refresh_all_data(",
+        "run_single_ticker_deep_dive(",
     ]
-    confirmations_present = all(item in app_text for item in confirmations)
+    controlled_actions_present = all(item in combined for item in controlled_actions)
     scanner_guardrail_ok = "run_scanner" not in combined
     scoring_guardrail_ok = "signal_classifier" not in combined and "scoring/" not in combined
     thresholds_guardrail_ok = "threshold" not in actions_text.lower() and "weights" not in actions_text.lower()
@@ -100,9 +102,9 @@ def collect_gui_actions_audit(root: Path = ROOT) -> dict:
     if not command_guardrail_ok:
         add_issue("FAIL", "guardrails", "Arbitrary command execution primitive detected in ui/actions.py")
     if not no_real_order_notice_present:
-        add_issue("FAIL", "guardrails", "Missing paper-only no-real-order notice")
-    if not confirmations_present:
-        add_issue("FAIL", "app.py", "Missing explicit confirmation controls")
+        add_issue("FAIL", "guardrails", "Missing no-real-order notice")
+    if not controlled_actions_present:
+        add_issue("FAIL", "app.py", "Missing controlled refresh/deep-dive actions")
     if not scanner_guardrail_ok:
         add_issue("FAIL", "guardrails", "Scanner execution reference detected")
     if not scoring_guardrail_ok:
@@ -130,7 +132,7 @@ def collect_gui_actions_audit(root: Path = ROOT) -> dict:
         "broker_guardrail_ok": broker_guardrail_ok,
         "shell_guardrail_ok": shell_guardrail_ok,
         "command_guardrail_ok": command_guardrail_ok,
-        "confirmations_present": confirmations_present,
+        "controlled_actions_present": controlled_actions_present,
         "no_real_order_notice_present": no_real_order_notice_present,
         "scanner_guardrail_ok": scanner_guardrail_ok,
         "scoring_guardrail_ok": scoring_guardrail_ok,
@@ -161,7 +163,7 @@ def build_gui_actions_audit_markdown(data: dict) -> str:
         f"- broker_guardrail_ok: {data.get('broker_guardrail_ok')}",
         f"- shell_guardrail_ok: {data.get('shell_guardrail_ok')}",
         f"- command_guardrail_ok: {data.get('command_guardrail_ok')}",
-        f"- confirmations_present: {data.get('confirmations_present')}",
+        f"- controlled_actions_present: {data.get('controlled_actions_present')}",
         f"- no_real_order_notice_present: {data.get('no_real_order_notice_present')}",
         "",
         "## Logged Action Types",
@@ -183,9 +185,9 @@ def build_gui_actions_audit_markdown(data: dict) -> str:
             "",
             "## Guardrails",
             "",
-            "- Paper trading only; no real order.",
+            "- Manual review only; no real order.",
             "- GUI actions do not send real orders.",
-            "- GUI actions use existing paper trading tools only.",
+            "- GUI actions are limited to refresh, point-in-time research and logs.",
         ]
     )
     return "\n".join(lines)
@@ -214,7 +216,7 @@ def save_gui_actions_audit(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Audita acciones GUI controladas de paper trading.")
+    parser = argparse.ArgumentParser(description="Audita acciones GUI controladas de Analista.")
     parser.add_argument("--json-out", default="reports/gui_actions_audit_latest.json")
     parser.add_argument("--markdown-out", default="reports/gui_actions_audit_latest.md")
     args = parser.parse_args()

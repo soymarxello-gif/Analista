@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="Legacy manual GUI decision log flow removed from active product.")
+
 from pathlib import Path
 
 import pandas as pd

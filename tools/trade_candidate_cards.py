@@ -37,6 +37,22 @@ CARD_FIELDS = [
     "sector",
     "industry",
     "final_trade_score",
+    "asset_attractiveness_score",
+    "operational_readiness_score",
+    "operational_readiness_bucket",
+    "timing_quality_score",
+    "momentum_confirmation_score",
+    "scenario_quality_adjustment",
+    "timing_penalty_reason",
+    "momentum_penalty_reason",
+    "engine_block_reason",
+    "execution_readiness_status",
+    "technical_prefilter_status",
+    "technical_prefilter_reason",
+    "daily_macd_prefilter_status",
+    "weekly_macd_prefilter_status",
+    "ema20_extension_prefilter_status",
+    "ema20_extension_reference_source",
     "checklist_score",
     "setup_quality_score",
     "asset_quality_score",
@@ -44,6 +60,7 @@ CARD_FIELDS = [
     "options_score",
     "options_bias",
     "options_confidence",
+    "options_scoring_status",
     "quote_status",
     "execution_quote_quality",
     "actionable_entry",
@@ -65,7 +82,23 @@ CARD_FIELDS = [
     "scenario_guardrail_reason",
     "momentum_state",
     "extension_state",
+    "ema20_extension_status",
     "entry_timing_status",
+    "macd_histogram_state",
+    "weekly_macd_histogram_state",
+    "weekly_macd_hist_improving",
+    "weekly_macd_hist",
+    "weekly_macd_hist_change_1w",
+    "weekly_macd_hist_change_2w",
+    "sector_benchmark_symbol",
+    "sector_weekly_macd_hist",
+    "sector_weekly_macd_slope_1w",
+    "sector_weekly_macd_prev_slope_1w",
+    "sector_weekly_macd_acceleration",
+    "sector_weekly_macd_state",
+    "sector_weekly_macd_acceleration_state",
+    "sector_context_status",
+    "sector_context_reason",
     "required_confirmation",
     "engine_recommendation",
     "shadow_entry",
@@ -74,6 +107,13 @@ CARD_FIELDS = [
     "shadow_rr",
     "shadow_stop_atr_multiple",
     "shadow_level_status",
+    "technical_ema20",
+    "technical_distance_ema20_pct",
+    "technical_distance_ema20_atr",
+    "technical_ema20_slope_5d_pct",
+    "technical_macd_hist",
+    "technical_macd_hist_change_1d",
+    "technical_macd_hist_change_3d",
 ]
 
 
@@ -215,6 +255,10 @@ def _render_card(row: dict) -> list[str]:
     lines.append(f"- Recomendacion: {_display(row.get('recommendation'))}")
     lines.append(f"- Setup: {_display(row.get('setup_type'))}")
     lines.append(f"- Score: final={score}; checklist={checklist_score}")
+    lines.append(f"- Score activo: {_display(row.get('asset_attractiveness_score'))}")
+    lines.append(f"- Score timing: {_display(row.get('timing_quality_score'))}")
+    lines.append(f"- Score momentum: {_display(row.get('momentum_confirmation_score'))}")
+    lines.append(f"- Readiness operativo: {_display(row.get('operational_readiness_score'))} / {_display(row.get('operational_readiness_bucket'))}")
     lines.append(f"- Estado operativo: {label}")
     lines.append("")
     lines.append("### Niveles operativos")
@@ -223,13 +267,27 @@ def _render_card(row: dict) -> list[str]:
     lines.append(f"- Target: {_display(row.get('actionable_target'))}")
     lines.append(f"- R/R: {_display(row.get('rr'))}")
     lines.append("")
+    lines.append("### Niveles diagnosticos")
+    lines.append(f"- Entrada shadow: {_display(row.get('shadow_entry'))}")
+    lines.append(f"- Stop shadow: {_display(row.get('shadow_stop'))}")
+    lines.append(f"- Target shadow: {_display(row.get('shadow_target'))}")
+    lines.append(f"- R/R shadow: {_display(row.get('shadow_rr'))}")
+    lines.append(f"- Estado shadow: {_display(row.get('shadow_level_status'))}")
+    lines.append("")
     lines.append("### Validacion de ejecucion")
     lines.append(f"- quote_status: {_display(row.get('quote_status'))}")
     lines.append(f"- execution_quote_quality: {_display(row.get('execution_quote_quality'))}")
+    lines.append(f"- execution_readiness_status: {_display(row.get('execution_readiness_status'))}")
     lines.append(f"- live quote recheck: {_live_recheck_text(row)}")
     lines.append(f"- acciones requeridas: {_display(row.get('checklist_required_actions'), 'NONE')}")
     lines.append("")
     lines.append("### Tecnica")
+    lines.append(f"- prefiltro_tecnico: {_display(row.get('technical_prefilter_status'))}")
+    lines.append(f"- razon_prefiltro: {_display(row.get('technical_prefilter_reason'), 'NONE')}")
+    lines.append(f"- macd_diario_prefiltro: {_display(row.get('daily_macd_prefilter_status'))}")
+    lines.append(f"- macd_semanal_prefiltro: {_display(row.get('weekly_macd_prefilter_status'))}")
+    lines.append(f"- ema20_prefiltro: {_display(row.get('ema20_extension_prefilter_status'))}")
+    lines.append(f"- referencia_extension: {_display(row.get('ema20_extension_reference_source'))}")
     lines.append(f"- setup_type: {_display(row.get('setup_type'))}")
     lines.append(f"- stop_atr_status: {_display(row.get('stop_atr_status'))}")
     lines.append(f"- warnings tecnicos: {_display(row.get('checklist_warnings'), 'NONE')}")
@@ -240,7 +298,24 @@ def _render_card(row: dict) -> list[str]:
     lines.append(f"- scenario_operability: {_display(row.get('scenario_operability'))}")
     lines.append(f"- momentum_state: {_display(row.get('momentum_state'))}")
     lines.append(f"- extension_state: {_display(row.get('extension_state'))}")
+    lines.append(f"- ema20_extension_status: {_display(row.get('ema20_extension_status'))}")
     lines.append(f"- entry_timing_status: {_display(row.get('entry_timing_status'))}")
+    lines.append(f"- macd_histogram_state: {_display(row.get('macd_histogram_state'))}")
+    lines.append(f"- weekly_macd_histogram_state: {_display(row.get('weekly_macd_histogram_state'))}")
+    lines.append(f"- weekly_macd_hist_change_1w: {_display(row.get('weekly_macd_hist_change_1w'))}")
+    lines.append(f"- sector_benchmark_symbol: {_display(row.get('sector_benchmark_symbol'))}")
+    lines.append(f"- sector_weekly_macd_state: {_display(row.get('sector_weekly_macd_state'))}")
+    lines.append(f"- sector_weekly_macd_acceleration_state: {_display(row.get('sector_weekly_macd_acceleration_state'))}")
+    lines.append(f"- sector_weekly_macd_slope_1w: {_display(row.get('sector_weekly_macd_slope_1w'))}")
+    lines.append(f"- sector_weekly_macd_acceleration: {_display(row.get('sector_weekly_macd_acceleration'))}")
+    lines.append(f"- sector_context_status: {_display(row.get('sector_context_status'))}")
+    lines.append(f"- sector_context_reason: {_display(row.get('sector_context_reason'), 'NONE')}")
+    lines.append(f"- distance_ema20_atr: {_display(row.get('technical_distance_ema20_atr'))}")
+    lines.append(f"- distance_ema20_pct: {_display(row.get('technical_distance_ema20_pct'))}")
+    lines.append(f"- macd_hist_change_3d: {_display(row.get('technical_macd_hist_change_3d'))}")
+    lines.append(f"- timing_penalty_reason: {_display(row.get('timing_penalty_reason'), 'NONE')}")
+    lines.append(f"- momentum_penalty_reason: {_display(row.get('momentum_penalty_reason'), 'NONE')}")
+    lines.append(f"- engine_block_reason: {_display(row.get('engine_block_reason'), 'NONE')}")
     lines.append(f"- confirmacion requerida: {_display(row.get('required_confirmation'), 'NONE')}")
     lines.append(f"- recomendacion del motor: {_display(row.get('engine_recommendation'))}")
     lines.append(
@@ -256,6 +331,7 @@ def _render_card(row: dict) -> list[str]:
     lines.append(f"- options_bias: {_display(row.get('options_bias'))}")
     lines.append(f"- options_confidence: {_display(row.get('options_confidence'))}")
     lines.append(f"- options_score: {_display(row.get('options_score'))}")
+    lines.append(f"- options_scoring_status: {_display(row.get('options_scoring_status'), 'CONTEXT_ONLY_NOT_SCORED')}")
     lines.append(f"- lectura contrarian: {_contrarian_reading(row)}")
     lines.append("")
     lines.append("### Riesgos y bloqueos")

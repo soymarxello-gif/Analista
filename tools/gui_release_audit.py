@@ -69,7 +69,6 @@ def collect_gui_release_audit(root: Path = ROOT) -> dict:
         "from ui import actions",
         "from ui import charts",
         "from ui import formatters",
-        "from ui import guards",
     ]
     app_imports_expected_modules = all(item in app_text for item in expected_imports)
 
@@ -77,7 +76,7 @@ def collect_gui_release_audit(root: Path = ROOT) -> dict:
     external_api_terms = ["ibapi", "alpaca", "interactivebrokers", "robinhood"]
     app_direct_read_terms = ["pd.read_csv", "read_csv(", "json.load", "read_text(", "open(", "load_json_report", "load_csv_report"]
     app_direct_write_terms = ["to_csv(", "to_json(", "write_text(", "write_bytes(", "open("]
-    data_write_terms = ["data/paper_trading_journal.csv", "data\\paper_trading_journal.csv", "data/trade_outcomes.csv", "data\\trade_outcomes.csv"]
+    data_write_terms = ["data/trade_outcomes.csv", "data\\trade_outcomes.csv"]
     scoring_terms = ["signal_classifier", "scoring/", "threshold =", "thresholds =", "weights ="]
     disabled_setup = "_".join(["BUY", "SETUP", "ACTIVE"])
     trigger_state = "_".join(["TRIGGER", "CONFIRMED"])
@@ -114,20 +113,13 @@ def collect_gui_release_audit(root: Path = ROOT) -> dict:
     )
     shell_guardrail_ok = "shell=True" not in combined_app_actions
     broker_guardrail_ok = not app_order_hits and not actions_order_hits and not app_api_hits and not actions_api_hits
-    confirmation_guardrail_ok = all(
-        item in app_text
-        for item in [
-            "PAPER_ENTER",
-            "Confirm manual paper close; no real order",
-            "Confirm export to trade_outcomes.csv",
-        ]
-    )
+    controlled_actions_ok = "refresh_all_data(" in app_text
     no_real_order_notice_present = (
         "NO_REAL_ORDER_NOTICE" in app_text
         or "NO_REAL_ORDER_NOTICE" in layout_text
-        or "paper trading only; no real order" in app_text
-        or "paper trading only; no real order" in layout_text
-        or "paper trading only; no real order" in guards_text
+        or "no real order" in app_text.lower()
+        or "no real order" in layout_text.lower()
+        or "no real order" in guards_text.lower()
     )
     signal_guardrail_ok = disabled_setup not in combined_app_actions and trigger_state not in combined_app_actions
     scoring_guardrail_ok = not _contains_any(combined_app_actions, scoring_terms)
@@ -153,8 +145,8 @@ def collect_gui_release_audit(root: Path = ROOT) -> dict:
         add_issue("FAIL", "guardrails", "shell=True detected")
     if not broker_guardrail_ok:
         add_issue("FAIL", "guardrails", "order/API term detected")
-    if not confirmation_guardrail_ok:
-        add_issue("FAIL", "app.py", "required explicit confirmations missing")
+    if not controlled_actions_ok:
+        add_issue("FAIL", "app.py", "controlled refresh action missing")
     if not no_real_order_notice_present:
         add_issue("FAIL", "guardrails", "missing no-real-order notice")
     if not signal_guardrail_ok:
@@ -193,7 +185,7 @@ def collect_gui_release_audit(root: Path = ROOT) -> dict:
         "read_write_guardrail_ok": read_write_guardrail_ok,
         "broker_guardrail_ok": broker_guardrail_ok,
         "shell_guardrail_ok": shell_guardrail_ok,
-        "confirmation_guardrail_ok": confirmation_guardrail_ok,
+        "confirmation_guardrail_ok": controlled_actions_ok,
         "no_real_order_notice_present": no_real_order_notice_present,
         "signal_guardrail_ok": signal_guardrail_ok,
         "scoring_guardrail_ok": scoring_guardrail_ok,
@@ -244,7 +236,7 @@ def build_gui_release_audit_markdown(data: dict) -> str:
             "## Release guardrails",
             "",
             "- Manual review only.",
-            "- Paper trading only.",
+            "- Automatic posttest only for retrospective diagnostics.",
             "- No real orders.",
             "- GUI does not execute scanner or scoring changes.",
         ]

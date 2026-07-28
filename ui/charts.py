@@ -2,9 +2,20 @@ from __future__ import annotations
 
 from typing import Any
 
+import altair as alt
+import math
 import pandas as pd
 
+from ui import formatters
+
 NO_CHART_DATA = "No data available for this chart."
+
+SEMANTIC_COLORS = {
+    "negative": "#F87171",
+    "warning": "#FBBF24",
+    "positive": "#34D399",
+    "neutral": "#38BDF8",
+}
 
 
 def _chart(status: str, dataframe: pd.DataFrame | None = None, message: str = "") -> dict:
@@ -51,6 +62,107 @@ def _numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 
 
+def _chart_label_frame(chart: dict | None, value_column: str) -> pd.DataFrame:
+    dataframe = (chart or {}).get("dataframe")
+    if not isinstance(dataframe, pd.DataFrame) or dataframe.empty:
+        return pd.DataFrame()
+    out = dataframe.copy()
+    if {"metric", "value"}.issubset(out.columns):
+        metric_count = out["metric"].astype(str).nunique()
+        out["label"] = out["value"].map(formatters.display_status_with_code)
+        if metric_count > 1:
+            out["label"] = (
+                out["metric"].map(formatters.spanish_column_label)
+                + " · "
+                + out["label"].astype(str)
+            )
+    elif "ticker" in out.columns:
+        out["label"] = out["ticker"].astype(str)
+    elif "bucket" in out.columns:
+        out["label"] = out["bucket"].astype(str)
+    else:
+        return pd.DataFrame()
+    if value_column not in out.columns:
+        return pd.DataFrame()
+    out[value_column] = pd.to_numeric(out[value_column], errors="coerce")
+    out = out[out[value_column].map(lambda value: value is not None and math.isfinite(value))]
+    if out.empty or not out[value_column].abs().gt(0).any():
+        return pd.DataFrame()
+    out["semantic_class"] = out.get("value", out["label"]).map(formatters.trading_value_class)
+    out["color"] = out["semantic_class"].map(SEMANTIC_COLORS).fillna(SEMANTIC_COLORS["neutral"])
+    return out.sort_values([value_column, "label"], ascending=[False, True]).reset_index(drop=True)
+
+
+def build_horizontal_bar_chart(
+    chart: dict | None,
+    *,
+    value_column: str = "count",
+    selected_label: str = "",
+) -> alt.LayerChart | None:
+    out = _chart_label_frame(chart, value_column)
+    if out.empty:
+        return None
+    if selected_label:
+        out["color"] = out.apply(
+            lambda row: "#F8FAFC" if str(row["label"]) == str(selected_label) else row["color"],
+            axis=1,
+        )
+    height = min(520, max(150, 34 * len(out)))
+    y = alt.Y(
+        "label:N",
+        sort=alt.SortField(field=value_column, order="descending"),
+        title=None,
+        axis=alt.Axis(labelLimit=280, labelColor="#CBD5E1", ticks=False, domain=False),
+    )
+    x = alt.X(
+        f"{value_column}:Q",
+        title=None,
+        axis=alt.Axis(gridColor="#1E293B", labelColor="#94A3B8", tickCount=5),
+    )
+    tooltip = [
+        alt.Tooltip("label:N", title="Categoría"),
+        alt.Tooltip(f"{value_column}:Q", title="Valor", format=".2f"),
+    ]
+    base = alt.Chart(out).encode(y=y, x=x, tooltip=tooltip)
+    bars = base.mark_bar(cornerRadiusEnd=4, size=20).encode(
+        color=alt.Color("color:N", scale=None, legend=None)
+    )
+    labels = base.mark_text(
+        align="left",
+        baseline="middle",
+        dx=6,
+        color="#E5E7EB",
+        fontSize=12,
+    ).encode(text=alt.Text(f"{value_column}:Q", format=".2f"))
+    return (bars + labels).properties(height=height).configure_view(stroke=None)
+
+
+def build_r_multiple_line_chart(chart: dict | None) -> alt.Chart | None:
+    dataframe = (chart or {}).get("dataframe")
+    if not isinstance(dataframe, pd.DataFrame) or dataframe.empty:
+        return None
+    out = dataframe.copy()
+    out["trade_number"] = pd.to_numeric(out.get("trade_number"), errors="coerce")
+    out["r_multiple"] = pd.to_numeric(out.get("r_multiple"), errors="coerce")
+    out = out.dropna(subset=["trade_number", "r_multiple"])
+    if out.empty:
+        return None
+    return (
+        alt.Chart(out)
+        .mark_line(point=True, color="#38BDF8")
+        .encode(
+            x=alt.X("trade_number:Q", title="Trade"),
+            y=alt.Y("r_multiple:Q", title="R multiple"),
+            tooltip=[
+                alt.Tooltip("trade_number:Q", title="Trade", format=".0f"),
+                alt.Tooltip("r_multiple:Q", title="R", format=".2f"),
+            ],
+        )
+        .properties(height=260)
+        .configure_view(stroke=None)
+    )
+
+
 def build_signal_distribution_chart_data(model: dict | None) -> dict:
     return _chart("PASS", _count_column(_frame(model), "signal", metric="signal"))
 
@@ -82,67 +194,6 @@ def build_candidate_score_chart_data(model: dict | None) -> dict:
     )
     columns = [column for column in ["ticker", "final_trade_score"] if column in out.columns]
     return _chart("PASS", out[columns].head(20))
-
-
-def build_paper_status_chart_data(model: dict | None) -> dict:
-    df = _frame(model)
-    parts = [
-        _count_column(df, "manual_decision", metric="manual_decision"),
-        _count_column(df, "followup_status", metric="followup_status"),
-    ]
-    non_empty_parts = [part for part in parts if not part.empty]
-    out = pd.concat(non_empty_parts, ignore_index=True) if non_empty_parts else pd.DataFrame()
-    if not out.empty:
-        return _chart("PASS", out)
-
-    summary = (model or {}).get("summary", {})
-    if not isinstance(summary, dict):
-        return _chart("EMPTY")
-    keys = [
-        "pending_review",
-        "paper_watch",
-        "paper_enter",
-        "blocked",
-        "closed_paper",
-        "pending_export",
-        "exported_outcomes",
-    ]
-    rows = [
-        {"metric": "paper_status", "value": key, "count": int(summary.get(key, 0) or 0)}
-        for key in keys
-        if int(summary.get(key, 0) or 0) > 0
-    ]
-    return _chart("PASS", pd.DataFrame(rows))
-
-
-def build_followup_decision_chart_data(model: dict | None) -> dict:
-    df = _frame(model)
-    out = _count_column(df, "followup_decision", metric="followup_decision")
-    if not out.empty:
-        return _chart("PASS", out)
-    decisions = ((model or {}).get("summary", {}) or {}).get("decisions", {})
-    if not isinstance(decisions, dict):
-        return _chart("EMPTY")
-    rows = [
-        {"metric": "followup_decision", "value": key, "count": int(value or 0)}
-        for key, value in decisions.items()
-        if int(value or 0) > 0
-    ]
-    return _chart("PASS", pd.DataFrame(rows))
-
-
-def build_closed_outcomes_chart_data(model: dict | None) -> dict:
-    summary = (model or {}).get("summary", {})
-    if not isinstance(summary, dict):
-        return _chart("EMPTY")
-    keys = ["closed_paper_count", "pending_export_count", "exported_count", "duplicate_outcome_ids"]
-    if not any(key in summary for key in keys):
-        return _chart("EMPTY")
-    rows = [
-        {"metric": "paper_cycle", "value": key, "count": int(summary.get(key, 0) or 0)}
-        for key in keys
-    ]
-    return _chart("PASS", pd.DataFrame(rows))
 
 
 def build_r_multiple_chart_data(model: dict | None) -> dict:

@@ -105,6 +105,15 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
         warnings.append("faltan columnas recomendadas: " + ", ".join(missing_recommended))
 
     rows = len(df)
+    technical_rejected_mask = (
+        df.get("technical_prefilter_status", pd.Series("", index=df.index))
+        .fillna("")
+        .astype(str)
+        .str.upper()
+        .eq("FAIL")
+    )
+    quality_scope = df.loc[~technical_rejected_mask].copy()
+    quality_rows = len(quality_scope)
 
     signal_counts = _safe_value_counts(df, "signal")
     veto_count = int(signal_counts.get("VETO", 0))
@@ -123,12 +132,12 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
     veto_reason_counts = veto_reasons.value_counts().to_dict() if not veto_reasons.empty else {}
 
     rr_missing_rate = None
-    if "rr" in df.columns:
-        rr_missing_rate = float(df["rr"].isna().mean())
+    if "rr" in quality_scope.columns and quality_rows:
+        rr_missing_rate = float(quality_scope["rr"].isna().mean())
         if rr_missing_rate > 0:
-            warnings.append(f"rr faltante en {_pct(rr_missing_rate)}% de filas")
+            warnings.append(f"rr faltante en {_pct(rr_missing_rate)}% de filas no rechazadas por prefiltro")
         if rr_missing_rate >= 0.50:
-            issues.append("rr faltante en más del 50% de filas")
+            issues.append("rr faltante en más del 50% de filas no rechazadas por prefiltro")
             recommendations.append("Verificar que row incluya rr_data.get('rr') dentro de scanner_engine.py.")
 
     if veto_reason_counts.get("rr_below_minimum", 0) == rows and rows >= 5:
@@ -136,22 +145,22 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
         recommendations.append("Auditar si rr está faltante o si el nuevo cálculo R:R quedó demasiado estricto.")
 
     low_quality_rate = None
-    if "data_quality_confidence" in df.columns:
-        low_quality_rate = float((df["data_quality_confidence"].fillna("").astype(str).str.upper() == "LOW").mean())
+    if "data_quality_confidence" in quality_scope.columns and quality_rows:
+        low_quality_rate = float((quality_scope["data_quality_confidence"].fillna("").astype(str).str.upper() == "LOW").mean())
         if low_quality_rate >= 0.25:
             warnings.append(f"data_quality LOW elevado: {_pct(low_quality_rate)}%")
             recommendations.append("Revisar campos críticos faltantes y calidad de metadata/opciones.")
 
-    if "missing_critical_fields" in df.columns:
+    if "missing_critical_fields" in quality_scope.columns:
         missing_core_col = (
             "core_missing_fields"
             if "core_missing_fields" in df.columns
             else "missing_critical_fields"
         )
 
-        if missing_core_col in df.columns:
+        if missing_core_col in quality_scope.columns and quality_rows:
             missing_core_rate = float(
-                df[missing_core_col]
+                quality_scope[missing_core_col]
                 .fillna("")
                 .astype(str)
                 .str.strip()
@@ -161,20 +170,20 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
             if missing_core_rate >= 0.10:
                 warnings.append(f"campos críticos core faltantes en {_pct(missing_core_rate)}% de filas")
 
-    if "bid_ask_valid" in df.columns:
-        invalid_bid_ask_rate = float((df["bid_ask_valid"] == False).mean())  # noqa: E712
+    if "bid_ask_valid" in quality_scope.columns and quality_rows:
+        invalid_bid_ask_rate = float((quality_scope["bid_ask_valid"] == False).mean())  # noqa: E712
         if invalid_bid_ask_rate >= 0.25:
             warnings.append(f"bid/ask inválido o stale en {_pct(invalid_bid_ask_rate)}% de filas")
             recommendations.append("No usar bid/ask de Yahoo como veto automático; validar ejecución manualmente.")
 
-    if "options_confidence" in df.columns:
-        low_options_conf_rate = float((df["options_confidence"].fillna("").astype(str).str.upper() == "LOW").mean())
+    if "options_confidence" in quality_scope.columns and quality_rows:
+        low_options_conf_rate = float((quality_scope["options_confidence"].fillna("").astype(str).str.upper() == "LOW").mean())
         if low_options_conf_rate >= 0.25:
             warnings.append(f"options_confidence LOW elevado: {_pct(low_options_conf_rate)}%")
 
-    if "options_bias" in df.columns:
+    if "options_bias" in quality_scope.columns and quality_rows:
         crowded_rate = float(
-            df["options_bias"]
+            quality_scope["options_bias"]
             .fillna("")
             .astype(str)
             .str.upper()
@@ -186,7 +195,7 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
             recommendations.append("Evitar tratar calls crowded como confirmación bullish limpia.")
         unknown_options_rate = float(
             (
-                df["options_bias"]
+                quality_scope["options_bias"]
                 .fillna("")
                 .astype(str)
                 .str.upper()
@@ -280,6 +289,8 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
             "signals": signal_counts,
             "veto_rate_pct": _pct(veto_rate),
             "buy_ready_watch_count": trigger_count + legacy_buy_count + ready_count + watch_count,
+            "technical_prefilter_rejected_rows": int(technical_rejected_mask.sum()),
+            "quality_scope_rows": int(quality_rows),
             "missing_required_columns": missing_required,
             "missing_recommended_columns": missing_recommended,
         },

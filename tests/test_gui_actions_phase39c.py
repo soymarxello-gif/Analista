@@ -11,150 +11,74 @@ from ui import actions
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _write_journal(root: Path, rows: list[dict]) -> None:
-    data = root / "data"
-    data.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(data / "paper_trading_journal.csv", index=False)
+def test_actions_module_exposes_only_current_ui_actions():
+    assert actions.NO_REAL_ORDER_NOTICE == "manual review only; no real order"
+    assert callable(actions.refresh_all_data)
+    assert callable(actions.run_single_ticker_deep_dive)
+    for legacy_name in [
+        "import_today_candidates",
+        "set_paper_decision",
+        "refresh_paper_followup",
+        "close_paper_trade",
+        "export_closed_paper_outcomes",
+    ]:
+        assert not hasattr(actions, legacy_name)
 
 
-def test_actions_module_imports_without_error():
-    assert actions.NO_REAL_ORDER_NOTICE == "paper trading only; no real order"
-    assert callable(actions.import_today_candidates)
-    assert callable(actions.set_paper_decision)
-    assert callable(actions.refresh_paper_followup)
-    assert callable(actions.close_paper_trade)
-    assert callable(actions.export_closed_paper_outcomes)
+def test_refresh_all_data_runs_daily_validation_controlled(tmp_path: Path, monkeypatch):
+    def fake_run_daily_validation(summary_out: Path) -> int:
+        summary_out.parent.mkdir(parents=True, exist_ok=True)
+        summary_out.write_text("Status: WARN\n", encoding="utf-8")
+        return 0
 
+    monkeypatch.setattr(actions, "run_daily_validation", fake_run_daily_validation)
 
-def test_import_today_candidates_missing_reports_is_controlled(tmp_path: Path):
-    result = actions.import_today_candidates(root=tmp_path, confirmed=True)
+    result = actions.refresh_all_data(root=tmp_path, confirmed=True)
 
-    assert result["status"] in {"PASS", "WARN"}
-    assert result["payload"]["rows"] == 0
-    assert (tmp_path / "data" / "ui_action_log.csv").exists()
-
-
-def test_set_paper_decision_requires_reason(tmp_path: Path):
-    _write_journal(
-        tmp_path,
-        [
-            {
-                "journal_id": "2026-06-13-AAA",
-                "run_date": "2026-06-13",
-                "ticker": "AAA",
-                "checklist_status": "REVIEW_MANUALLY",
-                "manual_decision": "PENDING_REVIEW",
-                "followup_status": "OPEN_MONITORING",
-            }
-        ],
-    )
-
-    result = actions.set_paper_decision(
-        root=tmp_path,
-        ticker="AAA",
-        manual_decision="PAPER_WATCH",
-        reason="",
-        confirmed=True,
-    )
-
-    assert result["status"] == "FAIL"
-    assert result["message"] == "reason_required"
-
-
-def test_paper_enter_requires_entry_stop_target(tmp_path: Path):
-    _write_journal(
-        tmp_path,
-        [
-            {
-                "journal_id": "2026-06-13-AAA",
-                "run_date": "2026-06-13",
-                "ticker": "AAA",
-                "checklist_status": "REVIEW_MANUALLY",
-                "manual_decision": "PENDING_REVIEW",
-                "followup_status": "OPEN_MONITORING",
-            }
-        ],
-    )
-
-    result = actions.set_paper_decision(
-        root=tmp_path,
-        ticker="AAA",
-        manual_decision="PAPER_ENTER",
-        reason="manual paper test",
-        confirmed=True,
-    )
-
-    assert result["status"] == "FAIL"
-    assert result["message"] == "paper_enter_requires_entry_stop_target"
-
-
-def test_close_paper_trade_requires_exit_price_and_reason(tmp_path: Path):
-    no_price = actions.close_paper_trade(
-        root=tmp_path,
-        journal_id="2026-06-13-AAA",
-        exit_price=None,
-        reason="TARGET_REACHED_MANUAL",
-        confirmed=True,
-    )
-    no_reason = actions.close_paper_trade(
-        root=tmp_path,
-        journal_id="2026-06-13-AAA",
-        exit_price=10,
-        reason="",
-        confirmed=True,
-    )
-
-    assert no_price["status"] == "FAIL"
-    assert no_price["message"] == "exit_price_required"
-    assert no_reason["status"] == "FAIL"
-    assert no_reason["message"] == "reason_required"
-
-
-def test_export_closed_paper_outcomes_does_not_duplicate(tmp_path: Path):
-    _write_journal(
-        tmp_path,
-        [
-            {
-                "journal_id": "2026-06-13-AAA",
-                "run_date": "2026-06-13",
-                "ticker": "AAA",
-                "manual_decision": "PAPER_ENTER",
-                "followup_status": "CLOSED_PAPER",
-                "simulated_entry_price": "10",
-                "simulated_stop": "9",
-                "simulated_target": "12",
-                "exit_date": "2026-06-14",
-                "exit_price": "12",
-                "close_reason": "TARGET_REACHED_MANUAL",
-                "pnl_pct": "0.2",
-                "r_multiple": "2",
-                "outcome_exported": "False",
-            }
-        ],
-    )
-
-    first = actions.export_closed_paper_outcomes(root=tmp_path, confirmed=True)
-    second = actions.export_closed_paper_outcomes(root=tmp_path, confirmed=True)
-
-    assert first["status"] == "PASS"
-    assert first["payload"]["exported_count"] == 1
-    assert second["status"] == "PASS"
-    assert second["payload"]["exported_count"] == 0
-    assert second["payload"]["skipped_already_exported"] == 1
-
-    outcomes = pd.read_csv(tmp_path / "data" / "trade_outcomes.csv", dtype=str).fillna("")
-    assert len(outcomes) == 1
-    assert outcomes.loc[0, "source_journal_id"] == "2026-06-13-AAA"
-
-
-def test_ui_action_log_contains_no_real_order_notice(tmp_path: Path):
-    actions.import_today_candidates(root=tmp_path, confirmed=False)
+    assert result["status"] == "WARN"
+    assert result["payload"]["summary_status"] == "WARN"
+    assert result["payload"]["reports_refreshed"] is True
+    assert result["payload"]["creates_trading_signal"] is False
 
     log = pd.read_csv(tmp_path / "data" / "ui_action_log.csv", dtype=str).fillna("")
-
-    assert len(log) == 1
-    assert log.loc[0, "action_type"] == "import_today_candidates"
+    assert log.loc[0, "action_type"] == "refresh_all_data"
     assert log.loc[0, "no_real_order_notice"] == actions.NO_REAL_ORDER_NOTICE
+
+
+def test_single_ticker_deep_dive_is_logged_and_diagnostic_only(tmp_path: Path, monkeypatch):
+    def fake_save_single_ticker_deep_dive_reports(*args, **kwargs):
+        return {
+            "status": "PASS",
+            "ticker": "AAA",
+            "json_out": "reports/single_ticker_deep_dive_latest.json",
+            "markdown_out": "reports/single_ticker_deep_dive_latest.md",
+            "row": {
+                "ticker": "AAA",
+                "manual_deep_dive_decision": "DIAGNOSTIC_REVIEW_ONLY",
+                "scenario_status": "WAIT_FOR_CONFIRMATION",
+                "final_trade_score": 77,
+                "quote_status": "MISSING",
+                "execution_quote_quality": "LOW",
+            },
+        }
+
+    monkeypatch.setattr(
+        actions,
+        "save_single_ticker_deep_dive_reports",
+        fake_save_single_ticker_deep_dive_reports,
+    )
+    monkeypatch.setattr(actions, "load_config", lambda *args, **kwargs: {})
+
+    result = actions.run_single_ticker_deep_dive(root=tmp_path, ticker="aaa", confirmed=True)
+
+    assert result["status"] == "PASS"
+    assert result["payload"]["manual_review_only"] is True
+    assert result["payload"]["creates_trading_signal"] is False
+    assert result["payload"]["execution_quote_quality"] == "LOW"
+
+    log = pd.read_csv(tmp_path / "data" / "ui_action_log.csv", dtype=str).fillna("")
+    assert log.loc[0, "action_type"] == "single_ticker_deep_dive"
+    assert log.loc[0, "ticker"] == "AAA"
 
 
 def test_app_and_actions_static_guardrails():
@@ -173,17 +97,22 @@ def test_gui_actions_audit_generates_json_and_markdown(tmp_path: Path):
     (tmp_path / "ui").mkdir()
     (tmp_path / "reports").mkdir()
     (tmp_path / "ui" / "actions.py").write_text(
-        "NO_REAL_ORDER_NOTICE = 'paper trading only; no real order'\n",
+        "\n".join(
+            [
+                "NO_REAL_ORDER_NOTICE = 'manual review only; no real order'",
+                "def refresh_all_data(): pass",
+                "def run_single_ticker_deep_dive(): pass",
+            ]
+        ),
         encoding="utf-8",
     )
     (tmp_path / "app.py").write_text(
         "\n".join(
             [
-                "from ui import actions as paper_actions",
-                "'Confirm paper-only import; no real order'",
-                "'Confirm paper-only decision; no real order'",
-                "'Confirm manual paper close; no real order'",
-                "'Confirm export to trade_outcomes.csv'",
+                "from ui import actions as ui_actions",
+                "ui_actions.refresh_all_data(",
+                "ui_actions.run_single_ticker_deep_dive(",
+                "manual review only; no real order",
             ]
         ),
         encoding="utf-8",
@@ -203,6 +132,7 @@ def test_gui_actions_audit_generates_json_and_markdown(tmp_path: Path):
     assert data["actions_module_exists"] is True
     assert data["broker_guardrail_ok"] is True
     assert data["shell_guardrail_ok"] is True
+    assert data["controlled_actions_present"] is True
 
 
 def test_gui_actions_audit_current_project_has_no_critical_failure():

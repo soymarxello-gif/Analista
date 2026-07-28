@@ -14,6 +14,18 @@ CANDIDATE_COLUMNS = [
     "checklist_status",
     "setup_type",
     "final_trade_score",
+    "asset_attractiveness_score",
+    "operational_readiness_score",
+    "operational_readiness_bucket",
+    "timing_quality_score",
+    "momentum_confirmation_score",
+    "execution_readiness_status",
+    "technical_prefilter_status",
+    "technical_prefilter_reason",
+    "daily_macd_prefilter_status",
+    "weekly_macd_prefilter_status",
+    "ema20_extension_prefilter_status",
+    "ema20_extension_reference_source",
     "checklist_score",
     "quote_status",
     "execution_quote_quality",
@@ -25,7 +37,24 @@ CANDIDATE_COLUMNS = [
     "scenario_confidence",
     "momentum_state",
     "extension_state",
+    "ema20_extension_status",
     "entry_timing_status",
+    "macd_histogram_state",
+    "weekly_macd_histogram_state",
+    "weekly_macd_hist_improving",
+    "weekly_macd_hist",
+    "weekly_macd_hist_change_1w",
+    "weekly_macd_hist_change_2w",
+    "sector_benchmark_symbol",
+    "sector_weekly_macd_state",
+    "sector_weekly_macd_acceleration_state",
+    "sector_weekly_macd_slope_1w",
+    "sector_weekly_macd_acceleration",
+    "sector_context_status",
+    "sector_context_reason",
+    "timing_penalty_reason",
+    "momentum_penalty_reason",
+    "engine_block_reason",
     "engine_recommendation",
     "scenario_thesis",
     "scenario_evidence",
@@ -33,6 +62,10 @@ CANDIDATE_COLUMNS = [
     "required_confirmation",
     "technical_rsi",
     "technical_macd_hist",
+    "technical_macd_hist_change_3d",
+    "technical_ema20",
+    "technical_distance_ema20_atr",
+    "technical_distance_ema20_pct",
     "technical_distance_sma20_atr",
     "technical_trigger_distance_atr",
     "technical_relative_volume",
@@ -53,6 +86,8 @@ CANDIDATE_COLUMNS = [
     "return_on_equity",
     "macro_risk_flag",
     "macro_notes",
+    "macro_regime_mode",
+    "macro_event_risk",
     "metadata_source",
     "quote_source",
     "options_source",
@@ -181,92 +216,163 @@ def build_quality_gate_model(sources) -> dict:
             "manual_review_allowed": data.get("manual_review_allowed", ""),
             "manual_review_mode": data.get("manual_review_mode", ""),
             "issues": data.get("issues", 0),
+            "scan_freshness_status": data.get("scan_freshness_status", "UNKNOWN"),
+            "scan_age_hours": data.get("scan_age_hours"),
+            "manual_review_age_hours": data.get("manual_review_age_hours"),
+            "macro_age_hours": data.get("macro_age_hours"),
+            "scan_is_current_local_date": data.get("scan_is_current_local_date", False),
         },
         data=data,
     )
 
 
-def build_paper_trading_model(sources) -> dict:
-    journal = _df(sources, "paper_trading_journal")
-    close_df = _df(sources, "paper_trade_close")
-    manual_counts = _count_values(journal, "manual_decision")
-    followup_counts = _count_values(journal, "followup_status")
-    pending_export = 0
-    exported = 0
-    if not close_df.empty and "followup_status" in close_df.columns:
-        closed = close_df["followup_status"].fillna("").astype(str).str.upper().eq("CLOSED_PAPER")
-        if "outcome_exported" in close_df.columns:
-            exported_mask = close_df["outcome_exported"].fillna("").astype(str).str.lower().isin({"true", "1", "yes"})
-            pending_export = int((closed & ~exported_mask).sum())
-            exported = int((closed & exported_mask).sum())
-    summary = {
-        "journal_rows": len(journal),
-        "pending_review": int(manual_counts.get("PENDING_REVIEW", 0)),
-        "paper_watch": int(manual_counts.get("PAPER_WATCH", 0)),
-        "paper_enter": int(manual_counts.get("PAPER_ENTER", 0)),
-        "blocked": int(manual_counts.get("BLOCKED", 0)),
-        "closed_paper": int(followup_counts.get("CLOSED_PAPER", 0)),
-        "pending_export": pending_export,
-        "exported_outcomes": exported,
+def _macro_series_rows(data: dict) -> list[dict]:
+    series = data.get("fred_series", {}) if isinstance(data, dict) else {}
+    rows = []
+    if not isinstance(series, dict):
+        return rows
+    labels = {
+        "M2SL": "M2",
+        "RRPONTSYD": "Reverse repo",
+        "DFF": "Fed funds",
+        "DGS10": "US10Y",
+        "DGS30": "US30Y",
+        "T10Y2Y": "Curva 10Y-2Y",
+        "T10Y3M": "Curva 10Y-3M",
+        "VIXCLS": "VIX",
+        "BAMLH0A0HYM2": "High yield spread",
+        "DTWEXBGS": "Dólar amplio",
+        "DCOILWTICO": "WTI",
+        "CPIAUCSL": "CPI",
+        "PAYEMS": "Payrolls",
+        "UNRATE": "Desempleo",
+        "M2V": "Velocidad M2",
     }
-    status = "EMPTY" if journal.empty else "PASS"
-    rows = journal.to_dict(orient="records") if not journal.empty else []
-    return _model(
-        "Paper trading",
-        status=status,
-        summary=summary,
-        rows_count=len(journal),
-        data={"summary": summary, "rows": rows},
+    for code, payload in series.items():
+        if not isinstance(payload, dict):
+            continue
+        rows.append(
+            {
+                "series": labels.get(str(code), str(code)),
+                "code": str(code),
+                "status": payload.get("status", "UNKNOWN"),
+                "latest": payload.get("latest_value", payload.get("latest")),
+                "latest_date": payload.get("latest_date"),
+                "age_days": payload.get("age_days"),
+                "change": payload.get("change_value", payload.get("change_4w", payload.get("change"))),
+                "provider": payload.get("provider", ""),
+                "cache_status": payload.get("cache_status", ""),
+                "fallback_used": payload.get("fallback_used", False),
+            }
+        )
+    return rows
+
+
+def _macro_event_rows(data: dict) -> list[dict]:
+    calendar_payload = data.get("economic_calendar", []) if isinstance(data, dict) else []
+    calendar = (
+        calendar_payload.get("upcoming_events", [])
+        if isinstance(calendar_payload, dict)
+        else calendar_payload
     )
+    rows = []
+    if not isinstance(calendar, list):
+        return rows
+    for item in calendar:
+        if not isinstance(item, dict):
+            continue
+        rows.append(
+            {
+                "event_date": item.get("event_date", item.get("date", "")),
+                "event_time": item.get("event_time", item.get("time", "")),
+                "timezone": item.get("timezone", ""),
+                "event": item.get("event_type", item.get("event", "")),
+                "description": item.get("event_name", item.get("description", "")),
+                "importance": item.get("importance", ""),
+                "source": item.get("source_url", item.get("source", "")),
+            }
+        )
+    return rows
 
 
-def build_followup_model(sources) -> dict:
-    df = _df(sources, "paper_trade_followup")
-    counts = _count_values(df, "followup_decision")
-    return _model(
-        "Paper follow-up",
-        status="EMPTY" if df.empty else "PASS",
-        summary={"rows": len(df), "decisions": counts},
-        rows_count=len(df),
-        data={"decisions": counts, "rows": df.to_dict(orient="records") if not df.empty else []},
-    )
-
-
-def build_cycle_audit_model(sources) -> dict:
-    data = _json_data(sources, "paper_trading_cycle_audit")
-    source = _source(sources, "paper_trading_cycle_audit")
-    duplicate_ids = data.get("duplicate_outcome_ids", []) or []
-    external_execution_key = "_".join(["bro" + "ker", "connection", "detected"])
-    external_execution_flag = bool(data.get(external_execution_key, False))
-    guardrail_status = "FAIL" if external_execution_flag else "PASS"
+def build_macro_context_model(sources) -> dict:
+    data = _json_data(sources, "macro_event_context")
+    source = _source(sources, "macro_event_context")
+    nasdaq_data = _json_data(sources, "nasdaq_risk_regime")
+    nasdaq_source = _source(sources, "nasdaq_risk_regime")
     status = str(data.get("status") or _status_from_source(source)).upper()
+    issues = data.get("issues", []) or []
+    if status == "PASS" and issues:
+        status = "WARN"
+    nasdaq_status = str(nasdaq_data.get("status") or _status_from_source(nasdaq_source)).upper()
+    if status == "PASS" and nasdaq_status == "WARN":
+        status = "WARN"
     summary = {
         "status": status,
-        "journal_rows": int(data.get("journal_rows", 0) or 0),
-        "open_paper_count": int(data.get("open_paper_count", 0) or 0),
-        "closed_paper_count": int(data.get("closed_paper_count", 0) or 0),
-        "pending_export_count": int(data.get("pending_export_count", 0) or 0),
-        "exported_count": int(data.get("exported_count", 0) or 0),
-        "duplicate_outcome_ids": len(duplicate_ids),
-        "guardrail_status": guardrail_status,
+        "source": data.get("source", source.get("path", "")),
+        "data_freshness": data.get("data_freshness", "UNKNOWN"),
+        "generated_at": data.get("generated_at", ""),
+        "next_critical_event": data.get("next_critical_event", "UNKNOWN"),
+        "next_critical_event_date": data.get("next_critical_event_date", ""),
+        "days_to_critical_event": data.get("days_to_critical_event", ""),
+        "event_risk_status": data.get("event_risk_status", "UNKNOWN"),
+        "liquidity_context": data.get("liquidity_context", "UNKNOWN"),
+        "macro_regime_mode": data.get("macro_regime_mode", "UNKNOWN"),
+        "macro_regime_confidence": data.get("macro_regime_confidence", "UNKNOWN"),
+        "macro_event_risk": data.get("macro_event_risk", "UNKNOWN"),
+        "macro_liquidity_bias": data.get("macro_liquidity_bias", "UNKNOWN"),
+        "macro_regime_notes": data.get("macro_regime_notes", ""),
+        "m2_change_4w_pct": data.get("m2_change_4w_pct", ""),
+        "reverse_repo_change_4w_pct": data.get("reverse_repo_change_4w_pct", ""),
+        "effective_fed_funds_rate": data.get("effective_fed_funds_rate", ""),
+        "us10y_official": data.get("us10y_official", ""),
+        "us30y_official": data.get("us30y_official", ""),
+        "vix_official": data.get("vix_official", ""),
+        "yield_curve_10y2y": data.get("yield_curve_10y2y", ""),
+        "high_yield_spread": data.get("high_yield_spread", ""),
+        "notice": data.get("notice", "read-only macro context"),
+        "nasdaq_status": nasdaq_status,
+        "nasdaq_macro_regime_mode": nasdaq_data.get("macro_regime_mode", "UNKNOWN"),
+        "nasdaq_macro_regime_confidence": nasdaq_data.get("macro_regime_confidence", "UNKNOWN"),
+        "nasdaq_macro_risk_flag": nasdaq_data.get("macro_risk_flag", "UNKNOWN"),
+        "nasdaq_risk_score": nasdaq_data.get("nasdaq_risk_score", ""),
+        "nasdaq_risk_semaforo": nasdaq_data.get("nasdaq_risk_semaforo", "UNKNOWN"),
+        "nasdaq_dominant_regime": nasdaq_data.get("dominant_regime", "UNKNOWN"),
+        "nasdaq_regime_notes": nasdaq_data.get("macro_regime_notes", ""),
     }
     return _model(
-        "Paper trading cycle audit",
+        "Macro context",
         status=status,
         summary=summary,
-        warnings=data.get("warnings", []),
-        errors=data.get("issues", []),
-        data=data,
+        rows_count=len(_macro_series_rows(data)),
+        warnings=issues,
+        data={
+            **data,
+            "summary": summary,
+            "series_rows": _macro_series_rows(data),
+            "event_rows": _macro_event_rows(data),
+            "nasdaq_risk_regime": nasdaq_data,
+        },
     )
 
 
 def build_calibration_model(sources) -> dict:
     calibration = _json_data(sources, "trade_score_calibration")
     recommendations = _json_data(sources, "calibration_recommendations")
+    simple_posttest = _json_data(sources, "simple_candidate_posttest")
     no_auto = bool(recommendations.get("do_not_change_automatically", True))
+    horizons = simple_posttest.get("horizon_summary", {}) or {}
     summary = {
         "calibration_status": calibration.get("status", "MISSING"),
         "recommendations_status": recommendations.get("status", "MISSING"),
+        "simple_posttest_status": simple_posttest.get("status", "MISSING"),
+        "simple_posttest_rows": int(simple_posttest.get("rows", 0) or 0),
+        "simple_posttest_win_rate_5": (horizons.get("5", {}) or {}).get("win_rate", ""),
+        "simple_posttest_win_rate_10": (horizons.get("10", {}) or {}).get("win_rate", ""),
+        "simple_posttest_win_rate_15": (horizons.get("15", {}) or {}).get("win_rate", ""),
+        "simple_posttest_avg_return_5": (horizons.get("5", {}) or {}).get("avg_return_pct", ""),
+        "simple_posttest_avg_return_10": (horizons.get("10", {}) or {}).get("avg_return_pct", ""),
+        "simple_posttest_avg_return_15": (horizons.get("15", {}) or {}).get("avg_return_pct", ""),
         "recommendations_are_observational": no_auto,
         "no_auto_weight_change": no_auto
         and not calibration.get("changed_weights", False)

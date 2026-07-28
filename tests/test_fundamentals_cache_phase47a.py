@@ -18,6 +18,18 @@ def _config() -> dict:
     }
 
 
+def _stale_first_config() -> dict:
+    cfg = _config()
+    cfg["fundamentals"] = {
+        "metadata_enrichment": {
+            "enabled": True,
+            "prefer_stale_cache": True,
+            "max_network_queries_per_run": 1,
+        }
+    }
+    return cfg
+
+
 def _write_cache(tmp_path, ticker: str, *, fundamentals_age: int, earnings_age: int):
     cache_dir = tmp_path / "cache" / "fundamentals"
     cache_dir.mkdir(parents=True)
@@ -114,3 +126,51 @@ def test_network_failure_uses_auditable_stale_cache(monkeypatch, tmp_path):
     assert result["fundamentals_cache_status"] == "STALE_FALLBACK"
     assert result["earnings_cache_status"] == "STALE_FALLBACK"
     assert "offline" in result["fundamental_warning"]
+
+
+def test_prefer_stale_cache_avoids_network_for_expired_metadata(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    _write_cache(tmp_path, "AAA", fundamentals_age=11000, earnings_age=800)
+
+    class FailYF:
+        def Ticker(self, ticker):
+            raise AssertionError("stale cache should avoid network")
+
+    monkeypatch.setattr(fundamentals_client, "yf", FailYF())
+
+    result = fundamentals_client.fetch_ticker_metadata("AAA", _stale_first_config())
+
+    assert result["sector"] == "Technology"
+    assert result["fundamentals_cache_status"] == "STALE_FALLBACK"
+    assert result["earnings_cache_status"] == "STALE_FALLBACK"
+    assert "cache stale usado" in result["fundamental_warning"]
+
+
+def test_enrich_metadata_disables_network_after_query_limit(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    calls: list[tuple[str, bool]] = []
+
+    def fake_fetch(ticker, config, fallback_providers=None):
+        network_enabled = (
+            config.get("fundamentals", {})
+            .get("metadata_enrichment", {})
+            .get("network_enabled", True)
+        )
+        calls.append((ticker, bool(network_enabled)))
+        return {
+            "ticker": ticker,
+            "sector": "Technology",
+            "metadata_source": "yfinance" if network_enabled else "none",
+            "fundamentals_cache_status": "FRESH_NETWORK" if network_enabled else "NETWORK_SKIPPED",
+            "earnings_cache_status": "NETWORK_SKIPPED",
+        }
+
+    monkeypatch.setattr(fundamentals_client, "fetch_ticker_metadata", fake_fetch)
+    out = fundamentals_client.enrich_metadata(
+        fundamentals_client.pd.DataFrame([{"ticker": "AAA"}, {"ticker": "BBB"}, {"ticker": "CCC"}]),
+        _stale_first_config(),
+        stats={},
+    )
+
+    assert calls == [("AAA", True), ("BBB", False), ("CCC", False)]
+    assert len(out) == 3

@@ -142,7 +142,9 @@ def select_backtest_candidates(
 
     selected = eligible_df.copy()
     raw_scores = (
-        selected["final_trade_score"]
+        selected["operational_readiness_score"]
+        if "operational_readiness_score" in selected.columns
+        else selected["final_trade_score"]
         if "final_trade_score" in selected.columns
         else pd.Series(index=selected.index, dtype=float)
     )
@@ -343,12 +345,19 @@ def run_posttest(
             "scenario_confidence",
             "momentum_state",
             "extension_state",
+            "ema20_extension_status",
             "entry_timing_status",
+            "macd_histogram_state",
+            "timing_quality_score",
+            "momentum_confirmation_score",
             "engine_recommendation",
             "technical_rsi",
             "technical_rsi_change_5d",
             "technical_macd_hist",
             "technical_macd_hist_change_1d",
+            "technical_macd_hist_change_3d",
+            "technical_distance_ema20_atr",
+            "technical_distance_ema20_pct",
             "technical_distance_sma20_atr",
             "technical_distance_sma50_atr",
             "technical_trigger_distance_pct",

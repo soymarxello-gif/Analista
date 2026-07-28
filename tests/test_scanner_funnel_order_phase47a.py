@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pandas as pd
+import yaml
 
 from engine import scanner_engine
 
@@ -58,6 +59,17 @@ def test_liquidity_funnel_runs_before_metadata_and_skips_rejected_tickers(
         "add_all_indicators",
         lambda frame, config: frame,
     )
+    monkeypatch.setattr(
+        scanner_engine,
+        "evaluate_technical_prefilter",
+        lambda frame: {
+            "technical_prefilter_status": "PASS",
+            "technical_prefilter_reason": "technical_prefilter_pass",
+            "daily_macd_prefilter_status": "PASS",
+            "weekly_macd_prefilter_status": "PASS",
+            "ema20_extension_prefilter_status": "PASS",
+        },
+    )
 
     def fake_liquidity(ticker, frame, config, metadata):
         calls.append(("liquidity", ticker, bool(metadata)))
@@ -96,3 +108,13 @@ def test_liquidity_funnel_runs_before_metadata_and_skips_rejected_tickers(
     assert ("metadata", ("THIN",)) not in calls
     assert validation_calls["count"] == 2
     assert report_path.exists()
+
+
+def test_productive_deep_analysis_target_is_expanded_without_small_cap() -> None:
+    with open("config.yaml", "r", encoding="utf-8") as fh:
+        config = yaml.safe_load(fh)
+
+    funnel = config["deep_analysis"]["candidate_funnel"]
+    assert funnel["target_tickers"] >= 150
+    assert funnel["min_tickers"] >= 120
+    assert funnel["max_tickers"] >= 1000

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="Legacy manual GUI weekly review flow removed from active product.")
+
 import hashlib
 from pathlib import Path
 

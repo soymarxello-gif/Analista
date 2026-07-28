@@ -48,6 +48,7 @@ AUDITABLE_OPTIONS_COLUMNS = [
     "options_score_raw",
     "options_score_adjustment",
     "options_score_reason",
+    "options_scoring_status",
     "options_contrarian_adjustment",
     "options_contrarian_reason",
     "options_risk_flag",
@@ -139,6 +140,10 @@ def build_options_flow_fields(options_metrics: dict, options_score_data: dict) -
         "options_score_raw": score.get("options_score_raw", score.get("options_score")),
         "options_score_adjustment": score.get("options_score_adjustment", 0.0),
         "options_score_reason": score.get("options_score_reason", ""),
+        "options_scoring_status": score.get(
+            "options_scoring_status",
+            "CONTEXT_ONLY_NOT_SCORED",
+        ),
         "options_contrarian_adjustment": score.get("options_contrarian_adjustment", 0.0),
         "options_contrarian_reason": score.get("options_contrarian_reason", ""),
         "options_risk_flag": score.get("options_risk_flag", ""),

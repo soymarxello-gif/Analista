@@ -93,6 +93,11 @@ def _normalize_tickers(tickers: list[str]) -> list[str]:
     return out
 
 
+def _chunks(items: list[str], chunk_size: int) -> list[list[str]]:
+    size = max(int(chunk_size or 0), 1)
+    return [items[index : index + size] for index in range(0, len(items), size)]
+
+
 def _extract_payload_map(data: dict[str, Any], key: str) -> dict[str, Any]:
     value = data.get(key, {}) if isinstance(data, dict) else {}
     return value if isinstance(value, dict) else {}
@@ -161,6 +166,7 @@ def fetch_alpaca_iex_analysis_quotes(
     *,
     data_base_url: str = DEFAULT_ALPACA_DATA_BASE_URL,
     timeout_seconds: int = 15,
+    batch_size: int = 100,
     request_fn: RequestFn = urllib_request_json,
     credentials: dict[str, str] | None = None,
 ) -> dict[str, dict[str, Any]]:
@@ -172,38 +178,40 @@ def fetch_alpaca_iex_analysis_quotes(
     if not (credentials.get("key") and credentials.get("secret")):
         return {}
 
-    symbols = urllib.parse.quote(",".join(tickers), safe=",")
     base = data_base_url.rstrip("/")
     headers = _headers(credentials)
-    endpoints = {
-        "quotes": f"{base}/v2/stocks/quotes/latest?symbols={symbols}&feed=iex",
-        "trades": f"{base}/v2/stocks/trades/latest?symbols={symbols}&feed=iex",
-    }
-
-    payloads: dict[str, dict[str, Any]] = {}
-    errors: list[str] = []
-    for name, url in endpoints.items():
-        try:
-            http_status, data = request_fn(url, headers, timeout_seconds)
-            if 200 <= int(http_status) < 300:
-                payloads[name] = data
-            else:
-                errors.append(f"alpaca_{name}_http_{int(http_status)}")
-                payloads[name] = {}
-        except Exception as exc:
-            errors.append(f"alpaca_{name}_exception:{type(exc).__name__}")
-            payloads[name] = {}
-
-    quote_map = _extract_payload_map(payloads.get("quotes", {}), "quotes")
-    trade_map = _extract_payload_map(payloads.get("trades", {}), "trades")
 
     out: dict[str, dict[str, Any]] = {}
-    for ticker in tickers:
-        quote = quote_map.get(ticker) or quote_map.get(ticker.upper()) or {}
-        trade = trade_map.get(ticker) or trade_map.get(ticker.upper()) or {}
-        if not quote and not trade and errors:
-            continue
-        out[ticker] = _build_quote(ticker, quote, trade, errors)
+    for group in _chunks(tickers, batch_size):
+        symbols = urllib.parse.quote(",".join(group), safe=",")
+        endpoints = {
+            "quotes": f"{base}/v2/stocks/quotes/latest?symbols={symbols}&feed=iex",
+            "trades": f"{base}/v2/stocks/trades/latest?symbols={symbols}&feed=iex",
+        }
+
+        payloads: dict[str, dict[str, Any]] = {}
+        errors: list[str] = []
+        for name, url in endpoints.items():
+            try:
+                http_status, data = request_fn(url, headers, timeout_seconds)
+                if 200 <= int(http_status) < 300:
+                    payloads[name] = data
+                else:
+                    errors.append(f"alpaca_{name}_http_{int(http_status)}")
+                    payloads[name] = {}
+            except Exception as exc:
+                errors.append(f"alpaca_{name}_exception:{type(exc).__name__}")
+                payloads[name] = {}
+
+        quote_map = _extract_payload_map(payloads.get("quotes", {}), "quotes")
+        trade_map = _extract_payload_map(payloads.get("trades", {}), "trades")
+
+        for ticker in group:
+            quote = quote_map.get(ticker) or quote_map.get(ticker.upper()) or {}
+            trade = trade_map.get(ticker) or trade_map.get(ticker.upper()) or {}
+            if not quote and not trade and errors:
+                continue
+            out[ticker] = _build_quote(ticker, quote, trade, errors)
     return out
 
 
@@ -278,7 +286,8 @@ def build_analysis_quote_fallbacks(
 
     if not analysis_cfg.get("enabled", True):
         return {}
-    max_tickers = int(analysis_cfg.get("max_tickers_per_run", 75) or 75)
+    max_tickers = int(analysis_cfg.get("max_tickers_per_run", 500) or 500)
+    alpaca_batch_size = int(analysis_cfg.get("alpaca_batch_size", 100) or 100)
     all_tickers = _normalize_tickers(tickers)
     alpaca_tickers = all_tickers[:max_tickers]
     out: dict[str, dict[str, Any]] = {}
@@ -293,6 +302,7 @@ def build_analysis_quote_fallbacks(
                 alpaca_tickers,
                 data_base_url=str(alpaca_cfg.get("data_base_url") or DEFAULT_ALPACA_DATA_BASE_URL),
                 timeout_seconds=int(analysis_cfg.get("timeout_seconds", 15) or 15),
+                batch_size=alpaca_batch_size,
                 request_fn=request_fn,
             )
         )

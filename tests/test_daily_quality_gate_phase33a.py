@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
 
 from tools.daily_quality_gate import (
+    _effective_daily_validation_status,
     build_daily_quality_gate_markdown,
     collect_daily_quality_gate,
     save_daily_quality_gate,
@@ -111,8 +114,48 @@ def _make_reports(tmp_path: Path, daily_status: str = "PASS", preflight_status: 
     (reports / "daily_operator_index.md").write_text("# index\n", encoding="utf-8")
     (reports / "manual_review_top.csv").write_text("ticker\nAAA\n", encoding="utf-8")
     (reports / "manual_review_top.md").write_text("# top\n", encoding="utf-8")
+    (reports / "macro_event_context_latest.json").write_text(
+        json.dumps({"status": "PASS"}),
+        encoding="utf-8",
+    )
 
     return reports
+
+
+def test_quality_gate_treats_final_refresh_running_as_terminal_summary_status(tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    progress = reports / "daily_validation_progress_latest.json"
+    progress.write_text(
+        json.dumps(
+            {
+                "status": "RUNNING",
+                "phase": "final_refresh_steps",
+                "current_step": "daily_quality_gate",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert _effective_daily_validation_status("PASS", progress) == "PASS"
+
+
+def test_quality_gate_keeps_regular_running_progress_visible(tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    progress = reports / "daily_validation_progress_latest.json"
+    progress.write_text(
+        json.dumps(
+            {
+                "status": "RUNNING",
+                "phase": "default_steps",
+                "current_step": "run_scanner_audited",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert _effective_daily_validation_status("PASS", progress) == "RUNNING"
 
 
 def test_daily_quality_gate_passes_clean_run(tmp_path: Path):
@@ -125,6 +168,52 @@ def test_daily_quality_gate_passes_clean_run(tmp_path: Path):
     assert data["manual_review_mode"] == "NORMAL"
     assert data["scan_snapshot"]["latest_scan_rows"] == 2
     assert data["scan_snapshot"]["manual_review_rows"] == 1
+    assert data["scan_freshness_status"] == "PASS"
+    assert data["scan_age_hours"] is not None
+
+
+def test_daily_quality_gate_warns_when_scan_is_not_current_business_day(tmp_path: Path):
+    reports = _make_reports(tmp_path)
+    scan_path = reports / "latest_scan_audited.csv"
+    old_scan = datetime(2026, 6, 26, 15, 0, 0)
+    now = datetime(2026, 6, 29, 15, 0, 0)
+    os.utime(scan_path, (old_scan.timestamp(), old_scan.timestamp()))
+
+    data = collect_daily_quality_gate(root=tmp_path, now=now)
+
+    assert data["status"] == "WARN"
+    assert data["scan_freshness_status"] == "WARN"
+    assert data["scan_is_current_local_date"] is False
+    assert data["scan_age_hours"] == 72.0
+
+
+def test_daily_quality_gate_passes_fresh_scan_current_local_date(tmp_path: Path):
+    reports = _make_reports(tmp_path)
+    scan_path = reports / "latest_scan_audited.csv"
+    fresh_scan = datetime(2026, 6, 29, 14, 15, 0)
+    now = datetime(2026, 6, 29, 15, 0, 0)
+    os.utime(scan_path, (fresh_scan.timestamp(), fresh_scan.timestamp()))
+
+    data = collect_daily_quality_gate(root=tmp_path, now=now)
+
+    assert data["status"] == "PASS"
+    assert data["scan_freshness_status"] == "PASS"
+    assert data["scan_is_current_local_date"] is True
+    assert data["scan_age_hours"] == 0.75
+
+
+def test_daily_quality_gate_warns_when_scan_exceeds_age_limit_same_date(tmp_path: Path):
+    reports = _make_reports(tmp_path)
+    scan_path = reports / "latest_scan_audited.csv"
+    stale_scan = datetime(2026, 6, 29, 1, 0, 0)
+    now = datetime(2026, 6, 30, 8, 0, 0)
+    os.utime(scan_path, (stale_scan.timestamp(), stale_scan.timestamp()))
+
+    data = collect_daily_quality_gate(root=tmp_path, now=now)
+
+    assert data["status"] == "WARN"
+    assert data["scan_freshness_status"] == "WARN"
+    assert data["scan_age_hours"] == 31.0
 
 
 def test_daily_quality_gate_warns_on_preflight_warn(tmp_path: Path):

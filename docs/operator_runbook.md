@@ -1,5 +1,10 @@
 ﻿# Analista - Operator Runbook
 
+Este runbook se mantiene como referencia rápida. La documentación principal
+vigente está en `docs/OPERATING_MANUAL.md`, `docs/DAILY_WORKFLOW.md`,
+`docs/REPORTS_REFERENCE.md`, `docs/SAFETY_RULES.md` y
+`docs/CALIBRATION_GUIDE.md`.
+
 ## 1. Propósito
 
 Analista es un sistema de apoyo para descubrir oportunidades de swing trading long-only en acciones US-listed.
@@ -41,17 +46,34 @@ Activar entorno virtual:
 
 Después de correr daily_validation.py, revisar en este orden:
 
-1. reports/daily_validation_summary.txt
+1. reports/daily_operator_index.md
 2. reports/daily_quality_gate_latest.md
-3. reports/daily_operator_index.md
-4. reports/release_readiness_latest.md
-5. reports/manual_review_top.md
-6. reports/manual_review_latest.md
-7. reports/daily_run_manifest_latest.md
-8. reports/project_preflight_latest.md
-9. reports/encoding_audit_latest.md
-10. reports/reports_cleanup_latest.md
-11. reports/latest_scan_audited.csv
+3. reports/live_quote_recheck_latest.md
+4. reports/trade_decision_checklist_latest.md
+5. reports/trade_candidate_cards_latest.md
+6. reports/simple_candidate_posttest_latest.md
+7. reports/macro_event_context_latest.md
+8. reports/manual_review_top.md
+9. reports/daily_run_manifest_latest.md
+10. reports/release_readiness_latest.md
+11. reports/daily_validation_summary.txt
+12. reports/project_preflight_latest.md
+13. reports/encoding_audit_latest.md
+14. reports/latest_scan_audited.csv
+
+La interfaz Streamlit resume estos reportes en un cockpit:
+
+streamlit run .\app.py
+
+Secciones principales:
+
+- Resumen.
+- Candidatos.
+- Posttest automatico simple.
+- Control.
+
+En Candidatos existe `Consulta puntual por ticker` para analizar un ticker con
+el motor profundo sin ejecutar el screener completo ni crear señales.
 
 ---
 
@@ -124,6 +146,8 @@ WATCHLIST es monitoreo, no compra.
 READY_WAIT_TRIGGER requiere gatillo validado.
 
 TRIGGER_CONFIRMED requiere revisión manual final.
+
+TRIGGER_CONFIRMED exige quote_status VALID y execution_quote_quality HIGH.
 
 No ejecutar automáticamente.
 

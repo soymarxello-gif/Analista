@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from data import price_client
 
@@ -8,10 +9,10 @@ from data import price_client
 def _frame(ticker: str, value: float = 20.0) -> pd.DataFrame:
     index = pd.date_range("2026-01-01", periods=3, freq="D")
     columns = pd.MultiIndex.from_product(
-        [[ticker], ["Open", "High", "Low", "Close", "Volume"]]
+        [[ticker], ["Open", "High", "Low", "Close", "Adj Close", "Volume"]]
     )
     return pd.DataFrame(
-        [[value, value + 1, value - 1, value, 1_000_000]] * 3,
+        [[value, value + 1, value - 1, value, value * 0.9, 1_000_000]] * 3,
         index=index,
         columns=columns,
     )
@@ -79,3 +80,26 @@ def test_individual_fallback_is_capped(monkeypatch):
     assert stats["individual_fallback_calls"] == 1
     assert stats["individual_fallback_skipped"] == 2
     assert stats["missing_tickers"] == ["BBB", "CCC"]
+
+
+def test_download_preserves_raw_close_and_adjusted_ohlc(monkeypatch):
+    monkeypatch.setattr(
+        price_client.yf,
+        "download",
+        lambda **kwargs: _frame("AAA", value=100.0),
+    )
+
+    result = price_client.download_daily_prices(
+        ["AAA"],
+        batch_size=10,
+        retry_batch_size=10,
+        max_individual_fallbacks=0,
+    )
+
+    frame = result["AAA"]
+    assert frame["close"].iloc[-1] == 100.0
+    assert frame["adj_close"].iloc[-1] == 90.0
+    assert frame["adj_factor"].iloc[-1] == 0.9
+    assert frame["adj_open"].iloc[-1] == 90.0
+    assert frame["adj_high"].iloc[-1] == 90.9
+    assert frame["adj_low"].iloc[-1] == pytest.approx(89.1)

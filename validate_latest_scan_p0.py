@@ -51,9 +51,26 @@ def main() -> None:
         raise AssertionError(f"Faltan columnas requeridas: {missing}")
 
     signal = df["signal"].astype(str)
+    recommendation = (
+        df["recommendation"].astype(str).str.upper()
+        if "recommendation" in df.columns
+        else pd.Series("", index=df.index)
+    )
     trigger_confirmed = as_bool(df["trigger_confirmed"])
     execution_quote_quality = df["execution_quote_quality"].astype(str).str.upper()
     setup_type = df["setup_type"].astype(str)
+    technical_prefilter_failed = (
+        df.get("technical_prefilter_status", pd.Series("", index=df.index))
+        .fillna("")
+        .astype(str)
+        .str.upper()
+        .eq("FAIL")
+    )
+    allowed_prefilter_avoid = (
+        technical_prefilter_failed
+        & signal.str.upper().eq("AVOID")
+        & recommendation.eq("AVOID_FOR_NOW")
+    )
 
     actionable_signals = {"TRIGGER_CONFIRMED", "READY_WAIT_TRIGGER", "WATCHLIST"}
 
@@ -80,7 +97,7 @@ def main() -> None:
     ).sum()
 
     checks["NO_VALID_SETUP fuera de VETO"] = (
-        (setup_type == "NO_VALID_SETUP") & (signal != "VETO")
+        (setup_type == "NO_VALID_SETUP") & (signal != "VETO") & ~allowed_prefilter_avoid
     ).sum()
 
     veto = signal == "VETO"

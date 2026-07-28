@@ -1,6 +1,7 @@
 \
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import json
@@ -195,6 +196,9 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
         .get("cache_ttl_minutes", {})
         .get("earnings", 720)
     )
+    metadata_cfg = config.get("fundamentals", {}).get("metadata_enrichment", {})
+    prefer_stale_cache = bool(metadata_cfg.get("prefer_stale_cache", False))
+    network_enabled = bool(metadata_cfg.get("network_enabled", True))
 
     cached, file_age = _load_cache(ticker)
     fundamentals_age = _timestamp_age_minutes(
@@ -228,6 +232,24 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
         )
         return apply_metadata_fallback(result, config, fallback_providers)
 
+    if cached is not None and prefer_stale_cache:
+        result = _set_cache_trace(
+            dict(cached),
+            fundamentals_status="HIT" if fundamentals_fresh else "STALE_FALLBACK",
+            fundamentals_age=fundamentals_age,
+            earnings_status="HIT" if earnings_fresh else "STALE_FALLBACK",
+            earnings_age=earnings_age,
+        )
+        result["fundamental_warning"] = "; ".join(
+            value
+            for value in [
+                result.get("fundamental_warning"),
+                "cache stale usado sin refresco de red para evitar bloqueo del scanner",
+            ]
+            if value
+        )
+        return apply_metadata_fallback(result, config, fallback_providers)
+
     if yf is None:
         if cached is not None:
             result = _set_cache_trace(
@@ -246,6 +268,29 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
             "fundamentals_cache_status": "NETWORK_MISSING",
             "earnings_cache_status": "NETWORK_MISSING",
         }, config, fallback_providers)
+
+    if not network_enabled:
+        if cached is not None:
+            result = _set_cache_trace(
+                dict(cached),
+                fundamentals_status="STALE_FALLBACK",
+                fundamentals_age=fundamentals_age,
+                earnings_status="STALE_FALLBACK",
+                earnings_age=earnings_age,
+            )
+            result["fundamental_warning"] = "network metadata disabled; usando cache stale"
+            return apply_metadata_fallback(result, config, fallback_providers)
+        return apply_metadata_fallback(
+            {
+                "ticker": ticker,
+                "metadata_source": "none",
+                "fundamental_warning": "network metadata disabled; sin cache local",
+                "fundamentals_cache_status": "NETWORK_SKIPPED",
+                "earnings_cache_status": "NETWORK_SKIPPED",
+            },
+            config,
+            fallback_providers,
+        )
 
     warnings = []
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -336,7 +381,12 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
     return data
 
 
-def enrich_metadata(df: pd.DataFrame, config: dict, stats: dict | None = None) -> pd.DataFrame:
+def enrich_metadata(
+    df: pd.DataFrame,
+    config: dict,
+    stats: dict | None = None,
+    progress_callback: Callable[[dict], None] | None = None,
+) -> pd.DataFrame:
     """
     Fill missing sector/industry/company/earnings/fundamental columns.
     Limit can be configured to avoid making the scanner too slow.
@@ -344,13 +394,17 @@ def enrich_metadata(df: pd.DataFrame, config: dict, stats: dict | None = None) -
     if df.empty:
         return df
 
-    enabled = config.get("fundamentals", {}).get("metadata_enrichment", {}).get("enabled", True)
+    metadata_cfg = config.get("fundamentals", {}).get("metadata_enrichment", {})
+    enabled = metadata_cfg.get("enabled", True)
     if not enabled:
         return df
 
-    max_tickers = config.get("fundamentals", {}).get("metadata_enrichment", {}).get("max_tickers", 300)
+    max_tickers = metadata_cfg.get("max_tickers", 0)
+    max_network_queries = int(metadata_cfg.get("max_network_queries_per_run", 0) or 0)
     out = df.copy()
-    tickers = out["ticker"].dropna().astype(str).str.upper().unique().tolist()[:max_tickers]
+    tickers = out["ticker"].dropna().astype(str).str.upper().unique().tolist()
+    if max_tickers is not None and int(max_tickers or 0) > 0:
+        tickers = tickers[: int(max_tickers)]
 
     rows = []
     fallback_providers = build_metadata_providers(config)
@@ -364,12 +418,31 @@ def enrich_metadata(df: pd.DataFrame, config: dict, stats: dict | None = None) -
             "earnings_cache_hits": 0,
             "earnings_network_queries": 0,
             "earnings_stale_fallbacks": 0,
+            "network_query_limit": max_network_queries,
+            "network_queries_skipped_by_limit": 0,
+            "processed_tickers": 0,
             "errors": [],
         }
     )
     for i, ticker in enumerate(tickers, start=1):
         try:
-            record = fetch_ticker_metadata(ticker, config, fallback_providers)
+            record_config = config
+            used_network_queries = int(telemetry["fundamentals_network_queries"]) + int(
+                telemetry["earnings_network_queries"]
+            )
+            if max_network_queries > 0 and used_network_queries >= max_network_queries:
+                record_config = {
+                    **config,
+                    "fundamentals": {
+                        **config.get("fundamentals", {}),
+                        "metadata_enrichment": {
+                            **metadata_cfg,
+                            "network_enabled": False,
+                        },
+                    },
+                }
+                telemetry["network_queries_skipped_by_limit"] += 1
+            record = fetch_ticker_metadata(ticker, record_config, fallback_providers)
             rows.append(record)
             fundamental_status = str(record.get("fundamentals_cache_status") or "")
             earnings_status = str(record.get("earnings_cache_status") or "")
@@ -389,6 +462,13 @@ def enrich_metadata(df: pd.DataFrame, config: dict, stats: dict | None = None) -
                     fallback_providers,
                 )
             )
+        finally:
+            telemetry["processed_tickers"] = i
+            if progress_callback is not None and (i == len(tickers) or i % 25 == 0):
+                try:
+                    progress_callback(dict(telemetry))
+                except Exception:
+                    pass
 
     meta = pd.DataFrame(rows)
     if meta.empty:

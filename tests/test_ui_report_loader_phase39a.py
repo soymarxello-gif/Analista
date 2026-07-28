@@ -7,6 +7,7 @@ import pandas as pd
 
 from tools.ui_data_contract_audit import save_ui_data_contract_audit
 from ui.report_loader import (
+    OPTIONAL_SOURCE_NAMES,
     load_all_ui_sources,
     load_csv_report,
     load_json_report,
@@ -59,7 +60,7 @@ def test_load_all_ui_sources_empty_reports_does_not_raise(tmp_path: Path):
 
     assert sources["summary"]["total_sources"] > 0
     assert sources["summary"]["missing_sources"] > 0
-    assert sources["summary"]["optional_missing_sources"] == 1
+    assert sources["summary"]["optional_missing_sources"] == len(OPTIONAL_SOURCE_NAMES)
 
 
 def test_optional_ai_review_missing_does_not_warn_status_overview() -> None:

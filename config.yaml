@@ -62,8 +62,36 @@ filters:
 
 screener:
   max_results_per_query: 250
-  max_universe_after_dedupe: 700
+  target_size: 0
+  page_size: 250
+  sort_field: "avgdailyvol3m"
+  sort_asc: false
+  max_universe_after_dedupe: 0
+  max_pages_per_custom_query: 40
   deduplicate_results: true
+
+  custom_queries:
+    custom_liquid_universe:
+      enabled: true
+      min_market_cap_usd: 2500000000
+      min_price: 10
+      min_avg_volume_3m: 250000
+      exchanges: ["NMS", "NYQ", "ASE"]
+      target_size: 0
+      page_size: 250
+      sort_field: "avgdailyvol3m"
+      sort_asc: false
+
+    custom_large_liquid_leaders:
+      enabled: true
+      min_market_cap_usd: 10000000000
+      min_price: 10
+      min_avg_volume_3m: 250000
+      exchanges: ["NMS", "NYQ", "ASE"]
+      target_size: 0
+      page_size: 250
+      sort_field: "intradaymarketcap"
+      sort_asc: false
 
   fallback_tickers:
     - AAPL
@@ -89,27 +117,27 @@ screener:
 
   channels:
     day_gainers:
-      enabled: true
+      enabled: false
       max_results: 250
 
     most_actives:
-      enabled: true
+      enabled: false
       max_results: 250
 
     growth_technology_stocks:
-      enabled: true
+      enabled: false
       max_results: 250
 
     undervalued_growth_stocks:
-      enabled: true
+      enabled: false
       max_results: 250
 
     undervalued_large_caps:
-      enabled: true
+      enabled: false
       max_results: 250
 
     most_institutionally_bought_large_cap_stocks:
-      enabled: true
+      enabled: false
       max_results: 250
 
     small_cap_gainers:
@@ -117,12 +145,14 @@ screener:
       max_results: 150
 
   channel_source_weights:
-    day_gainers: 0.70
-    most_actives: 0.60
-    growth_technology_stocks: 0.90
-    undervalued_growth_stocks: 0.85
-    undervalued_large_caps: 0.85
-    most_institutionally_bought_large_cap_stocks: 1.00
+    custom_liquid_universe: 1.00
+    custom_large_liquid_leaders: 0.90
+    day_gainers: 0.35
+    most_actives: 0.40
+    growth_technology_stocks: 0.50
+    undervalued_growth_stocks: 0.45
+    undervalued_large_caps: 0.45
+    most_institutionally_bought_large_cap_stocks: 0.45
     small_cap_gainers: 0.55
 
   bias_control:
@@ -139,6 +169,21 @@ liquidity:
   min_dollar_volume_20d: 20000000
   min_dollar_volume_60d: 15000000
   min_median_to_mean_volume_ratio: 0.50
+  use_market_cap_adjusted_liquidity: true
+  market_cap_tiers:
+    mega: 100000000000
+    large: 10000000000
+    mid: 2500000000
+  min_turnover_20d:
+    mega: 0.00025
+    large: 0.00045
+    mid: 0.00080
+    default: 0.00080
+  min_turnover_60d:
+    mega: 0.00020
+    large: 0.00035
+    mid: 0.00065
+    default: 0.00065
   max_bid_ask_spread_pct: 0.01
   max_quote_distance_pct: 0.10
   invalid_bid_ask_score: 0.50
@@ -153,6 +198,30 @@ benchmarks:
   dollar: "DX-Y.NYB"
   crude_oil: "CL=F"
   bitcoin: "BTC-USD"
+
+sector_context:
+  enabled: true
+  data_source: "yfinance"
+  daily_period: "1y"
+  daily_interval: "1d"
+  min_weeks: 35
+  weekly_rule: "W-FRI"
+  macd:
+    fast: 12
+    slow: 26
+    signal: 9
+  benchmark_etfs:
+    Technology: "XLK"
+    Financial Services: "XLF"
+    Industrials: "XLI"
+    Consumer Cyclical: "XLY"
+    Consumer Defensive: "XLP"
+    Healthcare: "XLV"
+    Energy: "XLE"
+    Basic Materials: "XLB"
+    Utilities: "XLU"
+    Real Estate: "XLRE"
+    Communication Services: "XLC"
 
 market_regime:
   risk_on:
@@ -180,9 +249,9 @@ price_data:
 deep_analysis:
   mode: "shadow"
   candidate_funnel:
-    target_tickers: 50
-    min_tickers: 40
-    max_tickers: 60
+    target_tickers: 150
+    min_tickers: 120
+    max_tickers: 5000
     max_sector_share: 0.20
   scenario_engine:
     promotion_enabled: false
@@ -238,6 +307,15 @@ setups:
     min_relative_volume: 1.10
   volatility_contraction:
     min_compression_ratio: 0.75
+  macd_momentum:
+    enabled: true
+    min_rsi: 50
+    max_rsi: 72
+    max_rsi_overextended: 75
+    min_relative_volume: 0.80
+    max_distance_ema20_pct: 0.055
+    max_distance_ema20_atr: 1.75
+    require_weekly_macd_non_bearish: true
 
 risk_reward:
   atr_stop_multiplier: 1.5
@@ -264,7 +342,8 @@ data_sources:
     options: 30
   analysis_quotes:
     enabled: true
-    max_tickers_per_run: 75
+    max_tickers_per_run: 500
+    alpaca_batch_size: 100
     timeout_seconds: 15
     use_alpaca_iex: true
     use_google_sheets_manual: true
@@ -301,6 +380,14 @@ data_sources:
       published_csv_url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR3Wq27cyOLpoocdVjvtFCHTTR5hD_489zl4FIfk9S8JiPmTkNwHX8FbSsusF2XvQ/pub?gid=1907410928&single=true&output=csv"
       timeout_seconds: 20
       max_stale_minutes: 1440
+    fred:
+      enabled: true
+      mode: "read_only"
+      data_freshness: "MIXED_OFFICIAL_RELEASE_FREQUENCIES"
+      timeout_seconds: 20
+      retries: 3
+      backoff_factor: 0.6
+      cache_path: "cache/macro/fred_latest.json"
 
 data_quality:
   critical_missing_penalty: 0.20
@@ -310,7 +397,9 @@ fundamentals:
   enabled: true
   metadata_enrichment:
     enabled: true
-    max_tickers: 600
+    max_tickers: 0
+    prefer_stale_cache: true
+    max_network_queries_per_run: 50
   earnings_risk:
     veto_if_days_to_earnings_lte: 3
     penalize_if_days_to_earnings_lte: 7

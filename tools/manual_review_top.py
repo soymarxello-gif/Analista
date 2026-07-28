@@ -20,6 +20,22 @@ TOP_COLUMNS = [
     "recommendation",
     "setup_persistence_score",
     "setup_persistence_bucket",
+    "asset_attractiveness_score",
+    "timing_quality_score",
+    "momentum_confirmation_score",
+    "operational_readiness_score",
+    "operational_readiness_bucket",
+    "scenario_quality_adjustment",
+    "timing_penalty_reason",
+    "momentum_penalty_reason",
+    "engine_block_reason",
+    "execution_readiness_status",
+    "technical_prefilter_status",
+    "technical_prefilter_reason",
+    "daily_macd_prefilter_status",
+    "weekly_macd_prefilter_status",
+    "ema20_extension_prefilter_status",
+    "ema20_extension_reference_source",
     "final_trade_score",
     "setup_quality_score",
     "final_score",
@@ -29,6 +45,8 @@ TOP_COLUMNS = [
     "execution_quote_quality",
     "quote_recheck_priority",
     "stop_atr_status",
+    "sector",
+    "industry",
     "signal_path",
     "score_delta",
     "rank_delta",
@@ -43,7 +61,23 @@ TOP_COLUMNS = [
     "scenario_guardrail_reason",
     "momentum_state",
     "extension_state",
+    "ema20_extension_status",
     "entry_timing_status",
+    "macd_histogram_state",
+    "weekly_macd_histogram_state",
+    "weekly_macd_hist_improving",
+    "weekly_macd_hist",
+    "weekly_macd_hist_change_1w",
+    "weekly_macd_hist_change_2w",
+    "sector_benchmark_symbol",
+    "sector_weekly_macd_hist",
+    "sector_weekly_macd_slope_1w",
+    "sector_weekly_macd_prev_slope_1w",
+    "sector_weekly_macd_acceleration",
+    "sector_weekly_macd_state",
+    "sector_weekly_macd_acceleration_state",
+    "sector_context_status",
+    "sector_context_reason",
     "required_confirmation",
     "engine_recommendation",
     "shadow_entry",
@@ -52,6 +86,9 @@ TOP_COLUMNS = [
     "shadow_rr",
     "shadow_stop_atr_multiple",
     "shadow_level_status",
+    "technical_distance_ema20_atr",
+    "technical_distance_ema20_pct",
+    "technical_macd_hist_change_3d",
     "reason_summary",
 ]
 
@@ -111,9 +148,13 @@ def _is_deteriorated(row: dict) -> bool:
     bucket = _safe_text(row.get("setup_persistence_bucket")).upper()
     penalty = _safe_text(row.get("persistence_penalty_reason")).lower()
     scenario_status = _safe_text(row.get("scenario_status")).upper()
+    weekly_macd_state = _safe_text(row.get("weekly_macd_histogram_state")).upper()
+    sector_macd_state = _safe_text(row.get("sector_weekly_macd_state")).upper()
+    technical_prefilter_status = _safe_text(row.get("technical_prefilter_status")).upper()
 
     return (
         signal in {"AVOID", "VETO"}
+        or technical_prefilter_status == "FAIL"
         or bucket == "D_WEAK_OR_DETERIORATED"
         or "signal_deteriorated" in penalty
         or "disappeared_from_manual_review" in penalty
@@ -125,10 +166,16 @@ def _is_deteriorated(row: dict) -> bool:
             "CONTEXT_CONFLICT",
             "DATA_INSUFFICIENT",
         }
+        or weekly_macd_state in {"WEEKLY_MACD_HIST_BEARISH", "WEEKLY_MACD_HIST_DECELERATING"}
+        or sector_macd_state in {"SECTOR_MACD_BEARISH", "SECTOR_MACD_DECELERATING"}
     )
 
 
 def _scenario_allows_high_quality(row: dict) -> bool:
+    technical_prefilter_status = _safe_text(row.get("technical_prefilter_status")).upper()
+    if technical_prefilter_status and technical_prefilter_status != "PASS":
+        return False
+
     scenario_status = _safe_text(row.get("scenario_status")).upper()
     if scenario_status and scenario_status != "VALID_TRIGGER":
         return False
@@ -138,7 +185,27 @@ def _scenario_allows_high_quality(row: dict) -> bool:
             return False
 
     shadow_status = _safe_text(row.get("shadow_level_status")).upper()
-    if shadow_status and shadow_status not in {"VALID", "NOT_AVAILABLE", "NOT_ELIGIBLE"}:
+    if shadow_status and shadow_status != "VALID":
+        return False
+
+    entry_timing = _safe_text(row.get("entry_timing_status")).upper()
+    if entry_timing and entry_timing != "ON_TIME":
+        return False
+
+    ema20_extension = _safe_text(row.get("ema20_extension_status")).upper()
+    if ema20_extension and ema20_extension != "HEALTHY":
+        return False
+
+    macd_state = _safe_text(row.get("macd_histogram_state")).upper()
+    if macd_state in {"MACD_HIST_DETERIORATING", "MACD_HIST_FLATTENING"}:
+        return False
+
+    weekly_macd_state = _safe_text(row.get("weekly_macd_histogram_state")).upper()
+    if weekly_macd_state and weekly_macd_state != "WEEKLY_MACD_HIST_IMPROVING":
+        return False
+
+    sector_macd_state = _safe_text(row.get("sector_weekly_macd_state")).upper()
+    if sector_macd_state and sector_macd_state not in {"SECTOR_MACD_ACCELERATING", "SECTOR_MACD_IMPROVING"}:
         return False
 
     return True
@@ -152,6 +219,7 @@ def _is_high_quality(row: dict) -> bool:
 
     final_trade_score = _safe_float(row.get("final_trade_score"), 0.0)
     setup_quality_score = _safe_float(row.get("setup_quality_score"), 0.0)
+    operational_readiness_score = _safe_float(row.get("operational_readiness_score"), 0.0)
     persistence_score = _safe_float(row.get("setup_persistence_score"), 0.0)
     rr = _safe_float(row.get("rr"), 0.0)
 
@@ -171,6 +239,7 @@ def _is_high_quality(row: dict) -> bool:
         valid_signal
         and valid_operational_quote
         and _scenario_allows_high_quality(row)
+        and operational_readiness_score >= 80
         and final_trade_score >= 70
         and setup_quality_score >= 65
         and rr >= 1.7
@@ -193,7 +262,7 @@ def classify_top_group(row: dict) -> str:
 
 def build_manual_review_top_dataframe(
     manual_df: pd.DataFrame,
-    per_group_limit: int = 20,
+    per_group_limit: int = 0,
 ) -> pd.DataFrame:
     if manual_df.empty:
         return pd.DataFrame()
@@ -209,9 +278,10 @@ def build_manual_review_top_dataframe(
 
     sort_cols = [
         "_top_group_order",
-        "rank",
+        "operational_readiness_score",
         "setup_persistence_score",
         "final_trade_score",
+        "rank",
         "_manual_order",
     ]
 
@@ -219,7 +289,7 @@ def build_manual_review_top_dataframe(
 
     ascending = []
     for col in sort_cols:
-        if col in {"setup_persistence_score", "final_trade_score"}:
+        if col in {"operational_readiness_score", "setup_persistence_score", "final_trade_score"}:
             ascending.append(False)
         else:
             ascending.append(True)
@@ -228,7 +298,10 @@ def build_manual_review_top_dataframe(
 
     selected_frames = []
     for _, group_df in out.groupby("_top_group", sort=False):
-        selected_frames.append(group_df.head(per_group_limit))
+        if per_group_limit and per_group_limit > 0:
+            selected_frames.append(group_df.head(per_group_limit))
+        else:
+            selected_frames.append(group_df)
 
     if not selected_frames:
         return pd.DataFrame()
@@ -298,6 +371,10 @@ def build_manual_review_top_markdown(top_df: pd.DataFrame) -> str:
             "recommendation",
             "setup_persistence_score",
             "setup_persistence_bucket",
+            "operational_readiness_score",
+            "operational_readiness_bucket",
+            "timing_quality_score",
+            "momentum_confirmation_score",
             "final_trade_score",
             "setup_quality_score",
             "rr",
@@ -309,7 +386,12 @@ def build_manual_review_top_markdown(top_df: pd.DataFrame) -> str:
             "scenario_operability",
             "momentum_state",
             "extension_state",
+            "ema20_extension_status",
             "entry_timing_status",
+            "macd_histogram_state",
+            "weekly_macd_histogram_state",
+            "execution_readiness_status",
+            "engine_block_reason",
             "shadow_level_status",
             "signal_path",
             "persistence_penalty_reason",
@@ -326,7 +408,7 @@ def save_manual_review_top_reports(
     manual_csv: Path,
     csv_out: Path,
     markdown_out: Path,
-    per_group_limit: int = 20,
+    per_group_limit: int = 0,
 ) -> dict:
     if not manual_csv.exists():
         csv_out.parent.mkdir(parents=True, exist_ok=True)
@@ -376,7 +458,7 @@ def main() -> int:
     parser.add_argument("--manual-csv", default="reports/manual_review_latest.csv")
     parser.add_argument("--csv-out", default="reports/manual_review_top.csv")
     parser.add_argument("--markdown-out", default="reports/manual_review_top.md")
-    parser.add_argument("--per-group-limit", type=int, default=20)
+    parser.add_argument("--per-group-limit", type=int, default=0)
     args = parser.parse_args()
 
     result = save_manual_review_top_reports(

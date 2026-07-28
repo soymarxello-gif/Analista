@@ -18,6 +18,7 @@ from tools.trade_candidate_cards import (
     build_trade_candidate_cards_markdown,
 )
 from tools.trade_decision_checklist import evaluate_checklist_row
+from engine.scanner_engine import apply_operational_signal_guardrails
 
 
 def _operational_candidate(**overrides) -> dict:
@@ -46,7 +47,14 @@ def _operational_candidate(**overrides) -> dict:
         "scenario_guardrail_reason": "",
         "momentum_state": "STRONG",
         "extension_state": "HEALTHY",
-        "entry_timing_status": "VALID_NOW",
+        "ema20_extension_status": "HEALTHY",
+        "entry_timing_status": "ON_TIME",
+        "macd_histogram_state": "MACD_HIST_POSITIVE_EXPANDING",
+        "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_IMPROVING",
+        "operational_readiness_score": 90,
+        "timing_quality_score": 90,
+        "momentum_confirmation_score": 95,
+        "execution_readiness_status": "EXECUTION_READY_REVIEW",
         "required_confirmation": "",
         "engine_recommendation": "REVIEW_SCENARIO",
         "shadow_entry": 100,
@@ -111,6 +119,50 @@ def test_invalid_shadow_levels_prevent_high_quality_without_replacing_levels() -
     assert result["checklist_status"] == "REVIEW_MANUALLY"
     assert "shadow_level_status_rr_below_minimum" in result["checklist_warnings"]
     assert "shadow" not in result["checklist_blockers"]
+
+
+def test_ema20_overextension_prevents_high_quality_and_buy_now_memory() -> None:
+    result = evaluate_checklist_row(
+        _operational_candidate(
+            ema20_extension_status="OVEREXTENDED",
+            entry_timing_status="OVEREXTENDED",
+            operational_readiness_score=82,
+            final_trade_score=92,
+        )
+    )
+
+    assert result["checklist_status"] == "REVIEW_MANUALLY"
+    assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
+    assert "ema20_extension_status_overextended" in result["checklist_warnings"]
+    assert "entry_timing_status_overextended" in result["checklist_warnings"]
+
+
+def test_macd_histogram_deterioration_prevents_high_quality_and_buy_now_memory() -> None:
+    result = evaluate_checklist_row(
+        _operational_candidate(
+            macd_histogram_state="MACD_HIST_DETERIORATING",
+            operational_readiness_score=88,
+            final_trade_score=92,
+        )
+    )
+
+    assert result["checklist_status"] == "REVIEW_MANUALLY"
+    assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
+    assert "macd_histogram_deteriorating" in result["checklist_warnings"]
+
+
+def test_macd_histogram_deteriorating_demotes_watchlist_before_manual_review() -> None:
+    penalties: list[str] = []
+    row = apply_operational_signal_guardrails(
+        {
+            "signal": "WATCHLIST",
+            "macd_histogram_state": "MACD_HIST_DETERIORATING",
+        },
+        penalties,
+    )
+
+    assert row["signal"] == "AVOID"
+    assert "macd_histogram_deteriorating" in penalties
 
 
 def test_candidate_card_contains_scenario_and_shadow_diagnostics() -> None:

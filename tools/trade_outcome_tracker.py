@@ -325,7 +325,7 @@ def append_trade(
 
     new_row = pd.DataFrame([record])
 
-    out = pd.concat([df, new_row], ignore_index=True)
+    out = new_row.copy() if df.empty else pd.concat([df, new_row], ignore_index=True)
     save_outcomes(out, outcomes_path)
 
     return {

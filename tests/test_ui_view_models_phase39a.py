@@ -5,9 +5,7 @@ import pandas as pd
 from ui.view_models import (
     build_calibration_model,
     build_candidate_table_model,
-    build_cycle_audit_model,
-    build_followup_model,
-    build_paper_trading_model,
+    build_macro_context_model,
     build_quality_gate_model,
     build_status_overview,
 )
@@ -30,7 +28,7 @@ def _json_source(name: str, data: dict, status: str = "AVAILABLE") -> dict:
         "kind": "json",
         "status": status,
         "data": data,
-        "rows_count": int(data.get("rows", 0) or data.get("journal_rows", 0) or 0),
+        "rows_count": int(data.get("rows", 0) or 0),
     }
 
 
@@ -92,65 +90,58 @@ def test_candidate_table_model_preserves_critical_columns_when_present():
     assert model["data"]["rows"][0]["ticker"] == "AAA"
 
 
-def test_paper_trading_model_counts_manual_decisions():
-    journal = pd.DataFrame(
-        [
-            {"manual_decision": "PENDING_REVIEW", "followup_status": "OPEN_MONITORING"},
-            {"manual_decision": "PAPER_WATCH", "followup_status": "OPEN_MONITORING"},
-            {"manual_decision": "PAPER_ENTER", "followup_status": "ENTERED_PAPER"},
-            {"manual_decision": "BLOCKED", "followup_status": "CLOSED_PAPER"},
-        ]
-    )
-    close = pd.DataFrame(
-        [
-            {"followup_status": "CLOSED_PAPER", "outcome_exported": "False"},
-            {"followup_status": "CLOSED_PAPER", "outcome_exported": "True"},
-        ]
-    )
+def test_macro_context_model_exposes_fred_series_and_events():
     sources = {
         "sources": {
-            "paper_trading_journal": _csv_source("paper_trading_journal", journal),
-            "paper_trade_close": _csv_source("paper_trade_close", close),
-        }
-    }
-
-    model = build_paper_trading_model(sources)
-
-    assert model["summary"]["journal_rows"] == 4
-    assert model["summary"]["pending_review"] == 1
-    assert model["summary"]["paper_watch"] == 1
-    assert model["summary"]["paper_enter"] == 1
-    assert model["summary"]["blocked"] == 1
-    assert model["summary"]["closed_paper"] == 1
-    assert model["summary"]["pending_export"] == 1
-    assert model["summary"]["exported_outcomes"] == 1
-
-
-def test_cycle_audit_model_detects_warn_fail_without_traceback():
-    sources = {
-        "sources": {
-            "paper_trading_cycle_audit": _json_source(
-                "paper_trading_cycle_audit",
+            "macro_event_context": _json_source(
+                "macro_event_context",
                 {
-                    "status": "WARN",
-                    "journal_rows": 3,
-                    "open_paper_count": 1,
-                    "closed_paper_count": 0,
-                    "pending_export_count": 0,
-                    "exported_count": 0,
-                    "duplicate_outcome_ids": [],
-                    "warnings": ["sample incomplete"],
-                    "issues": [],
+                    "status": "PASS",
+                    "source": "FRED_AND_AUDITABLE_ECONOMIC_CALENDAR",
+                    "data_freshness": "MIXED_OFFICIAL_RELEASE_FREQUENCIES",
+                    "next_critical_event": "FOMC policy decision",
+                    "next_critical_event_date": "2026-07-29",
+                    "days_to_critical_event": 10,
+                    "event_risk_status": "CLEAR",
+                    "liquidity_context": "MIXED",
+                    "us10y_official": 4.41,
+                    "fred_series": {
+                        "DGS10": {
+                            "status": "PASS",
+                            "latest_value": 4.41,
+                            "latest_date": "2026-06-24",
+                            "age_days": 2,
+                            "change_value": -0.07,
+                            "provider": "PANDAS_DATAREADER_FRED",
+                            "cache_status": "REFRESHED",
+                            "fallback_used": False,
+                        }
+                    },
+                    "economic_calendar": {
+                        "upcoming_events": [
+                            {
+                                "event_date": "2026-07-29",
+                                "event_time": "14:00",
+                                "timezone": "America/New_York",
+                                "event_type": "FOMC",
+                                "event_name": "FOMC policy decision",
+                                "importance": "HIGH",
+                                "source_url": "https://www.federalreserve.gov/",
+                            }
+                        ]
+                    },
                 },
             )
         }
     }
 
-    model = build_cycle_audit_model(sources)
+    model = build_macro_context_model(sources)
 
-    assert model["status"] == "WARN"
-    assert model["summary"]["journal_rows"] == 3
-    assert model["summary"]["guardrail_status"] == "PASS"
+    assert model["status"] == "PASS"
+    assert model["summary"]["liquidity_context"] == "MIXED"
+    assert model["data"]["series_rows"][0]["series"] == "US10Y"
+    assert model["data"]["series_rows"][0]["latest"] == 4.41
+    assert model["data"]["event_rows"][0]["event"] == "FOMC"
 
 
 def test_calibration_model_requires_observational_recommendations():
@@ -170,13 +161,26 @@ def test_calibration_model_requires_observational_recommendations():
     assert model["summary"]["no_auto_weight_change"] is True
 
 
-def test_quality_gate_and_followup_models_have_controlled_statuses():
+def test_quality_gate_model_exposes_freshness_status():
     quality = build_quality_gate_model(
-        {"sources": {"daily_quality_gate": _json_source("daily_quality_gate", {"status": "PASS"})}}
-    )
-    followup = build_followup_model(
-        {"sources": {"paper_trade_followup": _csv_source("paper_trade_followup", pd.DataFrame())}}
+        {
+            "sources": {
+                "daily_quality_gate": _json_source(
+                    "daily_quality_gate",
+                    {
+                        "status": "PASS",
+                        "scan_freshness_status": "PASS",
+                        "scan_age_hours": 0.5,
+                        "manual_review_age_hours": 0.4,
+                        "macro_age_hours": 1.2,
+                        "scan_is_current_local_date": True,
+                    },
+                )
+            }
+        }
     )
 
     assert quality["status"] == "PASS"
-    assert followup["status"] == "EMPTY"
+    assert quality["summary"]["scan_freshness_status"] == "PASS"
+    assert quality["summary"]["scan_age_hours"] == 0.5
+    assert quality["summary"]["scan_is_current_local_date"] is True

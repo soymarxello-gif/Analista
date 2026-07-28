@@ -9,6 +9,7 @@ from tools.daily_run_manifest import (
     build_daily_run_manifest_markdown,
     collect_daily_run_manifest,
     save_daily_run_manifest,
+    _effective_daily_validation_status,
 )
 
 
@@ -34,13 +35,10 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/live_quote_recheck.py",
         "tools/trade_decision_checklist.py",
         "tools/trade_candidate_cards.py",
-        "tools/paper_trading_journal.py",
-        "tools/paper_trade_followup.py",
-        "tools/paper_trade_close.py",
-        "tools/paper_trading_cycle_audit.py",
         "tools/trade_score_calibration.py",
         "tools/calibration_recommendations.py",
         "tools/posttest_thesis_audit.py",
+        "tools/simple_candidate_posttest.py",
         "tools/release_readiness_audit.py",
         "tools/ui_data_contract_audit.py",
         "tools/streamlit_smoke_test.py",
@@ -56,6 +54,7 @@ def _make_project(tmp_path: Path) -> Path:
         "tools/cboe_market_statistics_audit.py",
         "tools/google_sheets_data_source_audit.py",
         "tools/macro_event_context.py",
+        "tools/nasdaq_risk_regime_audit.py",
         "tools/gui_operational_decision_log.py",
         "tools/gui_post_session_review.py",
         "tools/gui_operational_decision_log_audit.py",
@@ -378,6 +377,30 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "simple_candidate_posttest_latest.csv").write_text(
+        "ticker,horizon_sessions,return_close_pct\n",
+        encoding="utf-8",
+    )
+    (reports / "simple_candidate_posttest_latest.md").write_text(
+        "# simple candidate posttest\n",
+        encoding="utf-8",
+    )
+    (reports / "simple_candidate_posttest_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "rows": 0,
+                "report_sessions_available": 18,
+                "horizon_summary": {
+                    "5": {"win_rate": 0.4, "avg_return_pct": 0.01},
+                    "10": {"win_rate": 0.6, "avg_return_pct": 0.02},
+                    "15": {"win_rate": 0.5, "avg_return_pct": 0.03},
+                },
+                "do_not_change_automatically": True,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "release_readiness_latest.md").write_text("# release\n", encoding="utf-8")
     (reports / "release_readiness_latest.json").write_text(
         json.dumps(
@@ -398,7 +421,6 @@ def _make_project(tmp_path: Path) -> Path:
                 "missing_sources": 0,
                 "invalid_sources": 0,
                 "candidate_rows": 2,
-                "paper_journal_rows": 0,
             }
         ),
         encoding="utf-8",
@@ -468,9 +490,6 @@ def _make_project(tmp_path: Path) -> Path:
                 "latest_session_id": "S1",
                 "latest_session_status": "OPEN",
                 "latest_session_result": "",
-                "paper_actions_logged": 2,
-                "paper_enter_count": 1,
-                "closed_paper_count": 0,
                 "pending_export_count": 0,
             }
         ),
@@ -604,14 +623,29 @@ def _make_project(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (reports / "nasdaq_risk_regime_latest.md").write_text("# nasdaq risk regime\n", encoding="utf-8")
+    (reports / "nasdaq_risk_regime_latest.json").write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "macro_regime_mode": "NASDAQ_NORMAL",
+                "macro_regime_confidence": "HIGH",
+                "macro_risk_flag": "NASDAQ_RISK_BALANCED",
+                "nasdaq_risk_score": 42.0,
+                "read_only": True,
+                "execution_enabled": False,
+                "broker_execution": False,
+                "creates_trigger_confirmed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
     (reports / "gui_operational_decision_log_latest.md").write_text("# decision log\n", encoding="utf-8")
     (reports / "gui_operational_decision_log_latest.json").write_text(
         json.dumps(
             {
                 "status": "PASS",
                 "decisions_today": 1,
-                "paper_watch_decisions": 1,
-                "paper_enter_decisions": 0,
                 "skip_decisions": 0,
                 "needs_recheck_decisions": 0,
                 "decisions_without_reason": 0,
@@ -659,10 +693,8 @@ def _make_project(tmp_path: Path) -> Path:
                 "total_decisions": 1,
                 "decision_quality_score": 92,
                 "decision_quality_bucket": "A_DISCIPLINED",
-                "paper_enter_count": 0,
                 "decisions_without_reason": 0,
                 "decisions_without_post_review": 0,
-                "paper_enter_with_low_quote_quality": 0,
                 "quality_warnings_count": 0,
             }
         ),
@@ -692,6 +724,26 @@ def _make_project(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def test_manifest_treats_final_refresh_running_as_terminal_summary_status() -> None:
+    progress = {
+        "status": "RUNNING",
+        "phase": "final_refresh_steps",
+        "current_step": "daily_run_manifest",
+    }
+
+    assert _effective_daily_validation_status("PASS", progress) == "PASS"
+
+
+def test_manifest_keeps_regular_running_progress_visible() -> None:
+    progress = {
+        "status": "RUNNING",
+        "phase": "default_steps",
+        "current_step": "run_scanner_audited",
+    }
+
+    assert _effective_daily_validation_status("PASS", progress) == "RUNNING"
+
+
 def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     root = _make_project(tmp_path)
 
@@ -706,23 +758,22 @@ def test_collect_daily_run_manifest_reads_core_statuses(tmp_path: Path):
     assert data["scan_snapshot"]["manual_review_rows"] == 2
     assert data["scan_snapshot"]["recommendations"]["RECHECK_LIVE_QUOTE"] == 1
     assert data["scan_snapshot"]["scenario_engine_audit"]["deep_analysis_rows"] == 50
-    assert data["scan_snapshot"]["paper_trade_close"]["status"] == "PASS"
-    assert data["scan_snapshot"]["paper_trading_cycle_audit"]["status"] == "WARN"
+    assert "paper_trade_close" not in data["scan_snapshot"]
+    assert "paper_trading_cycle_audit" not in data["scan_snapshot"]
+    assert data["scan_snapshot"]["simple_candidate_posttest"]["status"] == "PASS"
     assert data["scan_snapshot"]["ui_data_contract"]["status"] == "PASS"
     assert data["scan_snapshot"]["streamlit_smoke_test"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_actions_audit"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_visuals_audit"]["status"] == "PASS"
     assert data["scan_snapshot"]["gui_release_audit"]["status"] == "PASS"
-    assert data["scan_snapshot"]["gui_supervised_session"]["latest_session_status"] == "OPEN"
-    assert data["scan_snapshot"]["gui_supervised_session_audit"]["status"] == "PASS"
-    assert data["scan_snapshot"]["gui_daily_operating_checklist"]["status"] == "PASS"
+    assert "gui_supervised_session" not in data["scan_snapshot"]
+    assert "gui_daily_operating_checklist" not in data["scan_snapshot"]
     assert data["scan_snapshot"]["alpaca_readonly_connectivity"]["status"] == "PASS"
     assert data["scan_snapshot"]["webull_readonly_market_data"]["status"] == "WARN"
     assert data["scan_snapshot"]["cboe_market_statistics"]["status"] == "PASS"
     assert data["scan_snapshot"]["google_sheets_data_source"]["status"] == "WARN"
-    assert data["scan_snapshot"]["gui_operational_decision_log"]["status"] == "PASS"
-    assert data["scan_snapshot"]["gui_post_session_review"]["status"] == "WARN"
-    assert data["scan_snapshot"]["gui_decision_quality_review"]["status"] == "PASS"
+    assert "gui_operational_decision_log" not in data["scan_snapshot"]
+    assert "gui_decision_quality_review" not in data["scan_snapshot"]
     assert data["summary"]["missing_script_files"] == []
 
     script_files = data["script_files"]
@@ -746,8 +797,9 @@ def test_daily_run_manifest_markdown_contains_sections(tmp_path: Path):
     assert "## Report files" in text
     assert "## Summary" in text
     assert "RECHECK_LIVE_QUOTE" in text
-    assert "Paper trade close:" in text
-    assert "Paper trading cycle audit:" in text
+    assert "Paper trade close:" not in text
+    assert "Paper trading cycle audit:" not in text
+    assert "Simple candidate posttest:" in text
     assert "UI data contract:" in text
     assert "Streamlit dashboard:" in text
     assert "GUI actions:" in text

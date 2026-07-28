@@ -75,7 +75,9 @@ def test_price_download_has_bounded_retry_configuration():
 def test_metadata_enrichment_limit_covers_current_full_universe():
     cfg = load_config()
 
-    assert cfg["fundamentals"]["metadata_enrichment"]["max_tickers"] >= 500
+    assert cfg["fundamentals"]["metadata_enrichment"]["max_tickers"] == 0
+    assert cfg["fundamentals"]["metadata_enrichment"]["prefer_stale_cache"] is True
+    assert cfg["fundamentals"]["metadata_enrichment"]["max_network_queries_per_run"] <= 50
 
 
 def test_options_budget_covers_priority_review_candidates():

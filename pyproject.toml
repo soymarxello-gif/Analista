@@ -17,3 +17,7 @@ ignore = ["E501", "E402"]
 [[tool.mypy.overrides]]
 module = "yfinance.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pandas_datareader.*"
+ignore_missing_imports = true

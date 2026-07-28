@@ -5,6 +5,8 @@ from tools.daily_validation import (
     POST_SUMMARY_STEPS,
     build_summary_text,
     collect_output_status,
+    _format_stdout_stderr_block,
+    _steps_with_scanner_timeout,
 )
 
 
@@ -24,7 +26,8 @@ def test_daily_quality_gate_runs_before_release_readiness_audit():
     assert "gui_actions_audit" in post_names
     assert "gui_visuals_audit" in post_names
     assert "gui_release_audit" in post_names
-    assert "gui_supervised_session_audit" in post_names
+    assert "gui_supervised_session_audit" not in post_names
+    assert "gui_daily_operating_checklist_audit" not in post_names
 
     assert post_names.index("daily_operator_index") < post_names.index("daily_run_manifest")
     assert post_names.index("daily_run_manifest") < post_names.index("encoding_audit")
@@ -34,10 +37,33 @@ def test_daily_quality_gate_runs_before_release_readiness_audit():
     assert post_names.index("streamlit_smoke_test") < post_names.index("gui_actions_audit")
     assert post_names.index("gui_actions_audit") < post_names.index("gui_visuals_audit")
     assert post_names.index("gui_visuals_audit") < post_names.index("gui_release_audit")
-    assert post_names.index("gui_release_audit") < post_names.index("gui_supervised_session_audit")
-    assert post_names.index("gui_supervised_session_audit") < post_names.index("ui_data_contract_audit")
+    assert post_names.index("gui_release_audit") < post_names.index("ui_data_contract_audit")
 
     assert post_names[-1] == "ui_data_contract_audit"
+
+
+def test_ui_refresh_can_override_scanner_timeout_without_mutating_default_steps():
+    default_scanner = [
+        step for step in DEFAULT_STEPS if step["name"] == "run_scanner_audited"
+    ][0]
+
+    adjusted = _steps_with_scanner_timeout(DEFAULT_STEPS, 420)
+    adjusted_scanner = [
+        step for step in adjusted if step["name"] == "run_scanner_audited"
+    ][0]
+
+    assert default_scanner["timeout_seconds"] == 1800
+    assert adjusted_scanner["timeout_seconds"] == 420
+    assert default_scanner["timeout_seconds"] == 1800
+
+
+def test_daily_validation_summary_truncates_long_step_output():
+    block = _format_stdout_stderr_block("stderr", "\n".join(f"line {i}" for i in range(80)), max_lines=5)
+
+    assert len(block) == 3
+    assert "line 0" in "\n".join(block)
+    assert "line 20" not in "\n".join(block)
+    assert "salida truncada" in block[-1]
 
 
 def test_daily_quality_gate_post_step_is_optional_and_safe():
@@ -81,10 +107,9 @@ def test_daily_validation_tracks_daily_quality_gate_outputs():
     assert "reports/gui_visuals_audit_latest.md" in paths
     assert "reports/gui_release_audit_latest.json" in paths
     assert "reports/gui_release_audit_latest.md" in paths
-    assert "reports/gui_supervised_session_latest.json" in paths
-    assert "reports/gui_supervised_session_latest.md" in paths
-    assert "reports/gui_supervised_session_audit_latest.json" in paths
-    assert "reports/gui_supervised_session_audit_latest.md" in paths
+    assert "reports/simple_candidate_posttest_latest.json" in paths
+    assert "reports/simple_candidate_posttest_latest.md" in paths
+    assert "reports/gui_supervised_session_latest.json" not in paths
 
 
 def test_daily_validation_summary_includes_daily_quality_gate_reports():
@@ -108,6 +133,7 @@ def test_daily_validation_summary_includes_daily_quality_gate_reports():
             "stderr": "",
             "passed": True,
             "timeout_seconds": 60,
+            "duration_seconds": 1.25,
             "timed_out": False,
         }
     ]
@@ -154,3 +180,6 @@ def test_daily_validation_summary_includes_daily_quality_gate_reports():
     assert "reports/daily_quality_gate_latest.json" in text
     assert "reports/daily_quality_gate_latest.md" in text
     assert "[Critical reports]" in text
+    assert "[Step durations]" in text
+    assert "duration_seconds" in text
+    assert "1.25" in text

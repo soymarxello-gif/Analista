@@ -42,6 +42,7 @@ def _candidate(**overrides) -> dict:
         "industry": "Software",
         "metadata_source": "YAHOO",
         "quote_source": "YAHOO",
+        "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_IMPROVING",
     }
     row.update(overrides)
     return row
@@ -119,17 +120,117 @@ def test_market_cap_at_two_point_five_billion_is_allowed():
     assert "market_cap_below_minimum" not in result["checklist_blockers"]
 
 
-def test_crowded_bullish_adds_contrarian_warning():
+def test_options_are_context_only_and_do_not_add_checklist_warning():
     result = evaluate_checklist_row(_candidate(options_bias="CROWDED_BULLISH"))
 
-    assert "crowded_bullish_contrarian" in result["checklist_warnings"]
+    assert "crowded_bullish_contrarian" not in result["checklist_warnings"]
+    assert "options" not in result["checklist_warnings"].lower()
+    assert "treat_options_as_context_not_trigger" not in result["checklist_required_actions"]
 
 
 def test_unknown_options_flow_does_not_block():
     result = evaluate_checklist_row(_candidate(options_bias="UNKNOWN_OPTIONS_FLOW"))
 
     assert result["checklist_status"] != "BLOCKED"
-    assert "options_unknown_non_blocking" in result["checklist_warnings"]
+    assert "options_unknown_non_blocking" not in result["checklist_warnings"]
+
+
+def test_high_quality_review_becomes_automatic_posttest_buy_now_memory_only():
+    result = evaluate_checklist_row(
+        _candidate(
+            final_trade_score=92,
+            operational_readiness_score=92,
+            scenario_status="VALID_TRIGGER",
+            scenario_eligible_for_backtest=True,
+            execution_readiness_status="EXECUTION_READY_REVIEW",
+            shadow_level_status="VALID",
+            entry_timing_status="ON_TIME",
+            ema20_extension_status="HEALTHY",
+            macd_histogram_state="MACD_HIST_POSITIVE_EXPANDING",
+            weekly_macd_histogram_state="WEEKLY_MACD_HIST_IMPROVING",
+        )
+    )
+
+    assert result["checklist_status"] == "HIGH_QUALITY_REVIEW"
+    assert result["automatic_posttest_status"] == "BUY_NOW"
+    assert result["buy_now_candidate"] is True
+
+
+def test_recheck_is_not_automatic_posttest_buy_now():
+    result = evaluate_checklist_row(
+        _candidate(
+            quote_status="MISSING",
+            execution_quote_quality="LOW",
+            scenario_status="VALID_TRIGGER",
+            scenario_eligible_for_backtest=True,
+        )
+    )
+
+    assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
+    assert result["buy_now_candidate"] is False
+
+
+def test_overextended_ema20_is_not_high_quality_or_buy_now():
+    result = evaluate_checklist_row(
+        _candidate(
+            final_trade_score=94,
+            operational_readiness_score=86,
+            scenario_status="VALID_TRIGGER",
+            scenario_eligible_for_backtest=True,
+            execution_readiness_status="EXECUTION_READY_REVIEW",
+            shadow_level_status="VALID",
+            entry_timing_status="OVEREXTENDED",
+            ema20_extension_status="OVEREXTENDED",
+            macd_histogram_state="MACD_HIST_POSITIVE_EXPANDING",
+            weekly_macd_histogram_state="WEEKLY_MACD_HIST_IMPROVING",
+        )
+    )
+
+    assert result["checklist_status"] == "REVIEW_MANUALLY"
+    assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
+    assert "ema20_extension_status_overextended" in result["checklist_warnings"]
+
+
+def test_macd_histogram_deteriorating_is_not_high_quality_or_buy_now():
+    result = evaluate_checklist_row(
+        _candidate(
+            final_trade_score=94,
+            operational_readiness_score=90,
+            scenario_status="VALID_TRIGGER",
+            scenario_eligible_for_backtest=True,
+            execution_readiness_status="EXECUTION_READY_REVIEW",
+            shadow_level_status="VALID",
+            entry_timing_status="ON_TIME",
+            ema20_extension_status="HEALTHY",
+            macd_histogram_state="MACD_HIST_DETERIORATING",
+            weekly_macd_histogram_state="WEEKLY_MACD_HIST_IMPROVING",
+        )
+    )
+
+    assert result["checklist_status"] == "REVIEW_MANUALLY"
+    assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
+    assert "macd_histogram_deteriorating" in result["checklist_warnings"]
+
+
+def test_weekly_macd_decelerating_blocks_high_quality_and_buy_now():
+    result = evaluate_checklist_row(
+        _candidate(
+            final_trade_score=94,
+            operational_readiness_score=90,
+            scenario_status="VALID_TRIGGER",
+            scenario_eligible_for_backtest=True,
+            execution_readiness_status="EXECUTION_READY_REVIEW",
+            shadow_level_status="VALID",
+            entry_timing_status="ON_TIME",
+            ema20_extension_status="HEALTHY",
+            macd_histogram_state="MACD_HIST_POSITIVE_EXPANDING",
+            weekly_macd_histogram_state="WEEKLY_MACD_HIST_DECELERATING",
+        )
+    )
+
+    assert result["checklist_status"] == "BLOCKED"
+    assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
+    assert "weekly_macd_histogram_weekly_macd_hist_decelerating" in result["checklist_blockers"]
 
 
 def test_build_dataframe_never_creates_buy_or_trigger():

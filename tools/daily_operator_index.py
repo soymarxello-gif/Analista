@@ -171,6 +171,11 @@ def _normalize_quality_gate_status(data: dict) -> dict:
             "issue_count": 0,
             "fail_issues": 0,
             "warn_issues": 0,
+            "scan_freshness_status": "MISSING",
+            "scan_age_hours": None,
+            "manual_review_age_hours": None,
+            "macro_age_hours": None,
+            "scan_is_current_local_date": False,
         }
 
     issues = data.get("issues", []) or []
@@ -192,6 +197,11 @@ def _normalize_quality_gate_status(data: dict) -> dict:
         "issue_count": len(issues),
         "fail_issues": fail_issues,
         "warn_issues": warn_issues,
+        "scan_freshness_status": str(data.get("scan_freshness_status", "UNKNOWN")).upper(),
+        "scan_age_hours": data.get("scan_age_hours"),
+        "manual_review_age_hours": data.get("manual_review_age_hours"),
+        "macro_age_hours": data.get("macro_age_hours"),
+        "scan_is_current_local_date": bool(data.get("scan_is_current_local_date", False)),
     }
 
 
@@ -291,106 +301,6 @@ def _normalize_trade_candidate_cards_status(data: dict) -> dict:
     }
 
 
-def _normalize_paper_trading_journal_status(data: dict) -> dict:
-    if not data:
-        return {
-            "available": False,
-            "status": "MISSING",
-            "rows": 0,
-            "pending_review": 0,
-            "paper_watch": 0,
-            "paper_enter": 0,
-            "blocked": 0,
-            "needs_live_quote_recheck": 0,
-        }
-
-    return {
-        "available": True,
-        "status": str(data.get("status", "UNKNOWN")).upper(),
-        "rows": _safe_int(data.get("rows"), 0),
-        "pending_review": _safe_int(data.get("pending_review"), 0),
-        "paper_watch": _safe_int(data.get("paper_watch"), 0),
-        "paper_enter": _safe_int(data.get("paper_enter"), 0),
-        "blocked": _safe_int(data.get("blocked"), 0),
-        "needs_live_quote_recheck": _safe_int(data.get("needs_live_quote_recheck"), 0),
-    }
-
-
-def _normalize_paper_trade_followup_status(data: dict) -> dict:
-    if not data:
-        return {
-            "available": False,
-            "status": "MISSING",
-            "rows": 0,
-            "hold_paper": 0,
-            "review_near_stop": 0,
-            "review_near_target": 0,
-            "stop_hit_review_close": 0,
-            "target_hit_review_close": 0,
-            "data_unavailable": 0,
-        }
-
-    return {
-        "available": True,
-        "status": str(data.get("status", "UNKNOWN")).upper(),
-        "rows": _safe_int(data.get("rows"), 0),
-        "hold_paper": _safe_int(data.get("hold_paper"), 0),
-        "review_near_stop": _safe_int(data.get("review_near_stop"), 0),
-        "review_near_target": _safe_int(data.get("review_near_target"), 0),
-        "stop_hit_review_close": _safe_int(data.get("stop_hit_review_close"), 0),
-        "target_hit_review_close": _safe_int(data.get("target_hit_review_close"), 0),
-        "data_unavailable": _safe_int(data.get("data_unavailable"), 0),
-    }
-
-
-def _normalize_paper_trade_close_status(data: dict) -> dict:
-    if not data:
-        return {
-            "available": False,
-            "status": "MISSING",
-            "rows": 0,
-            "open_paper_trades": 0,
-            "closed_paper_trades": 0,
-            "pending_export": 0,
-            "exported_outcomes": 0,
-        }
-
-    return {
-        "available": True,
-        "status": str(data.get("status", "UNKNOWN")).upper(),
-        "rows": _safe_int(data.get("rows"), 0),
-        "open_paper_trades": _safe_int(data.get("open_paper_trades"), 0),
-        "closed_paper_trades": _safe_int(data.get("closed_paper_trades"), 0),
-        "pending_export": _safe_int(data.get("pending_export"), 0),
-        "exported_outcomes": _safe_int(data.get("exported_outcomes"), 0),
-    }
-
-
-def _normalize_paper_trading_cycle_audit_status(data: dict) -> dict:
-    if not data:
-        return {
-            "available": False,
-            "status": "MISSING",
-            "journal_rows": 0,
-            "open_paper_count": 0,
-            "closed_paper_count": 0,
-            "pending_export_count": 0,
-            "exported_count": 0,
-            "duplicate_outcome_ids": 0,
-        }
-
-    return {
-        "available": True,
-        "status": str(data.get("status", "UNKNOWN")).upper(),
-        "journal_rows": _safe_int(data.get("journal_rows"), 0),
-        "open_paper_count": _safe_int(data.get("open_paper_count"), 0),
-        "closed_paper_count": _safe_int(data.get("closed_paper_count"), 0),
-        "pending_export_count": _safe_int(data.get("pending_export_count"), 0),
-        "exported_count": _safe_int(data.get("exported_count"), 0),
-        "duplicate_outcome_ids": len(data.get("duplicate_outcome_ids", []) or []),
-    }
-
-
 def _normalize_trade_score_calibration_status(data: dict) -> dict:
     if not data:
         return {
@@ -444,6 +354,17 @@ def _normalize_macro_event_context_status(data: dict) -> dict:
             "m2_change_4w_pct": None,
             "reverse_repo_change_4w_pct": None,
             "effective_fed_funds_rate": None,
+            "us10y_official": None,
+            "us30y_official": None,
+            "yield_curve_10y2y": None,
+            "yield_curve_10y3m": None,
+            "high_yield_spread": None,
+            "macro_regime_mode": "UNKNOWN",
+            "macro_regime_confidence": "UNKNOWN",
+            "macro_event_risk": "UNKNOWN",
+            "macro_liquidity_bias": "UNKNOWN",
+            "macro_regime_notes": "",
+            "fred_provider_counts": {},
             "issues_count": 0,
         }
 
@@ -458,7 +379,61 @@ def _normalize_macro_event_context_status(data: dict) -> dict:
         "m2_change_4w_pct": data.get("m2_change_4w_pct"),
         "reverse_repo_change_4w_pct": data.get("reverse_repo_change_4w_pct"),
         "effective_fed_funds_rate": data.get("effective_fed_funds_rate"),
+        "us10y_official": data.get("us10y_official"),
+        "us30y_official": data.get("us30y_official"),
+        "yield_curve_10y2y": data.get("yield_curve_10y2y"),
+        "yield_curve_10y3m": data.get("yield_curve_10y3m"),
+        "high_yield_spread": data.get("high_yield_spread"),
+        "macro_regime_mode": str(data.get("macro_regime_mode", "UNKNOWN")).upper(),
+        "macro_regime_confidence": str(data.get("macro_regime_confidence", "UNKNOWN")).upper(),
+        "macro_event_risk": str(data.get("macro_event_risk", "UNKNOWN")).upper(),
+        "macro_liquidity_bias": str(data.get("macro_liquidity_bias", "UNKNOWN")).upper(),
+        "macro_regime_notes": str(data.get("macro_regime_notes", "")),
+        "fred_provider_counts": data.get("fred_provider_counts", {}) or {},
         "issues_count": len(data.get("issues", []) or []),
+    }
+
+
+def _normalize_nasdaq_risk_regime_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "macro_regime_mode": "UNKNOWN",
+            "macro_regime_confidence": "UNKNOWN",
+            "macro_risk_flag": "UNKNOWN",
+            "nasdaq_risk_score": None,
+            "nasdaq_risk_semaforo": "UNKNOWN",
+            "dominant_regime": "UNKNOWN",
+            "p_normal": None,
+            "p_omega": None,
+            "p_sigma": None,
+            "p_phi": None,
+            "warnings_count": 0,
+            "creates_trigger_confirmed": False,
+            "broker_execution": False,
+        }
+
+    regime = data.get("regime_scores", {}) or {}
+    guardrails = data.get("guardrails", {}) or {}
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "macro_regime_mode": str(data.get("macro_regime_mode", "UNKNOWN")).upper(),
+        "macro_regime_confidence": str(data.get("macro_regime_confidence", "UNKNOWN")).upper(),
+        "macro_risk_flag": str(data.get("macro_risk_flag", "UNKNOWN")).upper(),
+        "nasdaq_risk_score": data.get("nasdaq_risk_score"),
+        "nasdaq_risk_semaforo": str(data.get("nasdaq_risk_semaforo", "UNKNOWN")).upper(),
+        "dominant_regime": str(data.get("dominant_regime", "UNKNOWN")).upper(),
+        "p_normal": regime.get("p_normal"),
+        "p_omega": regime.get("p_omega"),
+        "p_sigma": regime.get("p_sigma"),
+        "p_phi": regime.get("p_phi"),
+        "warnings_count": len(data.get("warnings", []) or []),
+        "creates_trigger_confirmed": bool(
+            data.get("creates_trigger_confirmed", guardrails.get("creates_trigger_confirmed", False))
+        ),
+        "broker_execution": bool(data.get("broker_execution", guardrails.get("broker_execution", False))),
     }
 
 
@@ -531,6 +506,75 @@ def _normalize_posttest_thesis_audit_status(data: dict) -> dict:
     }
 
 
+def _normalize_engine_feedback_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "canonical_rows": 0,
+            "canonical_dates": 0,
+            "recommendation_count": 0,
+            "sample_size_warning": "",
+        }
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "canonical_rows": _safe_int(data.get("canonical_rows"), 0),
+        "canonical_dates": _safe_int(data.get("canonical_dates"), 0),
+        "recommendation_count": _safe_int(data.get("recommendation_count"), 0),
+        "sample_size_warning": str(data.get("sample_size_warning", "")),
+    }
+
+
+def _normalize_simple_candidate_posttest_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "rows": 0,
+            "report_sessions_available": 0,
+            "win_rate_5": "",
+            "win_rate_10": "",
+            "win_rate_15": "",
+            "avg_return_5": "",
+            "avg_return_10": "",
+            "avg_return_15": "",
+            "warnings": 0,
+        }
+    horizons = data.get("horizon_summary", {}) or {}
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "rows": _safe_int(data.get("rows"), 0),
+        "report_sessions_available": _safe_int(data.get("report_sessions_available"), 0),
+        "win_rate_5": (horizons.get("5", {}) or {}).get("win_rate", ""),
+        "win_rate_10": (horizons.get("10", {}) or {}).get("win_rate", ""),
+        "win_rate_15": (horizons.get("15", {}) or {}).get("win_rate", ""),
+        "avg_return_5": (horizons.get("5", {}) or {}).get("avg_return_pct", ""),
+        "avg_return_10": (horizons.get("10", {}) or {}).get("avg_return_pct", ""),
+        "avg_return_15": (horizons.get("15", {}) or {}).get("avg_return_pct", ""),
+        "warnings": len(data.get("warnings", []) or []),
+    }
+
+
+def _normalize_portfolio_concentration_status(data: dict) -> dict:
+    if not data:
+        return {
+            "available": False,
+            "status": "MISSING",
+            "rows": 0,
+            "warnings": 0,
+            "concentration_flags": 0,
+        }
+    return {
+        "available": True,
+        "status": str(data.get("status", "UNKNOWN")).upper(),
+        "rows": _safe_int(data.get("rows"), 0),
+        "warnings": len(data.get("warnings", []) or []),
+        "concentration_flags": len(data.get("concentration_flags", []) or []),
+    }
+
+
 def _normalize_release_readiness_status(data: dict) -> dict:
     if not data:
         return {
@@ -557,7 +601,6 @@ def _normalize_ui_data_contract_status(data: dict) -> dict:
             "missing_sources": 0,
             "invalid_sources": 0,
             "candidate_rows": 0,
-            "paper_journal_rows": 0,
         }
 
     return {
@@ -567,7 +610,6 @@ def _normalize_ui_data_contract_status(data: dict) -> dict:
         "missing_sources": _safe_int(data.get("missing_sources"), 0),
         "invalid_sources": _safe_int(data.get("invalid_sources"), 0),
         "candidate_rows": _safe_int(data.get("candidate_rows"), 0),
-        "paper_journal_rows": _safe_int(data.get("paper_journal_rows"), 0),
     }
 
 
@@ -695,6 +737,9 @@ def _select_top_candidate_columns(df: pd.DataFrame) -> pd.DataFrame:
         "setup_type",
         "final_trade_score",
         "setup_persistence_score",
+        "sector",
+        "sector_weekly_macd_state",
+        "sector_context_status",
         "quote_status",
         "execution_quote_quality",
         "rr",
@@ -806,37 +851,24 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     live_quote_recheck_json_path = reports / "live_quote_recheck_latest.json"
     trade_decision_checklist_json_path = reports / "trade_decision_checklist_latest.json"
     trade_candidate_cards_json_path = reports / "trade_candidate_cards_latest.json"
-    paper_trading_journal_json_path = reports / "paper_trading_journal_latest.json"
-    paper_trade_followup_json_path = reports / "paper_trade_followup_latest.json"
-    paper_trade_close_json_path = reports / "paper_trade_close_latest.json"
-    paper_trading_cycle_audit_json_path = reports / "paper_trading_cycle_audit_latest.json"
     trade_score_calibration_json_path = reports / "trade_score_calibration_latest.json"
     calibration_recommendations_json_path = reports / "calibration_recommendations_latest.json"
     posttest_thesis_audit_json_path = reports / "posttest_thesis_audit_latest.json"
+    simple_candidate_posttest_json_path = reports / "simple_candidate_posttest_latest.json"
+    engine_feedback_json_path = reports / "engine_feedback_latest.json"
+    portfolio_concentration_json_path = reports / "portfolio_concentration_latest.json"
     release_readiness_json_path = reports / "release_readiness_latest.json"
     ui_data_contract_json_path = reports / "ui_data_contract_audit_latest.json"
     streamlit_smoke_json_path = reports / "streamlit_smoke_test_latest.json"
     gui_actions_json_path = reports / "gui_actions_audit_latest.json"
     gui_visuals_json_path = reports / "gui_visuals_audit_latest.json"
     gui_release_json_path = reports / "gui_release_audit_latest.json"
-    gui_supervised_session_json_path = reports / "gui_supervised_session_latest.json"
-    gui_supervised_session_audit_json_path = reports / "gui_supervised_session_audit_latest.json"
-    gui_daily_checklist_json_path = reports / "gui_daily_operating_checklist_latest.json"
-    gui_daily_checklist_audit_json_path = reports / "gui_daily_operating_checklist_audit_latest.json"
     alpaca_readonly_json_path = reports / "alpaca_readonly_connectivity_latest.json"
     webull_readonly_json_path = reports / "webull_readonly_market_data_latest.json"
     cboe_market_statistics_json_path = reports / "cboe_market_statistics_latest.json"
     google_sheets_data_source_json_path = reports / "google_sheets_data_source_latest.json"
     macro_event_context_json_path = reports / "macro_event_context_latest.json"
-    gui_decision_log_json_path = reports / "gui_operational_decision_log_latest.json"
-    gui_post_session_review_json_path = reports / "gui_post_session_review_latest.json"
-    gui_decision_log_audit_json_path = reports / "gui_operational_decision_log_audit_latest.json"
-    gui_decision_quality_json_path = reports / "gui_decision_quality_review_latest.json"
-    gui_decision_quality_audit_json_path = reports / "gui_decision_quality_audit_latest.json"
-    gui_weekly_review_json_path = reports / "gui_weekly_operational_review_latest.json"
-    gui_weekly_review_audit_json_path = reports / "gui_weekly_operational_review_audit_latest.json"
-    gui_evidence_window_json_path = reports / "gui_evidence_collection_window_latest.json"
-    gui_evidence_audit_json_path = reports / "gui_evidence_collection_audit_latest.json"
+    nasdaq_risk_regime_json_path = reports / "nasdaq_risk_regime_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -861,18 +893,6 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     trade_candidate_cards_data = _normalize_trade_candidate_cards_status(
         _load_json(trade_candidate_cards_json_path)
     )
-    paper_trading_journal_data = _normalize_paper_trading_journal_status(
-        _load_json(paper_trading_journal_json_path)
-    )
-    paper_trade_followup_data = _normalize_paper_trade_followup_status(
-        _load_json(paper_trade_followup_json_path)
-    )
-    paper_trade_close_data = _normalize_paper_trade_close_status(
-        _load_json(paper_trade_close_json_path)
-    )
-    paper_trading_cycle_audit_data = _normalize_paper_trading_cycle_audit_status(
-        _load_json(paper_trading_cycle_audit_json_path)
-    )
     trade_score_calibration_data = _normalize_trade_score_calibration_status(
         _load_json(trade_score_calibration_json_path)
     )
@@ -881,6 +901,15 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     )
     posttest_thesis_audit_data = _normalize_posttest_thesis_audit_status(
         _load_json(posttest_thesis_audit_json_path)
+    )
+    simple_candidate_posttest_data = _normalize_simple_candidate_posttest_status(
+        _load_json(simple_candidate_posttest_json_path)
+    )
+    engine_feedback_data = _normalize_engine_feedback_status(
+        _load_json(engine_feedback_json_path)
+    )
+    portfolio_concentration_data = _normalize_portfolio_concentration_status(
+        _load_json(portfolio_concentration_json_path)
     )
     release_readiness_data = _normalize_release_readiness_status(
         _load_json(release_readiness_json_path)
@@ -900,14 +929,6 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     gui_release_data = _normalize_gui_release_audit_status(
         _load_json(gui_release_json_path)
     )
-    gui_supervised_session_data = _normalize_gui_supervised_session_status(
-        _load_json(gui_supervised_session_json_path),
-        _load_json(gui_supervised_session_audit_json_path),
-    )
-    gui_daily_checklist_data = _normalize_gui_daily_operating_checklist_status(
-        _load_json(gui_daily_checklist_json_path),
-        _load_json(gui_daily_checklist_audit_json_path),
-    )
     alpaca_readonly_data = _normalize_alpaca_readonly_connectivity_status(
         _load_json(alpaca_readonly_json_path),
     )
@@ -926,22 +947,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     macro_event_context_data = _normalize_macro_event_context_status(
         _load_json(macro_event_context_json_path),
     )
-    gui_decision_log_data = _normalize_gui_operational_decision_log_status(
-        _load_json(gui_decision_log_json_path),
-        _load_json(gui_post_session_review_json_path),
-        _load_json(gui_decision_log_audit_json_path),
-    )
-    gui_decision_quality_data = _normalize_gui_decision_quality_status(
-        _load_json(gui_decision_quality_json_path),
-        _load_json(gui_decision_quality_audit_json_path),
-    )
-    gui_weekly_review_data = _normalize_gui_weekly_operational_review_status(
-        _load_json(gui_weekly_review_json_path),
-        _load_json(gui_weekly_review_audit_json_path),
-    )
-    gui_evidence_window_data = _normalize_gui_evidence_collection_window_status(
-        _load_json(gui_evidence_window_json_path),
-        _load_json(gui_evidence_audit_json_path),
+    nasdaq_risk_regime_data = _normalize_nasdaq_risk_regime_status(
+        _load_json(nasdaq_risk_regime_json_path),
     )
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
@@ -962,6 +969,13 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     if not options_available:
         options_available = _value_counts(scan_df, "options_data_available")
     options_error = _value_counts(scan_df, "options_error")
+    technical_prefilter = _value_counts(scan_df, "technical_prefilter_status")
+    daily_macd_prefilter = _value_counts(scan_df, "daily_macd_prefilter_status")
+    weekly_macd_prefilter = _value_counts(scan_df, "weekly_macd_prefilter_status")
+    ema20_extension_prefilter = _value_counts(scan_df, "ema20_extension_prefilter_status")
+    sector_weekly_macd = _value_counts(scan_df, "sector_weekly_macd_state")
+    sector_weekly_macd_acceleration = _value_counts(scan_df, "sector_weekly_macd_acceleration_state")
+    sector_context_status = _value_counts(scan_df, "sector_context_status")
 
     trigger_count = int(signals.get("TRIGGER_CONFIRMED", 0) or 0)
     watchlist_count = int(signals.get("WATCHLIST", 0) or 0)
@@ -986,14 +1000,6 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "gui_visuals_audit_latest.md",
         reports / "gui_release_audit_latest.json",
         reports / "gui_release_audit_latest.md",
-        reports / "gui_supervised_session_latest.json",
-        reports / "gui_supervised_session_latest.md",
-        reports / "gui_supervised_session_audit_latest.json",
-        reports / "gui_supervised_session_audit_latest.md",
-        reports / "gui_daily_operating_checklist_latest.json",
-        reports / "gui_daily_operating_checklist_latest.md",
-        reports / "gui_daily_operating_checklist_audit_latest.json",
-        reports / "gui_daily_operating_checklist_audit_latest.md",
         reports / "alpaca_readonly_connectivity_latest.json",
         reports / "alpaca_readonly_connectivity_latest.md",
         reports / "webull_readonly_market_data_latest.json",
@@ -1004,27 +1010,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "google_sheets_data_source_latest.md",
         reports / "macro_event_context_latest.json",
         reports / "macro_event_context_latest.md",
-        reports / "gui_operational_decision_log_latest.json",
-        reports / "gui_operational_decision_log_latest.md",
-        reports / "gui_post_session_review_latest.json",
-        reports / "gui_post_session_review_latest.md",
-        reports / "gui_operational_decision_log_audit_latest.json",
-        reports / "gui_operational_decision_log_audit_latest.md",
-        reports / "gui_decision_quality_review_latest.json",
-        reports / "gui_decision_quality_review_latest.md",
-        reports / "gui_decision_quality_review_latest.csv",
-        reports / "gui_decision_quality_audit_latest.json",
-        reports / "gui_decision_quality_audit_latest.md",
-        reports / "gui_weekly_operational_review_latest.json",
-        reports / "gui_weekly_operational_review_latest.md",
-        reports / "gui_weekly_operational_review_latest.csv",
-        reports / "gui_weekly_operational_review_audit_latest.json",
-        reports / "gui_weekly_operational_review_audit_latest.md",
-        reports / "gui_evidence_collection_window_latest.json",
-        reports / "gui_evidence_collection_window_latest.md",
-        reports / "gui_evidence_collection_window_latest.csv",
-        reports / "gui_evidence_collection_audit_latest.json",
-        reports / "gui_evidence_collection_audit_latest.md",
+        reports / "nasdaq_risk_regime_latest.json",
+        reports / "nasdaq_risk_regime_latest.md",
         reports / "live_quote_recheck_latest.csv",
         reports / "live_quote_recheck_latest.md",
         reports / "live_quote_recheck_latest.json",
@@ -1033,17 +1020,6 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "trade_decision_checklist_latest.json",
         reports / "trade_candidate_cards_latest.md",
         reports / "trade_candidate_cards_latest.json",
-        reports / "paper_trading_journal_latest.csv",
-        reports / "paper_trading_journal_latest.md",
-        reports / "paper_trading_journal_latest.json",
-        reports / "paper_trade_followup_latest.csv",
-        reports / "paper_trade_followup_latest.md",
-        reports / "paper_trade_followup_latest.json",
-        reports / "paper_trade_close_latest.csv",
-        reports / "paper_trade_close_latest.md",
-        reports / "paper_trade_close_latest.json",
-        reports / "paper_trading_cycle_audit_latest.md",
-        reports / "paper_trading_cycle_audit_latest.json",
         reports / "trade_score_calibration_latest.csv",
         reports / "trade_score_calibration_latest.json",
         reports / "trade_score_calibration_latest.md",
@@ -1051,6 +1027,13 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "calibration_recommendations_latest.json",
         reports / "posttest_thesis_audit_latest.md",
         reports / "posttest_thesis_audit_latest.json",
+        reports / "simple_candidate_posttest_latest.csv",
+        reports / "simple_candidate_posttest_latest.md",
+        reports / "simple_candidate_posttest_latest.json",
+        reports / "engine_feedback_latest.md",
+        reports / "engine_feedback_latest.json",
+        reports / "portfolio_concentration_latest.md",
+        reports / "portfolio_concentration_latest.json",
         reports / "project_preflight_latest.json",
         reports / "project_preflight_latest.md",
         reports / "daily_run_manifest_latest.json",
@@ -1085,6 +1068,13 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "options_source": options_source,
         "options_available": options_available,
         "options_error": options_error,
+        "technical_prefilter": technical_prefilter,
+        "daily_macd_prefilter": daily_macd_prefilter,
+        "weekly_macd_prefilter": weekly_macd_prefilter,
+        "ema20_extension_prefilter": ema20_extension_prefilter,
+        "sector_weekly_macd": sector_weekly_macd,
+        "sector_weekly_macd_acceleration": sector_weekly_macd_acceleration,
+        "sector_context_status": sector_context_status,
         "trigger_count": trigger_count,
         "watchlist_count": watchlist_count,
         "recheck_count": recheck_count,
@@ -1100,30 +1090,24 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "live_quote_recheck": live_quote_recheck_data,
         "trade_decision_checklist": trade_decision_checklist_data,
         "trade_candidate_cards": trade_candidate_cards_data,
-        "paper_trading_journal": paper_trading_journal_data,
-        "paper_trade_followup": paper_trade_followup_data,
-        "paper_trade_close": paper_trade_close_data,
-        "paper_trading_cycle_audit": paper_trading_cycle_audit_data,
         "trade_score_calibration": trade_score_calibration_data,
         "calibration_recommendations": calibration_recommendations_data,
         "posttest_thesis_audit": posttest_thesis_audit_data,
+        "simple_candidate_posttest": simple_candidate_posttest_data,
+        "engine_feedback": engine_feedback_data,
+        "portfolio_concentration": portfolio_concentration_data,
         "release_readiness": release_readiness_data,
         "ui_data_contract": ui_data_contract_data,
         "streamlit_smoke_test": streamlit_smoke_data,
         "gui_actions_audit": gui_actions_data,
         "gui_visuals_audit": gui_visuals_data,
         "gui_release_audit": gui_release_data,
-        "gui_supervised_session": gui_supervised_session_data,
-        "gui_daily_operating_checklist": gui_daily_checklist_data,
         "alpaca_readonly_connectivity": alpaca_readonly_data,
         "webull_readonly_market_data": webull_readonly_data,
         "cboe_market_statistics": cboe_market_statistics_data,
         "google_sheets_data_source": google_sheets_data_source_data,
         "macro_event_context": macro_event_context_data,
-        "gui_operational_decision_log": gui_decision_log_data,
-        "gui_decision_quality": gui_decision_quality_data,
-        "gui_weekly_operational_review": gui_weekly_review_data,
-        "gui_evidence_collection_window": gui_evidence_window_data,
+        "nasdaq_risk_regime": nasdaq_risk_regime_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -1248,6 +1232,34 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- Modo sombra; no modifica señales ni ejecución.")
     lines.append("")
 
+    lines.append("## Technical prefilter")
+    lines.append("")
+    technical_prefilter = data.get("technical_prefilter", {}) or {}
+    if not technical_prefilter:
+        lines.append("- status: MISSING")
+        lines.append("- Campos de prefiltro técnico no encontrados en latest_scan_audited.csv.")
+    else:
+        lines.append(f"- pass: {technical_prefilter.get('PASS', 0)}")
+        lines.append(f"- fail: {technical_prefilter.get('FAIL', 0)}")
+        lines.append(f"- daily_macd: {data.get('daily_macd_prefilter', {})}")
+        lines.append(f"- weekly_macd: {data.get('weekly_macd_prefilter', {})}")
+        lines.append(f"- ema20_extension: {data.get('ema20_extension_prefilter', {})}")
+        lines.append("- Uso: gate temprano read-only; no crea TRIGGER_CONFIRMED ni relaja quote quality.")
+    lines.append("")
+
+    lines.append("## Sector weekly MACD context")
+    lines.append("")
+    sector_weekly_macd = data.get("sector_weekly_macd", {}) or {}
+    if not sector_weekly_macd:
+        lines.append("- status: MISSING")
+        lines.append("- Campos de MACD semanal sectorial no encontrados en latest_scan_audited.csv.")
+    else:
+        lines.append(f"- sector_weekly_macd_state: {sector_weekly_macd}")
+        lines.append(f"- sector_weekly_macd_acceleration: {data.get('sector_weekly_macd_acceleration', {})}")
+        lines.append(f"- sector_context_status: {data.get('sector_context_status', {})}")
+        lines.append("- Uso: contexto de timing sectorial; puede degradar revisión, no promueve señales.")
+    lines.append("")
+
     quality_gate = data.get("quality_gate", {}) or {}
     quality_available = bool(quality_gate.get("available", False))
     quality_status = str(quality_gate.get("status", "UNKNOWN")).upper()
@@ -1270,6 +1282,11 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append(f"- issue_count: {issue_count}")
         lines.append(f"- fail_issues: {fail_issues}")
         lines.append(f"- warn_issues: {warn_issues}")
+        lines.append(f"- scan_freshness_status: {quality_gate.get('scan_freshness_status', 'UNKNOWN')}")
+        lines.append(f"- scan_age_hours: {quality_gate.get('scan_age_hours', '')}")
+        lines.append(f"- manual_review_age_hours: {quality_gate.get('manual_review_age_hours', '')}")
+        lines.append(f"- macro_age_hours: {quality_gate.get('macro_age_hours', '')}")
+        lines.append(f"- scan_is_current_local_date: {quality_gate.get('scan_is_current_local_date', False)}")
 
         if quality_status == "FAIL":
             lines.append("- Estado FAIL: no usar candidatos operativamente hasta corregir errores.")
@@ -1277,6 +1294,8 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         elif quality_status == "WARN":
             lines.append("- Estado WARN: revisión manual permitida, pero con validación reforzada.")
             lines.append("- Abrir `reports/daily_quality_gate_latest.md`.")
+            if quality_gate.get("scan_freshness_status") == "WARN":
+                lines.append("- Scan antiguo: regenerar scan antes de tomar decisiones operativas.")
         elif quality_status == "PASS":
             lines.append("- Estado PASS: corrida apta para revisión manual normal.")
         else:
@@ -1349,6 +1368,62 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- Evidencia observacional; no cambia scoring, thresholds ni señales.")
     lines.append("")
 
+    simple_posttest = data.get("simple_candidate_posttest", {}) or {}
+    lines.append("## Simple candidate posttest")
+    lines.append("")
+    if not bool(simple_posttest.get("available", False)):
+        lines.append("- status: MISSING")
+        lines.append("- Ejecutar `python .\\tools\\simple_candidate_posttest.py` para generarlo.")
+    else:
+        lines.append(f"- status: {simple_posttest.get('status', 'UNKNOWN')}")
+        lines.append(f"- rows: {simple_posttest.get('rows', 0)}")
+        lines.append(f"- report_sessions_available: {simple_posttest.get('report_sessions_available', 0)}")
+        lines.append(f"- win_rate_5: {simple_posttest.get('win_rate_5')}")
+        lines.append(f"- win_rate_10: {simple_posttest.get('win_rate_10')}")
+        lines.append(f"- win_rate_15: {simple_posttest.get('win_rate_15')}")
+        lines.append(f"- avg_return_5: {simple_posttest.get('avg_return_5')}")
+        lines.append(f"- avg_return_10: {simple_posttest.get('avg_return_10')}")
+        lines.append(f"- avg_return_15: {simple_posttest.get('avg_return_15')}")
+        lines.append(f"- warnings: {simple_posttest.get('warnings', 0)}")
+        lines.append("- markdown: reports/simple_candidate_posttest_latest.md")
+        lines.append("- json: reports/simple_candidate_posttest_latest.json")
+        lines.append("- csv: reports/simple_candidate_posttest_latest.csv")
+        lines.append("- Diagnóstico automático; no cambia pesos, thresholds ni señales.")
+    lines.append("")
+
+    engine_feedback = data.get("engine_feedback", {}) or {}
+    lines.append("## Engine feedback")
+    lines.append("")
+    if not bool(engine_feedback.get("available", False)):
+        lines.append("- status: MISSING")
+        lines.append("- Ejecutar `python .\\tools\\engine_feedback.py` para generarlo.")
+    else:
+        lines.append(f"- status: {engine_feedback.get('status', 'UNKNOWN')}")
+        lines.append(f"- canonical_rows: {engine_feedback.get('canonical_rows', 0)}")
+        lines.append(f"- canonical_dates: {engine_feedback.get('canonical_dates', 0)}")
+        lines.append(f"- recommendation_count: {engine_feedback.get('recommendation_count', 0)}")
+        lines.append(f"- sample_size_warning: {engine_feedback.get('sample_size_warning', '')}")
+        lines.append("- markdown: reports/engine_feedback_latest.md")
+        lines.append("- json: reports/engine_feedback_latest.json")
+        lines.append("- Feedback observacional; no cambia pesos, thresholds ni señales.")
+    lines.append("")
+
+    concentration = data.get("portfolio_concentration", {}) or {}
+    lines.append("## Portfolio concentration")
+    lines.append("")
+    if not bool(concentration.get("available", False)):
+        lines.append("- status: MISSING")
+        lines.append("- Ejecutar `python .\\tools\\portfolio_concentration_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {concentration.get('status', 'UNKNOWN')}")
+        lines.append(f"- rows: {concentration.get('rows', 0)}")
+        lines.append(f"- warnings: {concentration.get('warnings', 0)}")
+        lines.append(f"- concentration_flags: {concentration.get('concentration_flags', 0)}")
+        lines.append("- markdown: reports/portfolio_concentration_latest.md")
+        lines.append("- json: reports/portfolio_concentration_latest.json")
+        lines.append("- Auditoria read-only de concentración sector/factor.")
+    lines.append("")
+
     release_readiness = data.get("release_readiness", {}) or {}
     release_available = bool(release_readiness.get("available", False))
 
@@ -1383,7 +1458,6 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append(f"- missing_sources: {ui_contract.get('missing_sources', 0)}")
         lines.append(f"- invalid_sources: {ui_contract.get('invalid_sources', 0)}")
         lines.append(f"- candidate_rows: {ui_contract.get('candidate_rows', 0)}")
-        lines.append(f"- paper_journal_rows: {ui_contract.get('paper_journal_rows', 0)}")
         lines.append("- markdown: reports/ui_data_contract_audit_latest.md")
         lines.append("- json: reports/ui_data_contract_audit_latest.json")
         lines.append("- Contrato read-only para futura GUI; no crea acciones operativas.")
@@ -1407,7 +1481,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append(f"- read_only: {streamlit_smoke.get('read_only', False)}")
         lines.append("- markdown: reports/streamlit_smoke_test_latest.md")
         lines.append("- json: reports/streamlit_smoke_test_latest.json")
-        lines.append("- Dashboard Streamlit con acciones paper controladas; sin ordenes reales.")
+        lines.append("- Dashboard Streamlit read-only para scanner, reportes y posttest automático; sin ordenes reales.")
 
     lines.append("")
 
@@ -1429,7 +1503,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append(f"- shell_guardrail_ok: {gui_actions.get('shell_guardrail_ok', False)}")
         lines.append("- markdown: reports/gui_actions_audit_latest.md")
         lines.append("- json: reports/gui_actions_audit_latest.json")
-        lines.append("- Acciones paper trading solamente, con confirmacion explicita.")
+        lines.append("- Acciones GUI restringidas a refresco, consulta puntual y logs; sin ordenes reales.")
 
     lines.append("")
 
@@ -1522,54 +1596,6 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- json: reports/gui_release_audit_latest.json")
     lines.append("")
 
-    gui_session = data.get("gui_supervised_session", {}) or {}
-    gui_session_available = bool(gui_session.get("available", False))
-    lines.append("## GUI supervised session")
-    lines.append("")
-    if not gui_session_available:
-        lines.append("- No hay reporte de GUI supervised session disponible.")
-        lines.append("- Ejecutar `python .\\tools\\gui_supervised_session.py --summary` para generarlo.")
-        lines.append("- Ejecutar `python .\\tools\\gui_supervised_session_audit.py` para auditarlo.")
-    else:
-        lines.append(f"- status: {gui_session.get('status', 'UNKNOWN')}")
-        lines.append(f"- latest_session_id: {gui_session.get('latest_session_id', '')}")
-        lines.append(f"- latest_session_status: {gui_session.get('latest_session_status', 'MISSING')}")
-        lines.append(f"- latest_session_result: {gui_session.get('latest_session_result', '')}")
-        lines.append(f"- paper_actions_logged: {gui_session.get('paper_actions_logged', 0)}")
-        lines.append(f"- paper_enter_count: {gui_session.get('paper_enter_count', 0)}")
-        lines.append(f"- closed_paper_count: {gui_session.get('closed_paper_count', 0)}")
-        lines.append(f"- pending_export_count: {gui_session.get('pending_export_count', 0)}")
-        lines.append("- markdown: reports/gui_supervised_session_latest.md")
-        lines.append("- json: reports/gui_supervised_session_latest.json")
-        lines.append("- audit_markdown: reports/gui_supervised_session_audit_latest.md")
-        lines.append("- audit_json: reports/gui_supervised_session_audit_latest.json")
-    lines.append("")
-
-    gui_daily_checklist = data.get("gui_daily_operating_checklist", {}) or {}
-    gui_daily_checklist_available = bool(gui_daily_checklist.get("available", False))
-    lines.append("## GUI daily operating checklist")
-    lines.append("")
-    if not gui_daily_checklist_available:
-        lines.append("- No hay reporte de GUI daily operating checklist disponible.")
-        lines.append("- Ejecutar `python .\\tools\\gui_daily_operating_checklist.py --summary` para generarlo.")
-        lines.append("- Ejecutar `python .\\tools\\gui_daily_operating_checklist_audit.py` para auditarlo.")
-    else:
-        lines.append(f"- status: {gui_daily_checklist.get('status', 'UNKNOWN')}")
-        lines.append(f"- checklist_id: {gui_daily_checklist.get('checklist_id', '')}")
-        lines.append(f"- checklist_date: {gui_daily_checklist.get('checklist_date', '')}")
-        lines.append(f"- pending_steps: {gui_daily_checklist.get('pending_steps', 0)}")
-        lines.append(f"- done_steps: {gui_daily_checklist.get('done_steps', 0)}")
-        lines.append(f"- blocked_steps: {gui_daily_checklist.get('blocked_steps', 0)}")
-        lines.append(f"- skipped_steps: {gui_daily_checklist.get('skipped_steps', 0)}")
-        lines.append(f"- required_pending_steps: {gui_daily_checklist.get('required_pending_steps', 0)}")
-        lines.append(f"- latest_result: {gui_daily_checklist.get('latest_result', 'MISSING')}")
-        lines.append(f"- audit_status: {gui_daily_checklist.get('audit_status', 'MISSING')}")
-        lines.append("- markdown: reports/gui_daily_operating_checklist_latest.md")
-        lines.append("- json: reports/gui_daily_operating_checklist_latest.json")
-        lines.append("- audit_markdown: reports/gui_daily_operating_checklist_audit_latest.md")
-        lines.append("- audit_json: reports/gui_daily_operating_checklist_audit_latest.json")
-    lines.append("")
-
     alpaca_readonly = data.get("alpaca_readonly_connectivity", {}) or {}
     alpaca_available = bool(alpaca_readonly.get("available", False))
     lines.append("## Alpaca read-only connectivity")
@@ -1609,6 +1635,11 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append(f"- days_to_critical_event: {macro_context.get('days_to_critical_event')}")
         lines.append(f"- event_risk_status: {macro_context.get('event_risk_status', 'UNKNOWN')}")
         lines.append(f"- liquidity_context: {macro_context.get('liquidity_context', 'UNKNOWN')}")
+        lines.append(f"- macro_regime_mode: {macro_context.get('macro_regime_mode', 'UNKNOWN')}")
+        lines.append(f"- macro_regime_confidence: {macro_context.get('macro_regime_confidence', 'UNKNOWN')}")
+        lines.append(f"- macro_event_risk: {macro_context.get('macro_event_risk', 'UNKNOWN')}")
+        lines.append(f"- macro_liquidity_bias: {macro_context.get('macro_liquidity_bias', 'UNKNOWN')}")
+        lines.append(f"- macro_regime_notes: {macro_context.get('macro_regime_notes', '')}")
         lines.append(f"- m2_change_4w_pct: {macro_context.get('m2_change_4w_pct')}")
         lines.append(
             f"- reverse_repo_change_4w_pct: "
@@ -1618,9 +1649,47 @@ def build_daily_operator_index_markdown(data: dict) -> str:
             f"- effective_fed_funds_rate: "
             f"{macro_context.get('effective_fed_funds_rate')}"
         )
+        lines.append(f"- us10y_official: {macro_context.get('us10y_official')}")
+        lines.append(f"- us30y_official: {macro_context.get('us30y_official')}")
+        lines.append(f"- yield_curve_10y2y: {macro_context.get('yield_curve_10y2y')}")
+        lines.append(f"- yield_curve_10y3m: {macro_context.get('yield_curve_10y3m')}")
+        lines.append(f"- high_yield_spread: {macro_context.get('high_yield_spread')}")
+        lines.append(f"- fred_provider_counts: {macro_context.get('fred_provider_counts', {})}")
         lines.append(f"- issues_count: {macro_context.get('issues_count', 0)}")
         lines.append("- markdown: reports/macro_event_context_latest.md")
         lines.append("- json: reports/macro_event_context_latest.json")
+        lines.append("- Contexto read-only; no modifica scanner, scoring, señales ni ejecución.")
+    lines.append("")
+
+    nasdaq_regime = data.get("nasdaq_risk_regime", {}) or {}
+    lines.append("## Nasdaq risk regime")
+    lines.append("")
+    if not bool(nasdaq_regime.get("available", False)):
+        lines.append("- status: MISSING")
+        lines.append("- Ejecutar `python .\\tools\\nasdaq_risk_regime_audit.py` para generarlo.")
+    else:
+        lines.append(f"- status: {nasdaq_regime.get('status', 'UNKNOWN')}")
+        lines.append(f"- macro_regime_mode: {nasdaq_regime.get('macro_regime_mode', 'UNKNOWN')}")
+        lines.append(
+            f"- macro_regime_confidence: "
+            f"{nasdaq_regime.get('macro_regime_confidence', 'UNKNOWN')}"
+        )
+        lines.append(f"- macro_risk_flag: {nasdaq_regime.get('macro_risk_flag', 'UNKNOWN')}")
+        lines.append(f"- nasdaq_risk_score: {nasdaq_regime.get('nasdaq_risk_score')}")
+        lines.append(f"- nasdaq_risk_semaforo: {nasdaq_regime.get('nasdaq_risk_semaforo', 'UNKNOWN')}")
+        lines.append(f"- dominant_regime: {nasdaq_regime.get('dominant_regime', 'UNKNOWN')}")
+        lines.append(f"- p_normal: {nasdaq_regime.get('p_normal')}")
+        lines.append(f"- p_omega: {nasdaq_regime.get('p_omega')}")
+        lines.append(f"- p_sigma: {nasdaq_regime.get('p_sigma')}")
+        lines.append(f"- p_phi: {nasdaq_regime.get('p_phi')}")
+        lines.append(f"- warnings_count: {nasdaq_regime.get('warnings_count', 0)}")
+        lines.append(f"- broker_execution: {nasdaq_regime.get('broker_execution', False)}")
+        lines.append(
+            f"- creates_trigger_confirmed: "
+            f"{nasdaq_regime.get('creates_trigger_confirmed', False)}"
+        )
+        lines.append("- markdown: reports/nasdaq_risk_regime_latest.md")
+        lines.append("- json: reports/nasdaq_risk_regime_latest.json")
         lines.append("- Contexto read-only; no modifica scanner, scoring, señales ni ejecución.")
     lines.append("")
 
@@ -1659,115 +1728,6 @@ def build_daily_operator_index_markdown(data: dict) -> str:
             lines.append(f"- json: {output_prefix}.json")
         lines.append("")
 
-    gui_decision_log = data.get("gui_operational_decision_log", {}) or {}
-    gui_decision_available = bool(gui_decision_log.get("available", False))
-    lines.append("## GUI operational decision log")
-    lines.append("")
-    if not gui_decision_available:
-        lines.append("- No hay reporte de GUI operational decision log disponible.")
-        lines.append("- Ejecutar `python .\\tools\\gui_operational_decision_log.py --summary` para generarlo.")
-        lines.append("- Ejecutar `python .\\tools\\gui_post_session_review.py` para revisión post-sesión.")
-    else:
-        lines.append(f"- status: {gui_decision_log.get('status', 'UNKNOWN')}")
-        lines.append(f"- decisions_today: {gui_decision_log.get('decisions_today', 0)}")
-        lines.append(f"- paper_watch_decisions: {gui_decision_log.get('paper_watch_decisions', 0)}")
-        lines.append(f"- paper_enter_decisions: {gui_decision_log.get('paper_enter_decisions', 0)}")
-        lines.append(f"- skip_decisions: {gui_decision_log.get('skip_decisions', 0)}")
-        lines.append(f"- needs_recheck_decisions: {gui_decision_log.get('needs_recheck_decisions', 0)}")
-        lines.append(f"- decisions_without_reason: {gui_decision_log.get('decisions_without_reason', 0)}")
-        lines.append(f"- decisions_without_post_review: {gui_decision_log.get('decisions_without_post_review', 0)}")
-        lines.append(f"- lessons_added: {gui_decision_log.get('lessons_added', 0)}")
-        lines.append(f"- post_session_status: {gui_decision_log.get('post_session_status', 'MISSING')}")
-        lines.append(f"- audit_status: {gui_decision_log.get('audit_status', 'MISSING')}")
-        lines.append("- markdown: reports/gui_operational_decision_log_latest.md")
-        lines.append("- json: reports/gui_operational_decision_log_latest.json")
-        lines.append("- post_session_markdown: reports/gui_post_session_review_latest.md")
-        lines.append("- post_session_json: reports/gui_post_session_review_latest.json")
-        lines.append("- audit_markdown: reports/gui_operational_decision_log_audit_latest.md")
-        lines.append("- audit_json: reports/gui_operational_decision_log_audit_latest.json")
-    lines.append("")
-
-    gui_quality = data.get("gui_decision_quality", {}) or {}
-    gui_quality_available = bool(gui_quality.get("available", False))
-    lines.append("## GUI decision quality")
-    lines.append("")
-    if not gui_quality_available:
-        lines.append("- No hay reporte de GUI decision quality disponible.")
-        lines.append("- Ejecutar `python .\\tools\\gui_decision_quality_review.py` para generarlo.")
-    else:
-        lines.append(f"- status: {gui_quality.get('status', 'UNKNOWN')}")
-        lines.append(f"- total_decisions: {gui_quality.get('total_decisions', 0)}")
-        lines.append(f"- decision_quality_score: {gui_quality.get('decision_quality_score', '')}")
-        lines.append(f"- decision_quality_bucket: {gui_quality.get('decision_quality_bucket', 'MISSING')}")
-        lines.append(f"- paper_enter_count: {gui_quality.get('paper_enter_count', 0)}")
-        lines.append(f"- decisions_without_reason: {gui_quality.get('decisions_without_reason', 0)}")
-        lines.append(f"- decisions_without_post_review: {gui_quality.get('decisions_without_post_review', 0)}")
-        lines.append(f"- paper_enter_with_low_quote_quality: {gui_quality.get('paper_enter_with_low_quote_quality', 0)}")
-        lines.append(f"- quality_warnings_count: {gui_quality.get('quality_warnings_count', 0)}")
-        lines.append(f"- audit_status: {gui_quality.get('audit_status', 'MISSING')}")
-        lines.append("- markdown: reports/gui_decision_quality_review_latest.md")
-        lines.append("- json: reports/gui_decision_quality_review_latest.json")
-        lines.append("- csv: reports/gui_decision_quality_review_latest.csv")
-        lines.append("- audit_markdown: reports/gui_decision_quality_audit_latest.md")
-        lines.append("- audit_json: reports/gui_decision_quality_audit_latest.json")
-    lines.append("")
-
-    gui_weekly = data.get("gui_weekly_operational_review", {}) or {}
-    gui_weekly_available = bool(gui_weekly.get("available", False))
-    lines.append("## GUI weekly operational review")
-    lines.append("")
-    if not gui_weekly_available:
-        lines.append("- No hay reporte de GUI weekly operational review disponible.")
-        lines.append("- Ejecutar `python .\\tools\\gui_weekly_operational_review.py` para generarlo.")
-        lines.append("- Ejecutar `python .\\tools\\gui_weekly_operational_review_audit.py` para auditarlo.")
-    else:
-        lines.append(f"- status: {gui_weekly.get('status', 'UNKNOWN')}")
-        lines.append(f"- weekly_operational_score: {gui_weekly.get('weekly_operational_score', '')}")
-        lines.append(f"- weekly_operational_bucket: {gui_weekly.get('weekly_operational_bucket', 'MISSING')}")
-        lines.append(f"- weekly_recommendation: {gui_weekly.get('weekly_recommendation', 'MISSING')}")
-        lines.append(f"- sessions_count: {gui_weekly.get('sessions_count', 0)}")
-        lines.append(f"- checklist_completion_rate: {gui_weekly.get('checklist_completion_rate', '')}")
-        lines.append(f"- total_decisions: {gui_weekly.get('total_decisions', 0)}")
-        lines.append(f"- paper_enter_decisions: {gui_weekly.get('paper_enter_decisions', 0)}")
-        lines.append(f"- avg_decision_quality_score: {gui_weekly.get('avg_decision_quality_score', '')}")
-        lines.append(f"- guardrail_violations_count: {gui_weekly.get('guardrail_violations_count', 0)}")
-        lines.append(f"- ready_for_calibration_review: {gui_weekly.get('ready_for_calibration_review', False)}")
-        lines.append(f"- audit_status: {gui_weekly.get('audit_status', 'MISSING')}")
-        lines.append("- markdown: reports/gui_weekly_operational_review_latest.md")
-        lines.append("- json: reports/gui_weekly_operational_review_latest.json")
-        lines.append("- csv: reports/gui_weekly_operational_review_latest.csv")
-        lines.append("- audit_markdown: reports/gui_weekly_operational_review_audit_latest.md")
-        lines.append("- audit_json: reports/gui_weekly_operational_review_audit_latest.json")
-    lines.append("")
-
-    gui_evidence = data.get("gui_evidence_collection_window", {}) or {}
-    gui_evidence_available = bool(gui_evidence.get("available", False))
-    lines.append("## GUI evidence collection window")
-    lines.append("")
-    if not gui_evidence_available:
-        lines.append("- No hay reporte de GUI evidence collection window disponible.")
-        lines.append("- Ejecutar `python .\\tools\\gui_evidence_collection_window.py` para generarlo.")
-        lines.append("- Ejecutar `python .\\tools\\gui_evidence_collection_audit.py` para auditarlo.")
-    else:
-        lines.append(f"- status: {gui_evidence.get('status', 'UNKNOWN')}")
-        lines.append(f"- readiness_status: {gui_evidence.get('readiness_status', 'MISSING')}")
-        lines.append(f"- calibration_readiness_score: {gui_evidence.get('calibration_readiness_score', '')}")
-        lines.append(f"- readiness_bucket: {gui_evidence.get('readiness_bucket', 'MISSING')}")
-        lines.append(f"- sessions_count: {gui_evidence.get('sessions_count', 0)}")
-        lines.append(f"- total_decisions: {gui_evidence.get('total_decisions', 0)}")
-        lines.append(f"- paper_enter_decisions: {gui_evidence.get('paper_enter_decisions', 0)}")
-        lines.append(f"- closed_paper_count: {gui_evidence.get('closed_paper_count', 0)}")
-        lines.append(f"- checklist_completion_rate: {gui_evidence.get('checklist_completion_rate', '')}")
-        lines.append(f"- avg_decision_quality_score: {gui_evidence.get('avg_decision_quality_score', '')}")
-        lines.append(f"- guardrail_violations_count: {gui_evidence.get('guardrail_violations_count', 0)}")
-        lines.append(f"- audit_status: {gui_evidence.get('audit_status', 'MISSING')}")
-        lines.append("- markdown: reports/gui_evidence_collection_window_latest.md")
-        lines.append("- json: reports/gui_evidence_collection_window_latest.json")
-        lines.append("- csv: reports/gui_evidence_collection_window_latest.csv")
-        lines.append("- audit_markdown: reports/gui_evidence_collection_audit_latest.md")
-        lines.append("- audit_json: reports/gui_evidence_collection_audit_latest.json")
-    lines.append("")
-
     cards = data.get("trade_candidate_cards", {}) or {}
     cards_available = bool(cards.get("available", False))
 
@@ -1789,107 +1749,6 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append("- markdown: reports/trade_candidate_cards_latest.md")
         lines.append("- json: reports/trade_candidate_cards_latest.json")
         lines.append("- Fichas de revision manual; no son entrada automatica.")
-
-    lines.append("")
-
-    paper_journal = data.get("paper_trading_journal", {}) or {}
-    paper_journal_available = bool(paper_journal.get("available", False))
-
-    lines.append("## Paper trading journal")
-    lines.append("")
-
-    if not paper_journal_available:
-        lines.append("- No hay reporte de paper trading journal disponible.")
-        lines.append("- Ejecutar `python .\\tools\\paper_trading_journal.py --import-today` para generarlo.")
-    else:
-        lines.append(f"- status: {paper_journal.get('status', 'UNKNOWN')}")
-        lines.append(f"- rows: {paper_journal.get('rows', 0)}")
-        lines.append(f"- pending_review: {paper_journal.get('pending_review', 0)}")
-        lines.append(f"- paper_watch: {paper_journal.get('paper_watch', 0)}")
-        lines.append(f"- paper_enter: {paper_journal.get('paper_enter', 0)}")
-        lines.append(f"- blocked: {paper_journal.get('blocked', 0)}")
-        lines.append(
-            f"- needs_live_quote_recheck: {paper_journal.get('needs_live_quote_recheck', 0)}"
-        )
-        lines.append("- csv: reports/paper_trading_journal_latest.csv")
-        lines.append("- markdown: reports/paper_trading_journal_latest.md")
-        lines.append("- json: reports/paper_trading_journal_latest.json")
-        lines.append("- Paper trading only; no real order.")
-
-    lines.append("")
-
-    paper_followup = data.get("paper_trade_followup", {}) or {}
-    paper_followup_available = bool(paper_followup.get("available", False))
-
-    lines.append("## Paper trade follow-up")
-    lines.append("")
-
-    if not paper_followup_available:
-        lines.append("- No hay reporte de paper trade follow-up disponible.")
-        lines.append("- Ejecutar `python .\\tools\\paper_trade_followup.py` para generarlo.")
-    else:
-        lines.append(f"- status: {paper_followup.get('status', 'UNKNOWN')}")
-        lines.append(f"- rows: {paper_followup.get('rows', 0)}")
-        lines.append(f"- hold_paper: {paper_followup.get('hold_paper', 0)}")
-        lines.append(f"- review_near_stop: {paper_followup.get('review_near_stop', 0)}")
-        lines.append(f"- review_near_target: {paper_followup.get('review_near_target', 0)}")
-        lines.append(
-            f"- stop_hit_review_close: {paper_followup.get('stop_hit_review_close', 0)}"
-        )
-        lines.append(
-            f"- target_hit_review_close: {paper_followup.get('target_hit_review_close', 0)}"
-        )
-        lines.append(f"- data_unavailable: {paper_followup.get('data_unavailable', 0)}")
-        lines.append("- csv: reports/paper_trade_followup_latest.csv")
-        lines.append("- markdown: reports/paper_trade_followup_latest.md")
-        lines.append("- json: reports/paper_trade_followup_latest.json")
-        lines.append("- Seguimiento paper-only; no cierra posiciones ni modifica el journal.")
-
-    lines.append("")
-
-    paper_close = data.get("paper_trade_close", {}) or {}
-    paper_close_available = bool(paper_close.get("available", False))
-
-    lines.append("## Paper trade close")
-    lines.append("")
-
-    if not paper_close_available:
-        lines.append("- No hay reporte de paper trade close disponible.")
-        lines.append("- Ejecutar `python .\\tools\\paper_trade_close.py --summary` para generarlo.")
-    else:
-        lines.append(f"- status: {paper_close.get('status', 'UNKNOWN')}")
-        lines.append(f"- rows: {paper_close.get('rows', 0)}")
-        lines.append(f"- open_paper_trades: {paper_close.get('open_paper_trades', 0)}")
-        lines.append(f"- closed_paper_trades: {paper_close.get('closed_paper_trades', 0)}")
-        lines.append(f"- pending_export: {paper_close.get('pending_export', 0)}")
-        lines.append(f"- exported_outcomes: {paper_close.get('exported_outcomes', 0)}")
-        lines.append("- csv: reports/paper_trade_close_latest.csv")
-        lines.append("- markdown: reports/paper_trade_close_latest.md")
-        lines.append("- json: reports/paper_trade_close_latest.json")
-        lines.append("- Cierre y export solo con flags manuales; paper trading only; no real order.")
-
-    lines.append("")
-
-    paper_cycle = data.get("paper_trading_cycle_audit", {}) or {}
-    paper_cycle_available = bool(paper_cycle.get("available", False))
-
-    lines.append("## Paper trading cycle audit")
-    lines.append("")
-
-    if not paper_cycle_available:
-        lines.append("- No hay reporte de paper trading cycle audit disponible.")
-        lines.append("- Ejecutar `python .\\tools\\paper_trading_cycle_audit.py` para generarlo.")
-    else:
-        lines.append(f"- status: {paper_cycle.get('status', 'UNKNOWN')}")
-        lines.append(f"- journal_rows: {paper_cycle.get('journal_rows', 0)}")
-        lines.append(f"- open_paper_count: {paper_cycle.get('open_paper_count', 0)}")
-        lines.append(f"- closed_paper_count: {paper_cycle.get('closed_paper_count', 0)}")
-        lines.append(f"- pending_export_count: {paper_cycle.get('pending_export_count', 0)}")
-        lines.append(f"- exported_count: {paper_cycle.get('exported_count', 0)}")
-        lines.append(f"- duplicate_outcome_ids: {paper_cycle.get('duplicate_outcome_ids', 0)}")
-        lines.append("- markdown: reports/paper_trading_cycle_audit_latest.md")
-        lines.append("- json: reports/paper_trading_cycle_audit_latest.json")
-        lines.append("- Auditoría read-only; no modifica journal ni outcomes.")
 
     lines.append("")
 
@@ -1932,22 +1791,16 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     lines.append("12. `reports/live_quote_recheck_latest.md`")
     lines.append("13. `reports/trade_decision_checklist_latest.md`")
     lines.append("14. `reports/trade_candidate_cards_latest.md`")
-    lines.append("15. `reports/paper_trading_journal_latest.md`")
-    lines.append("16. `reports/paper_trade_followup_latest.md`")
-    lines.append("17. `reports/paper_trade_close_latest.md`")
-    lines.append("18. `reports/paper_trading_cycle_audit_latest.md`")
-    lines.append("19. `reports/trade_score_calibration_latest.md`")
-    lines.append("20. `reports/calibration_recommendations_latest.md`")
-    lines.append("21. `reports/release_readiness_latest.md`")
-    lines.append("22. `reports/ui_data_contract_audit_latest.md`")
-    lines.append("23. `reports/streamlit_smoke_test_latest.md`")
-    lines.append("24. `reports/gui_actions_audit_latest.md`")
-    lines.append("25. `reports/gui_visuals_audit_latest.md`")
-    lines.append("26. `reports/gui_release_audit_latest.md`")
-    lines.append("27. `reports/gui_supervised_session_latest.md`")
-    lines.append("28. `reports/gui_supervised_session_audit_latest.md`")
-    lines.append("29. `reports/gui_daily_operating_checklist_latest.md`")
-    lines.append("30. `reports/gui_daily_operating_checklist_audit_latest.md`")
+    lines.append("15. `reports/simple_candidate_posttest_latest.md`")
+    lines.append("16. `reports/trade_score_calibration_latest.md`")
+    lines.append("17. `reports/calibration_recommendations_latest.md`")
+    lines.append("18. `reports/release_readiness_latest.md`")
+    lines.append("19. `reports/ui_data_contract_audit_latest.md`")
+    lines.append("20. `reports/streamlit_smoke_test_latest.md`")
+    lines.append("21. `reports/gui_actions_audit_latest.md`")
+    lines.append("22. `reports/gui_visuals_audit_latest.md`")
+    lines.append("23. `reports/gui_release_audit_latest.md`")
+    lines.append("24. `reports/nasdaq_risk_regime_latest.md`")
     lines.append("")
 
     lines.append("## Señales")
@@ -2185,23 +2038,6 @@ def _normalize_gui_release_audit_status(data: dict) -> dict:
     }
 
 
-def _normalize_gui_supervised_session_status(session_data: dict, audit_data: dict) -> dict:
-    available = bool(session_data)
-    audit_available = bool(audit_data)
-    return {
-        "available": available or audit_available,
-        "status": str(audit_data.get("status") or session_data.get("status") or "MISSING"),
-        "latest_session_id": str(session_data.get("latest_session_id", "")),
-        "latest_session_status": str(session_data.get("latest_session_status", "MISSING")),
-        "latest_session_result": str(session_data.get("latest_session_result", "")),
-        "paper_actions_logged": int(session_data.get("paper_actions_logged", 0) or 0),
-        "paper_enter_count": int(session_data.get("paper_enter_count", 0) or 0),
-        "closed_paper_count": int(session_data.get("closed_paper_count", 0) or 0),
-        "pending_export_count": int(session_data.get("pending_export_count", 0) or 0),
-        "audit_status": str(audit_data.get("status", "MISSING")),
-    }
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Genera índice operativo diario de Analista.")
     parser.add_argument("--output-path", default="reports/daily_operator_index.md")
@@ -2222,25 +2058,6 @@ def main() -> int:
     print(f"Output: {result['output_path']}")
 
     return 0
-
-
-def _normalize_gui_daily_operating_checklist_status(checklist_data: dict, audit_data: dict) -> dict:
-    available = bool(checklist_data) or bool(audit_data)
-    return {
-        "available": available,
-        "status": str(audit_data.get("status") or checklist_data.get("status") or "MISSING"),
-        "checklist_id": str(checklist_data.get("checklist_id", "")),
-        "checklist_date": str(checklist_data.get("checklist_date", "")),
-        "pending_steps": _safe_int(checklist_data.get("pending_steps"), 0),
-        "done_steps": _safe_int(checklist_data.get("done_steps"), 0),
-        "blocked_steps": _safe_int(checklist_data.get("blocked_steps"), 0),
-        "skipped_steps": _safe_int(checklist_data.get("skipped_steps"), 0),
-        "required_pending_steps": _safe_int(checklist_data.get("required_pending_steps"), 0),
-        "latest_result": str(checklist_data.get("latest_result", "MISSING")),
-        "audit_status": str(audit_data.get("status", "MISSING")),
-        "critical_failures": _safe_int(audit_data.get("critical_failures"), 0),
-        "warnings": _safe_int(audit_data.get("warnings"), 0),
-    }
 
 
 def _normalize_alpaca_readonly_connectivity_status(data: dict) -> dict:
@@ -2281,90 +2098,6 @@ def _normalize_secondary_data_provider_status(data: dict, *, rows_key: str = "ro
         "aggregate_options_bias": str(aggregate_context.get("bias", "")),
         "aggregate_put_call_usable": bool(aggregate_context.get("usable", False)),
         "aggregate_contrarian_note": str(aggregate_context.get("contrarian_note", "")),
-    }
-
-
-def _normalize_gui_operational_decision_log_status(log_data: dict, review_data: dict, audit_data: dict) -> dict:
-    return {
-        "available": bool(log_data) or bool(review_data) or bool(audit_data),
-        "status": str(audit_data.get("status") or review_data.get("status") or log_data.get("status") or "MISSING"),
-        "decisions_today": _safe_int(log_data.get("decisions_today") or review_data.get("decisions_today"), 0),
-        "paper_watch_decisions": _safe_int(
-            log_data.get("paper_watch_decisions") or review_data.get("paper_watch_decisions"),
-            0,
-        ),
-        "paper_enter_decisions": _safe_int(
-            log_data.get("paper_enter_decisions") or review_data.get("paper_enter_decisions"),
-            0,
-        ),
-        "skip_decisions": _safe_int(log_data.get("skip_decisions") or review_data.get("skip_decisions"), 0),
-        "needs_recheck_decisions": _safe_int(
-            log_data.get("needs_recheck_decisions") or review_data.get("needs_recheck_decisions"),
-            0,
-        ),
-        "decisions_without_reason": _safe_int(
-            log_data.get("decisions_without_reason") or review_data.get("decisions_without_reason"),
-            0,
-        ),
-        "decisions_without_post_review": _safe_int(
-            log_data.get("decisions_without_post_review") or review_data.get("decisions_without_post_review"),
-            0,
-        ),
-        "lessons_added": _safe_int(log_data.get("lessons_added") or review_data.get("lessons_added"), 0),
-        "post_session_status": str(review_data.get("status", "MISSING")),
-        "audit_status": str(audit_data.get("status", "MISSING")),
-    }
-
-
-def _normalize_gui_decision_quality_status(review_data: dict, audit_data: dict) -> dict:
-    return {
-        "available": bool(review_data) or bool(audit_data),
-        "status": str(audit_data.get("status") or review_data.get("status") or "MISSING"),
-        "total_decisions": _safe_int(review_data.get("total_decisions"), 0),
-        "decision_quality_score": review_data.get("decision_quality_score", ""),
-        "decision_quality_bucket": str(review_data.get("decision_quality_bucket", "MISSING")),
-        "paper_enter_count": _safe_int(review_data.get("paper_enter_count"), 0),
-        "decisions_without_reason": _safe_int(review_data.get("decisions_without_reason"), 0),
-        "decisions_without_post_review": _safe_int(review_data.get("decisions_without_post_review"), 0),
-        "paper_enter_with_low_quote_quality": _safe_int(review_data.get("paper_enter_with_low_quote_quality"), 0),
-        "quality_warnings_count": _safe_int(review_data.get("quality_warnings_count"), 0),
-        "audit_status": str(audit_data.get("status", "MISSING")),
-    }
-
-
-def _normalize_gui_weekly_operational_review_status(review_data: dict, audit_data: dict) -> dict:
-    return {
-        "available": bool(review_data) or bool(audit_data),
-        "status": str(audit_data.get("status") or review_data.get("status") or "MISSING"),
-        "weekly_operational_score": review_data.get("weekly_operational_score", ""),
-        "weekly_operational_bucket": str(review_data.get("weekly_operational_bucket", "MISSING")),
-        "weekly_recommendation": str(review_data.get("weekly_recommendation", "MISSING")),
-        "sessions_count": _safe_int(review_data.get("sessions_count"), 0),
-        "checklist_completion_rate": review_data.get("checklist_completion_rate", ""),
-        "total_decisions": _safe_int(review_data.get("total_decisions"), 0),
-        "paper_enter_decisions": _safe_int(review_data.get("paper_enter_decisions"), 0),
-        "avg_decision_quality_score": review_data.get("avg_decision_quality_score", ""),
-        "guardrail_violations_count": _safe_int(review_data.get("guardrail_violations_count"), 0),
-        "ready_for_calibration_review": bool(review_data.get("ready_for_calibration_review", False)),
-        "audit_status": str(audit_data.get("status", "MISSING")),
-    }
-
-
-def _normalize_gui_evidence_collection_window_status(window_data: dict, audit_data: dict) -> dict:
-    return {
-        "available": bool(window_data) or bool(audit_data),
-        "status": str(audit_data.get("status") or window_data.get("status") or "MISSING"),
-        "readiness_status": str(window_data.get("readiness_status", "MISSING")),
-        "calibration_readiness_score": window_data.get("calibration_readiness_score", ""),
-        "readiness_bucket": str(window_data.get("readiness_bucket", "MISSING")),
-        "sessions_count": _safe_int(window_data.get("sessions_count"), 0),
-        "total_decisions": _safe_int(window_data.get("total_decisions"), 0),
-        "paper_enter_decisions": _safe_int(window_data.get("paper_enter_decisions"), 0),
-        "closed_paper_count": _safe_int(window_data.get("closed_paper_count"), 0),
-        "checklist_completion_rate": window_data.get("checklist_completion_rate", ""),
-        "avg_decision_quality_score": window_data.get("avg_decision_quality_score", ""),
-        "guardrail_violations_count": _safe_int(window_data.get("guardrail_violations_count"), 0),
-        "audit_status": str(audit_data.get("status", "MISSING")),
     }
 
 

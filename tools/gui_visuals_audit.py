@@ -36,9 +36,6 @@ def _empty_data_safe() -> tuple[bool, list[str]]:
             charts.build_recommendation_distribution_chart_data,
             charts.build_quote_quality_chart_data,
             charts.build_candidate_score_chart_data,
-            charts.build_paper_status_chart_data,
-            charts.build_followup_decision_chart_data,
-            charts.build_closed_outcomes_chart_data,
             charts.build_r_multiple_chart_data,
             charts.build_calibration_bucket_chart_data,
         ]

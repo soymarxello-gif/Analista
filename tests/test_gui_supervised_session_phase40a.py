@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="Legacy manual GUI evidence flow removed from active product.")
+
 import importlib.util
 import json
 from pathlib import Path

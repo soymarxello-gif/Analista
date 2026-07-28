@@ -44,6 +44,46 @@ def test_alpaca_iex_batch_quote_normalizes_delayed_analysis_fields() -> None:
     assert row["analysis_quote_confidence"] == "MEDIUM"
 
 
+def test_alpaca_iex_batches_large_symbol_lists() -> None:
+    tickers = [f"T{i:03d}" for i in range(205)]
+    quote_calls: list[str] = []
+    trade_calls: list[str] = []
+
+    def fake_request(url: str, headers: dict[str, str], timeout_seconds: int):
+        assert headers["APCA-API-KEY-ID"] == "KEY"
+        symbols = url.split("symbols=", 1)[1].split("&", 1)[0].split(",")
+        if "quotes/latest" in url:
+            quote_calls.append(url)
+            return 200, {
+                "quotes": {
+                    symbol: {"bp": 99.9, "ap": 100.1, "t": "2026-06-23T18:00:00Z"}
+                    for symbol in symbols
+                }
+            }
+        if "trades/latest" in url:
+            trade_calls.append(url)
+            return 200, {
+                "trades": {
+                    symbol: {"p": 100.0, "t": "2026-06-23T18:00:01Z"}
+                    for symbol in symbols
+                }
+            }
+        raise AssertionError(f"unexpected url: {url}")
+
+    quotes = analysis_quotes.fetch_alpaca_iex_analysis_quotes(
+        tickers,
+        timeout_seconds=3,
+        batch_size=100,
+        request_fn=fake_request,
+        credentials={"key": "KEY", "secret": "SECRET"},
+    )
+
+    assert len(quotes) == 205
+    assert len(quote_calls) == 3
+    assert len(trade_calls) == 3
+    assert quotes["T204"]["analysis_quote_source"] == "ALPACA_IEX_READ_ONLY"
+
+
 def test_alpaca_missing_credentials_returns_empty(monkeypatch) -> None:
     for name in ["APCA_API_KEY_ID", "ALPACA_API_KEY_ID", "APCA_API_SECRET_KEY", "ALPACA_API_SECRET_KEY"]:
         monkeypatch.delenv(name, raising=False)
@@ -51,6 +91,37 @@ def test_alpaca_missing_credentials_returns_empty(monkeypatch) -> None:
     result = analysis_quotes.build_analysis_quote_fallbacks(["AAPL"], {"data_sources": {}})
 
     assert result == {}
+
+
+def test_default_alpaca_fallback_covers_beyond_legacy_75_limit(monkeypatch) -> None:
+    tickers = [f"T{i:03d}" for i in range(100)]
+    selected: list[str] = []
+    monkeypatch.setattr(analysis_quotes, "alpaca_credentials_present", lambda: True)
+
+    def fake_fetch(tickers_arg, **kwargs):
+        selected.extend(tickers_arg)
+        return {
+            ticker: {
+                "analysis_price": 100.0,
+                "analysis_quote_source": "ALPACA_IEX_READ_ONLY",
+            }
+            for ticker in tickers_arg
+        }
+
+    monkeypatch.setattr(analysis_quotes, "fetch_alpaca_iex_analysis_quotes", fake_fetch)
+
+    result = analysis_quotes.build_analysis_quote_fallbacks(
+        tickers,
+        {
+            "data_sources": {
+                "analysis_quotes": {"enabled": True},
+                "providers": {"alpaca_iex": {"enabled": True}},
+            }
+        },
+    )
+
+    assert len(selected) == 100
+    assert result["T099"]["analysis_quote_source"] == "ALPACA_IEX_READ_ONLY"
 
 
 def test_analysis_quote_fallback_does_not_overwrite_valid_yahoo_quote() -> None:

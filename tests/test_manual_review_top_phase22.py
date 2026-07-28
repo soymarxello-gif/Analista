@@ -19,8 +19,16 @@ def test_classify_high_quality_operational_candidate():
         "execution_quote_quality": "HIGH",
         "final_trade_score": 78,
         "setup_quality_score": 75,
+        "operational_readiness_score": 85,
         "setup_persistence_score": 70,
         "rr": 2.1,
+        "scenario_status": "VALID_TRIGGER",
+        "scenario_eligible_for_backtest": True,
+        "shadow_level_status": "VALID",
+        "entry_timing_status": "ON_TIME",
+        "ema20_extension_status": "HEALTHY",
+        "macd_histogram_state": "MACD_HIST_POSITIVE_EXPANDING",
+        "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_IMPROVING",
     }
 
     assert classify_top_group(row) == "1_ALTA_CALIDAD_OPERATIVA"
@@ -74,10 +82,18 @@ def test_build_manual_review_top_preserves_group_order():
                 "recommendation": "WATCHLIST_MONITOR",
                 "quote_status": "VALID",
                 "execution_quote_quality": "HIGH",
+                "operational_readiness_score": 88,
                 "setup_persistence_score": 75,
                 "final_trade_score": 80,
                 "setup_quality_score": 78,
                 "rr": 2.2,
+                "scenario_status": "VALID_TRIGGER",
+                "scenario_eligible_for_backtest": True,
+                "shadow_level_status": "VALID",
+                "entry_timing_status": "ON_TIME",
+                "ema20_extension_status": "HEALTHY",
+                "macd_histogram_state": "MACD_HIST_POSITIVE_EXPANDING",
+                "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_IMPROVING",
             },
         ]
     )
@@ -88,6 +104,67 @@ def test_build_manual_review_top_preserves_group_order():
     assert out.iloc[0]["_top_group"] == "1_ALTA_CALIDAD_OPERATIVA"
     assert out.iloc[1]["ticker"] == "BBB"
     assert out.iloc[1]["_top_group"] == "2_REQUIERE_RECHECK_QUOTE"
+
+
+def test_manual_review_top_orders_high_quality_by_operational_readiness_first():
+    def row(ticker: str, rank: int, readiness: float, trade_score: float) -> dict:
+        return {
+            "rank": rank,
+            "ticker": ticker,
+            "signal": "WATCHLIST",
+            "recommendation": "WATCHLIST_MONITOR",
+            "quote_status": "VALID",
+            "execution_quote_quality": "HIGH",
+            "operational_readiness_score": readiness,
+            "setup_persistence_score": 75,
+            "final_trade_score": trade_score,
+            "setup_quality_score": 82,
+            "rr": 2.0,
+            "scenario_status": "VALID_TRIGGER",
+            "scenario_eligible_for_backtest": True,
+            "shadow_level_status": "VALID",
+            "entry_timing_status": "ON_TIME",
+            "ema20_extension_status": "HEALTHY",
+            "macd_histogram_state": "MACD_HIST_POSITIVE_EXPANDING",
+            "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_IMPROVING",
+        }
+
+    out = build_manual_review_top_dataframe(
+        pd.DataFrame(
+            [
+                row("AAA", rank=1, readiness=81, trade_score=95),
+                row("BBB", rank=2, readiness=92, trade_score=88),
+            ]
+        )
+    )
+
+    assert out["ticker"].tolist()[:2] == ["BBB", "AAA"]
+
+
+def test_manual_review_top_zero_group_limit_keeps_all_candidates():
+    rows = []
+    for index in range(25):
+        rows.append(
+            {
+                "rank": index + 1,
+                "ticker": f"AAA{index}",
+                "signal": "WATCHLIST",
+                "recommendation": "WATCHLIST_MONITOR",
+                "quote_status": "VALID",
+                "execution_quote_quality": "HIGH",
+                "operational_readiness_score": 70,
+                "setup_persistence_score": 60,
+                "final_trade_score": 72,
+                "setup_quality_score": 70,
+                "rr": 2.0,
+                "scenario_status": "WAIT_FOR_CONFIRMATION",
+                "scenario_eligible_for_backtest": False,
+            }
+        )
+
+    out = build_manual_review_top_dataframe(pd.DataFrame(rows), per_group_limit=0)
+
+    assert len(out) == 25
 
 
 def test_save_manual_review_top_reports_writes_files(tmp_path: Path):
@@ -105,10 +182,18 @@ def test_save_manual_review_top_reports_writes_files(tmp_path: Path):
                 "recommendation": "WATCHLIST_MONITOR",
                 "quote_status": "VALID",
                 "execution_quote_quality": "HIGH",
+                "operational_readiness_score": 88,
                 "setup_persistence_score": 75,
                 "final_trade_score": 80,
                 "setup_quality_score": 78,
                 "rr": 2.2,
+                "scenario_status": "VALID_TRIGGER",
+                "scenario_eligible_for_backtest": True,
+                "shadow_level_status": "VALID",
+                "entry_timing_status": "ON_TIME",
+                "ema20_extension_status": "HEALTHY",
+                "macd_histogram_state": "MACD_HIST_POSITIVE_EXPANDING",
+                "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_IMPROVING",
             }
         ]
     ).to_csv(manual_csv, index=False)
@@ -122,3 +207,53 @@ def test_save_manual_review_top_reports_writes_files(tmp_path: Path):
     assert result["status"] == "PASS"
     assert (reports / "manual_review_top.csv").exists()
     assert (reports / "manual_review_top.md").exists()
+
+
+def test_invalid_shadow_or_late_ema20_prevents_high_quality_top_group():
+    base = {
+        "signal": "WATCHLIST",
+        "recommendation": "WATCHLIST_MONITOR",
+        "quote_status": "VALID",
+        "execution_quote_quality": "HIGH",
+        "final_trade_score": 90,
+        "setup_quality_score": 88,
+        "operational_readiness_score": 90,
+        "setup_persistence_score": 80,
+        "rr": 2.1,
+        "scenario_status": "VALID_TRIGGER",
+        "scenario_eligible_for_backtest": True,
+        "shadow_level_status": "VALID",
+        "entry_timing_status": "ON_TIME",
+        "ema20_extension_status": "HEALTHY",
+        "macd_histogram_state": "MACD_HIST_POSITIVE_EXPANDING",
+        "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_IMPROVING",
+    }
+
+    shadow_invalid = dict(base, shadow_level_status="RR_BELOW_MINIMUM")
+    ema_late = dict(base, ema20_extension_status="LATE_ENTRY")
+
+    assert classify_top_group(shadow_invalid) == "3_PERSISTENTE_NO_ACCIONABLE_TODAVIA"
+    assert classify_top_group(ema_late) == "3_PERSISTENTE_NO_ACCIONABLE_TODAVIA"
+
+
+def test_weekly_macd_decelerating_prevents_high_quality_top_group():
+    row = {
+        "signal": "WATCHLIST",
+        "recommendation": "WATCHLIST_MONITOR",
+        "quote_status": "VALID",
+        "execution_quote_quality": "HIGH",
+        "final_trade_score": 90,
+        "setup_quality_score": 88,
+        "operational_readiness_score": 90,
+        "setup_persistence_score": 80,
+        "rr": 2.1,
+        "scenario_status": "VALID_TRIGGER",
+        "scenario_eligible_for_backtest": True,
+        "shadow_level_status": "VALID",
+        "entry_timing_status": "ON_TIME",
+        "ema20_extension_status": "HEALTHY",
+        "macd_histogram_state": "MACD_HIST_POSITIVE_EXPANDING",
+        "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_DECELERATING",
+    }
+
+    assert classify_top_group(row) == "4_DETERIORADO_O_DEBIL"

@@ -16,7 +16,7 @@ From PowerShell in the project root:
 python .\tools\daily_validation.py
 ```
 
-This runs the audited scanner, P0 validation, quality gates, optional report builders, candidate cards, paper trading journal summary, paper close summary, calibration, and run manifest.
+This runs the audited scanner, P0 validation, quality gates, optional report builders, candidate cards, automatic simple posttest, calibration, and run manifest.
 
 ## 3. Review Reports In This Order
 
@@ -25,21 +25,17 @@ This runs the audited scanner, P0 validation, quality gates, optional report bui
 3. `reports/live_quote_recheck_latest.md`
 4. `reports/trade_decision_checklist_latest.md`
 5. `reports/trade_candidate_cards_latest.md`
-6. `reports/paper_trading_journal_latest.md`
-7. `reports/paper_trade_followup_latest.md`
-8. `reports/paper_trade_close_latest.md`
-9. `reports/paper_trading_cycle_audit_latest.md`
-10. `reports/gui_weekly_operational_review_latest.md`
-11. `reports/gui_evidence_collection_window_latest.md`
-12. `reports/manual_review_top.md`
-13. `reports/daily_run_manifest_latest.md`
-14. `reports/release_readiness_latest.md`
-15. `reports/ui_data_contract_audit_latest.md`
-16. `reports/streamlit_smoke_test_latest.md`
-17. `reports/gui_actions_audit_latest.md`
-18. `reports/daily_validation_summary.txt`
-19. `reports/project_preflight_latest.md`
-20. `reports/encoding_audit_latest.md`
+6. `reports/simple_candidate_posttest_latest.md`
+7. `reports/macro_event_context_latest.md`
+8. `reports/manual_review_top.md`
+9. `reports/daily_run_manifest_latest.md`
+10. `reports/release_readiness_latest.md`
+11. `reports/ui_data_contract_audit_latest.md`
+12. `reports/streamlit_smoke_test_latest.md`
+13. `reports/gui_actions_audit_latest.md`
+14. `reports/daily_validation_summary.txt`
+15. `reports/project_preflight_latest.md`
+16. `reports/encoding_audit_latest.md`
 
 Stop immediately if a required step is `FAIL`.
 
@@ -119,97 +115,25 @@ reports/trade_candidate_cards_latest.json
 
 Each card summarizes signal, recommendation, setup, scores, quote quality, operational levels, options context, warnings, blockers, and required manual actions.
 
-## 8. Paper Trading Journal
+## 8. Automatic Simple Posttest
 
-Import today's review candidates into the paper journal:
+Run the simple automatic posttest when you want the latest diagnostic view:
 
 ```powershell
-python .\tools\paper_trading_journal.py --import-today
+python .\tools\simple_candidate_posttest.py
 ```
 
 Review:
 
 ```text
-data/paper_trading_journal.csv
-reports/paper_trading_journal_latest.md
-reports/paper_trading_journal_latest.csv
-reports/paper_trading_journal_latest.json
+reports/simple_candidate_posttest_latest.md
+reports/simple_candidate_posttest_latest.csv
+reports/simple_candidate_posttest_latest.json
 ```
 
-Manual decisions allowed in the journal are `PENDING_REVIEW`, `PAPER_WATCH`, `PAPER_ENTER`, `SKIP`, `BLOCKED`, and `NEEDS_LIVE_QUOTE_RECHECK`. `PAPER_ENTER` is simulated only; it creates no broker order and does not modify scanner signals, scores, config, weights, or thresholds.
+This report evaluates the top candidates from previous report sessions after 5, 10, and 15 sessions. It is automatic, observational, and does not require manual trade records.
 
-## 9. Paper Trade Follow-Up
-
-Generate daily follow-up for open paper trades:
-
-```powershell
-python .\tools\paper_trade_followup.py
-```
-
-Review:
-
-```text
-reports/paper_trade_followup_latest.md
-reports/paper_trade_followup_latest.csv
-reports/paper_trade_followup_latest.json
-```
-
-The follow-up report checks latest price versus simulated entry, stop, and target. It may flag hold, near stop, near target, stop hit, target hit, invalidated review, or data unavailable. It does not close paper trades automatically and does not modify `data/paper_trading_journal.csv`.
-
-## 10. Paper Trade Close
-
-List open paper trades:
-
-```powershell
-python .\tools\paper_trade_close.py --list-open
-```
-
-Close a paper trade manually:
-
-```powershell
-python .\tools\paper_trade_close.py --close JOURNAL_ID --exit-price 123.45 --reason TARGET_REACHED_MANUAL
-```
-
-Export closed paper trades to calibration outcomes only when intended:
-
-```powershell
-python .\tools\paper_trade_close.py --export-outcomes
-```
-
-Daily validation runs only:
-
-```powershell
-python .\tools\paper_trade_close.py --summary
-```
-
-Review:
-
-```text
-reports/paper_trade_close_latest.md
-reports/paper_trade_close_latest.csv
-reports/paper_trade_close_latest.json
-```
-
-Closing and export are manual paper-trading actions only. The tool does not connect to a broker, does not send real orders, does not modify scanner signals, scores, config, weights, or thresholds, and does not close anything unless `--close` is explicitly supplied.
-
-## 11. Paper Trading Cycle Audit
-
-Audit the full paper trading cycle:
-
-```powershell
-python .\tools\paper_trading_cycle_audit.py
-```
-
-Review:
-
-```text
-reports/paper_trading_cycle_audit_latest.md
-reports/paper_trading_cycle_audit_latest.json
-```
-
-The audit verifies journal columns, open and closed paper trades, pending exports, exported outcomes, duplicate `source_journal_id` values, calibration/recommendation status, and paper-only guardrails. It is read-only and does not modify `data/paper_trading_journal.csv`, `data/trade_outcomes.csv`, scanner logic, scores, config, weights, or thresholds.
-
-## 12. UI Data Contract
+## 9. UI Data Contract
 
 Audit the read-only data contract for a future graphical interface:
 
@@ -224,7 +148,7 @@ reports/ui_data_contract_audit_latest.md
 reports/ui_data_contract_audit_latest.json
 ```
 
-This validates `ui/report_loader.py` and `ui/view_models.py`, checks that missing or invalid reports are handled with controlled statuses, and confirms the view models can be built without creating trading actions. This is not a Streamlit app and does not add buttons, broker connections, journal writes, outcome exports, scanner changes, score changes, weights, or thresholds.
+This validates `ui/report_loader.py` and `ui/view_models.py`, checks that missing or invalid reports are handled with controlled statuses, and confirms the view models can be built without creating trading actions. This is not a Streamlit app and does not add buttons, broker connections, scanner changes, score changes, weights, or thresholds.
 
 ## 13. Streamlit Dashboard MVP
 
@@ -250,17 +174,74 @@ reports/gui_actions_audit_latest.md
 reports/gui_actions_audit_latest.json
 ```
 
-The dashboard reads report data through `ui.report_loader.load_all_ui_sources` and `ui.view_models`. Paper-trading actions are routed through `ui.actions`, require explicit confirmation before journal/outcome writes, and are logged in `data/ui_action_log.csv`.
+The dashboard reads report data through `ui.report_loader.load_all_ui_sources` and `ui.view_models`. GUI actions are limited to refreshing generated reports and running the single-ticker deep dive. Actions are logged in `data/ui_action_log.csv`.
 
-Allowed GUI actions are paper-only:
+Main cockpit sections:
 
-- Import today candidates.
-- Set a manual paper decision.
-- Refresh paper follow-up reports.
-- Manually close a paper trade.
-- Export already closed paper trades to outcomes.
+- `Resumen`: daily status, quote quality and compact macro context.
+- `Candidatos`: watchlist, ticker card, single-ticker deep dive and universe analytics.
+- `Control`: safety rules, macro context, calibration, simple posttest and report health.
+
+Allowed GUI actions are limited:
+
+- Refresh all generated data through daily validation.
+- Run a single-ticker deep dive report.
 
 The GUI does not run the scanner, does not connect to a broker, does not send real orders, and does not change scoring, weights, thresholds, config, or signals.
+
+## 13A. Single-Ticker Deep Dive
+
+Use this when you want to inspect a ticker that is not in the current watchlist
+or when you want a focused scenario diagnosis without running the full universe
+pipeline.
+
+From the GUI:
+
+```text
+Candidatos -> Consulta puntual por ticker
+```
+
+From PowerShell:
+
+```powershell
+python .\tools\single_ticker_deep_dive.py AAPL
+```
+
+Review:
+
+```text
+reports/single_ticker_deep_dive_latest.md
+reports/single_ticker_deep_dive_latest.json
+```
+
+The tool runs only a ticker-level deep technical/scenario review. It does not
+run the screener, does not select from the 50-candidate funnel, does not create
+scanner signals, does not create `TRIGGER_CONFIRMED`, does not change watchlist
+files, and does not apply macro as an operative blocker. It is manual review
+only.
+
+## 13B. Macro Context In The GUI
+
+Macro context is visible in:
+
+- `Resumen`, as a compact event/liquidity summary.
+- `Control -> Contexto macro`, as the full event calendar and FRED series view.
+
+Refresh the underlying report when needed:
+
+```powershell
+python .\tools\macro_event_context.py
+python .\tools\nasdaq_risk_regime_audit.py
+```
+
+Macro data is read-only context. It does not change `quote_status`,
+`execution_quote_quality`, scanner signals, recommendations, scores, weights or
+thresholds.
+
+`nasdaq_risk_regime_audit` adds the Nasdaq risk semaforo as a separate lens:
+Normal, Omega distribution, Sigma systemic stress, or Phi capitulation watch.
+It is context only and never creates entries, broker actions, or
+`TRIGGER_CONFIRMED`.
 
 ## 14. Calibration
 
@@ -331,43 +312,17 @@ Do not commit generated reports unless the project explicitly decides to version
 
 - Ejecutar `python .\tools\gui_visuals_audit.py` cuando se agreguen graficos, metricas o cambios visuales al dashboard.
 - Revisar `reports/gui_visuals_audit_latest.md`.
-- Las visualizaciones usan datos ya cargados por la capa UI; no deben modificar scanner, scoring, journal ni outcomes.
+- Las visualizaciones usan datos ya cargados por la capa UI; no deben modificar scanner, scoring ni outcomes.
 
 ## GUI release
 
 - Ejecutar `python .\tools\gui_release_audit.py` antes de usar la interfaz como release candidate diario.
 - Revisar `reports/gui_release_audit_latest.md`.
-- La GUI debe mostrar solo revision manual, paper trading y acciones confirmadas; no ejecuta scanner, no conecta a servicios de ejecucion y no envia ordenes reales.
-
-## GUI supervised session
-
-- Iniciar bitacora diaria supervisada con `python .\tools\gui_supervised_session.py --start`.
-- Revisar estado con `python .\tools\gui_supervised_session.py --status`.
-- Agregar notas con `python .\tools\gui_supervised_session.py --note "nota operativa"`.
-- Generar resumen con `python .\tools\gui_supervised_session.py --summary`.
-- Cerrar la sesion con `python .\tools\gui_supervised_session.py --close --result PASS`.
-- Auditar la herramienta con `python .\tools\gui_supervised_session_audit.py`.
-- Revisar `reports/gui_supervised_session_latest.md` y `reports/gui_supervised_session_audit_latest.md`.
-## Daily GUI Operating Checklist
-
-Use `tools/gui_daily_operating_checklist.py` as a manual paper-only checklist for GUI operation. The checklist records confirmations and notes only; it does not start Streamlit, run the scanner, change journal rows, close trades, connect to a broker, or send real orders.
-
-Recommended commands:
-
-- `python .\tools\gui_daily_operating_checklist.py --init-today`
-- `python .\tools\gui_daily_operating_checklist.py --status`
-- `python .\tools\gui_daily_operating_checklist.py --mark STEP_ID DONE --note "..."`
-- `python .\tools\gui_daily_operating_checklist.py --summary`
-- `python .\tools\gui_daily_operating_checklist_audit.py`
-
-Review:
-
-- `reports/gui_daily_operating_checklist_latest.md`
-- `reports/gui_daily_operating_checklist_audit_latest.md`
+- La GUI debe mostrar solo revision manual, consulta puntual, refresco de datos y posttest automatico; no ejecuta scanner directamente, no conecta a servicios de ejecucion y no envia ordenes reales.
 
 ## Alpaca Read-Only Connectivity Audit
 
-Use `tools/alpaca_readonly_connectivity_audit.py` only to validate credentials and read-only connectivity against Alpaca paper trading and IEX data. It checks account, clock, and latest IEX quote data. It does not place orders, does not enable execution, does not modify scanner outputs, and does not change signals, scores, thresholds, config, journal, or outcomes.
+Use `tools/alpaca_readonly_connectivity_audit.py` only to validate credentials and read-only connectivity against Alpaca and IEX data. It checks account, clock, and latest IEX quote data. It does not place orders, does not enable execution, does not modify scanner outputs, and does not change signals, scores, thresholds, config, or outcomes.
 
 Credentials are read from environment variables:
 
@@ -382,70 +337,4 @@ Review:
 
 - `reports/alpaca_readonly_connectivity_latest.md`
 
-## Operational Decision Log
-
-Use `tools/gui_operational_decision_log.py` to record manual GUI decisions during the day. This bitacora is observational and paper-only: it does not modify paper journal rows, does not export outcomes, does not run the scanner, and does not change scoring, config, thresholds, or signals.
-
-Commands:
-
-- `python .\tools\gui_operational_decision_log.py --add --ticker AAPL --decision PAPER_WATCH --reason "..."`
-- `python .\tools\gui_operational_decision_log.py --list-today`
-- `python .\tools\gui_operational_decision_log.py --review DECISION_ID --outcome-note "..." --lesson "..."`
-- `python .\tools\gui_operational_decision_log.py --summary`
-- `python .\tools\gui_post_session_review.py`
-- `python .\tools\gui_operational_decision_log_audit.py`
-
-Review:
-
-- `reports/gui_operational_decision_log_latest.md`
-- `reports/gui_post_session_review_latest.md`
-- `reports/gui_operational_decision_log_audit_latest.md`
-
-## Decision Quality Review
-
-Use `tools/gui_decision_quality_review.py` after recording operational decisions and post-session notes. The review scores decision discipline from reasons, checklist alignment, post-session review, quote discipline, follow-up planning, no-real-order confirmation, and lessons captured. It is observational only; no automatic trading changes are applied.
-
-Commands:
-
-- `python .\tools\gui_decision_quality_review.py`
-- `python .\tools\gui_decision_quality_audit.py`
-
-Review:
-
-- `reports/gui_decision_quality_review_latest.md`
-- `reports/gui_decision_quality_review_latest.csv`
-- `reports/gui_decision_quality_audit_latest.md`
-
-## Weekly GUI Operational Review
-
-Use `tools/gui_weekly_operational_review.py` after several supervised GUI sessions to summarize weekly paper-only operating discipline. It reads sessions, daily checklists, operational decisions, UI action logs, paper journal, outcomes, decision quality, paper cycle audit, calibration, and calibration recommendations. It is observational only: no automatic trading changes, no scoring changes, no threshold changes, manual review only, paper trading only, and no real orders.
-
-Commands:
-
-- `python .\tools\gui_weekly_operational_review.py`
-- `python .\tools\gui_weekly_operational_review.py --days 5`
-- `python .\tools\gui_weekly_operational_review_audit.py`
-
-Review:
-
-- `reports/gui_weekly_operational_review_latest.md`
-- `reports/gui_weekly_operational_review_latest.csv`
-- `reports/gui_weekly_operational_review_audit_latest.md`
-
-## Evidence Collection Window
-
-Use `tools/gui_evidence_collection_window.py` to consolidate multi-session evidence before any human calibration review. It reads supervised sessions, daily checklists, GUI decisions, weekly reviews, UI action logs, paper journal, outcomes, and calibration reports. It only declares observational readiness and does not change scoring, thresholds, ranking, scanner logic, journal rows, outcomes, or signals.
-
-Commands:
-
-- `python .\tools\gui_evidence_collection_window.py`
-- `python .\tools\gui_evidence_collection_window.py --days 20`
-- `python .\tools\gui_evidence_collection_window.py --min-sessions 10 --min-decisions 40 --min-paper-enters 10 --min-closed-trades 5`
-- `python .\tools\gui_evidence_collection_audit.py`
-
-Review:
-
-- `reports/gui_evidence_collection_window_latest.md`
-- `reports/gui_evidence_collection_window_latest.csv`
-- `reports/gui_evidence_collection_audit_latest.md`
  

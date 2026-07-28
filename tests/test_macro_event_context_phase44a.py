@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from tools import macro_event_context as macro
 
@@ -24,13 +25,19 @@ def _calendar(tmp_path: Path, event_date: str, *, updated_at: str = "2026-06-23"
 
 
 def _request_ok(url: str, timeout_seconds: int) -> tuple[int, str]:
-    if "M2SL" in url:
+    series_id = parse_qs(urlparse(url).query)["id"][0]
+    if series_id == "M2SL":
         return 200, _fred_csv("M2SL", [("2026-05-01", 21000), ("2026-06-01", 21210)])
-    if "RRPONTSYD" in url:
+    if series_id == "RRPONTSYD":
         return 200, _fred_csv("RRPONTSYD", [("2026-05-25", 100), ("2026-06-22", 80)])
-    if "DFF" in url:
+    if series_id == "DFF":
         return 200, _fred_csv("DFF", [("2026-05-25", 4.25), ("2026-06-22", 4.25)])
-    raise AssertionError(url)
+    if series_id == "M2V":
+        return 200, _fred_csv(series_id, [("2026-01-01", 1.2), ("2026-04-01", 1.3)])
+    frequency = macro.SERIES_CONFIG[series_id]["frequency"]
+    if frequency == "monthly":
+        return 200, _fred_csv(series_id, [("2026-05-01", 100), ("2026-06-01", 101)])
+    return 200, _fred_csv(series_id, [("2026-05-25", 100), ("2026-06-22", 101)])
 
 
 def test_fred_parser_calculates_latest_and_four_week_change() -> None:
@@ -88,12 +95,22 @@ def test_run_report_combines_events_and_liquidity_without_execution_changes(tmp_
     result = macro.run_report(
         calendar_path=_calendar(tmp_path, "2026-06-24"),
         request_fn=_request_ok,
+        cache_path=tmp_path / "fred_cache.json",
         as_of=datetime(2026, 6, 23, 12, 0, tzinfo=timezone.utc),
     )
 
     assert result["status"] == "PASS"
     assert result["event_risk_status"] == "WITHIN_1_DAY"
     assert result["liquidity_context"] == "EXPANDING"
+    assert result["macro_regime_mode"] in {
+        "RISK_ON_SUPPORTIVE",
+        "BALANCED_MACRO",
+        "DEFENSIVE",
+        "EVENT_RISK_ELEVATED",
+        "LIQUIDITY_CONFLICT",
+        "UNKNOWN",
+    }
+    assert result["macro_regime_confidence"] in {"HIGH", "MEDIUM", "UNKNOWN"}
     assert result["m2_latest"] == 21210
     assert result["reverse_repo_latest"] == 80
     assert result["guardrails"] == {
@@ -112,6 +129,7 @@ def test_network_failures_generate_warn_reports(tmp_path: Path) -> None:
     result = macro.run_report(
         calendar_path=_calendar(tmp_path, "2026-07-02"),
         request_fn=fail_request,
+        cache_path=tmp_path / "fred_cache.json",
         as_of=datetime(2026, 6, 23, tzinfo=timezone.utc),
     )
     json_out = tmp_path / "macro.json"

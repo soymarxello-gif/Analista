@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="Legacy manual paper trading flow removed; simple_candidate_posttest is the active feedback loop.")
+
 import json
 from pathlib import Path
 

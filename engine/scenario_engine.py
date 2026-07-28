@@ -48,6 +48,58 @@ def _json(items: list[str]) -> str:
     return json.dumps(items, ensure_ascii=False)
 
 
+def _weekly_macd_histogram_metrics(df: pd.DataFrame) -> dict[str, Any]:
+    empty = {
+        "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_UNKNOWN",
+        "weekly_macd_hist": None,
+        "weekly_macd_hist_change_1w": None,
+        "weekly_macd_hist_change_2w": None,
+        "weekly_macd_hist_two_week_rising": False,
+        "weekly_macd_hist_two_week_falling": False,
+    }
+    if df is None or df.empty or "close" not in df.columns:
+        return empty
+    if not isinstance(df.index, pd.DatetimeIndex) or len(df) < 90:
+        return empty
+
+    weekly_close = df["close"].astype(float).resample("W-FRI").last().dropna()
+    if len(weekly_close) < 35:
+        return empty
+
+    macd = weekly_close.ewm(span=12, adjust=False).mean() - weekly_close.ewm(span=26, adjust=False).mean()
+    signal = macd.ewm(span=9, adjust=False).mean()
+    hist = macd - signal
+    latest = _float(hist.iloc[-1])
+    previous = _float(hist.iloc[-2])
+    two_ago = _float(hist.iloc[-3])
+    if latest is None or previous is None or two_ago is None:
+        return empty
+
+    two_week_rising = latest > previous >= two_ago
+    two_week_falling = latest < previous < two_ago
+    if two_week_rising:
+        state = "WEEKLY_MACD_HIST_IMPROVING"
+    elif latest < previous and latest <= 0:
+        state = "WEEKLY_MACD_HIST_BEARISH"
+    elif latest < previous:
+        state = "WEEKLY_MACD_HIST_DECELERATING"
+    else:
+        state = "WEEKLY_MACD_HIST_MIXED"
+
+    return {
+        "weekly_macd_histogram_state": state,
+        "weekly_macd_hist": latest,
+        "weekly_macd_hist_change_1w": latest - previous,
+        "weekly_macd_hist_change_2w": latest - two_ago,
+        "weekly_macd_hist_two_week_rising": two_week_rising,
+        "weekly_macd_hist_two_week_falling": two_week_falling,
+    }
+
+
+def _weekly_macd_histogram_state(df: pd.DataFrame) -> str:
+    return str(_weekly_macd_histogram_metrics(df).get("weekly_macd_histogram_state"))
+
+
 def build_technical_evidence(df: pd.DataFrame, *, trigger_level: float | None = None) -> dict:
     if df is None or df.empty or len(df) < 21:
         return {"evidence_available": False}
@@ -56,6 +108,7 @@ def build_technical_evidence(df: pd.DataFrame, *, trigger_level: float | None = 
     previous = df.iloc[-2]
     close = _float(row.get("close"))
     atr = _float(row.get("atr"))
+    ema20 = _float(row.get("ema20"))
     sma20 = _float(row.get("sma20"))
     sma50 = _float(row.get("sma50"))
     sma200 = _float(row.get("sma200"))
@@ -65,6 +118,9 @@ def build_technical_evidence(df: pd.DataFrame, *, trigger_level: float | None = 
     macd_signal = _float(row.get("macd_signal"))
     macd_hist = _float(row.get("macd_hist"))
     macd_hist_previous = _float(previous.get("macd_hist"))
+    macd_hist_2d_ago = _float(df["macd_hist"].iloc[-3]) if "macd_hist" in df and len(df) >= 3 else None
+    macd_hist_3d_ago = _float(df["macd_hist"].iloc[-4]) if "macd_hist" in df and len(df) >= 4 else None
+    ema20_5d_ago = _float(df["ema20"].iloc[-6]) if "ema20" in df and len(df) >= 6 else None
     sma20_5d_ago = _float(df["sma20"].iloc[-6]) if "sma20" in df and len(df) >= 6 else None
     sma50_10d_ago = _float(df["sma50"].iloc[-11]) if "sma50" in df and len(df) >= 11 else None
     recent_high = _float(df["high"].shift(1).tail(20).max())
@@ -85,6 +141,8 @@ def build_technical_evidence(df: pd.DataFrame, *, trigger_level: float | None = 
             return None
         return (close - reference) / atr
 
+    weekly_macd = _weekly_macd_histogram_metrics(df)
+
     return {
         "evidence_available": close is not None,
         "technical_close": close,
@@ -98,13 +156,40 @@ def build_technical_evidence(df: pd.DataFrame, *, trigger_level: float | None = 
             if macd_hist is not None and macd_hist_previous is not None
             else None
         ),
+        "technical_macd_hist_change_2d": (
+            macd_hist - macd_hist_2d_ago
+            if macd_hist is not None and macd_hist_2d_ago is not None
+            else None
+        ),
+        "technical_macd_hist_change_3d": (
+            macd_hist - macd_hist_3d_ago
+            if macd_hist is not None and macd_hist_3d_ago is not None
+            else None
+        ),
+        "technical_macd_hist_two_day_rising": bool(
+            macd_hist is not None
+            and macd_hist_previous is not None
+            and macd_hist_2d_ago is not None
+            and macd_hist > macd_hist_previous > macd_hist_2d_ago
+        ),
+        "technical_macd_hist_two_day_falling": bool(
+            macd_hist is not None
+            and macd_hist_previous is not None
+            and macd_hist_2d_ago is not None
+            and macd_hist < macd_hist_previous < macd_hist_2d_ago
+        ),
+        **weekly_macd,
+        "technical_ema20": ema20,
         "technical_sma20": sma20,
         "technical_sma50": sma50,
         "technical_sma200": sma200,
+        "technical_ema20_slope_5d_pct": _pct_change(ema20, ema20_5d_ago),
         "technical_sma20_slope_5d_pct": _pct_change(sma20, sma20_5d_ago),
         "technical_sma50_slope_10d_pct": _pct_change(sma50, sma50_10d_ago),
+        "technical_distance_ema20_pct": distance(ema20),
         "technical_distance_sma20_pct": distance(sma20),
         "technical_distance_sma50_pct": distance(sma50),
+        "technical_distance_ema20_atr": distance_atr(ema20),
         "technical_distance_sma20_atr": distance_atr(sma20),
         "technical_distance_sma50_atr": distance_atr(sma50),
         "technical_trigger_distance_pct": distance(trigger_level),
@@ -134,6 +219,29 @@ def build_technical_evidence(df: pd.DataFrame, *, trigger_level: float | None = 
     }
 
 
+def classify_macd_histogram(evidence: dict) -> str:
+    hist = _float(evidence.get("technical_macd_hist"))
+    hist_change_1d = _float(evidence.get("technical_macd_hist_change_1d"))
+    two_day_rising = bool(evidence.get("technical_macd_hist_two_day_rising"))
+    two_day_falling = bool(evidence.get("technical_macd_hist_two_day_falling"))
+
+    if hist is None or hist_change_1d is None:
+        return "MACD_HIST_UNKNOWN"
+    improving = two_day_rising
+    deteriorating = two_day_falling
+    flat = abs(hist_change_1d) < 1e-9
+
+    if improving and hist < 0:
+        return "MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO"
+    if improving and hist >= 0:
+        return "MACD_HIST_POSITIVE_EXPANDING"
+    if deteriorating:
+        return "MACD_HIST_DETERIORATING"
+    if flat:
+        return "MACD_HIST_FLATTENING"
+    return "MACD_HIST_MIXED"
+
+
 def classify_momentum(evidence: dict) -> tuple[str, list[str], list[str]]:
     rsi = _float(evidence.get("technical_rsi"))
     rsi_change = _float(evidence.get("technical_rsi_change_5d"))
@@ -141,6 +249,8 @@ def classify_momentum(evidence: dict) -> tuple[str, list[str], list[str]]:
     macd_signal = _float(evidence.get("technical_macd_signal"))
     hist = _float(evidence.get("technical_macd_hist"))
     hist_change = _float(evidence.get("technical_macd_hist_change_1d"))
+    hist_state = classify_macd_histogram(evidence)
+    ema20_slope = _float(evidence.get("technical_ema20_slope_5d_pct"))
     sma20_slope = _float(evidence.get("technical_sma20_slope_5d_pct"))
     positives: list[str] = []
     negatives: list[str] = []
@@ -159,18 +269,24 @@ def classify_momentum(evidence: dict) -> tuple[str, list[str], list[str]]:
         )
     if macd > macd_signal:
         positives.append("macd_above_signal")
-    else:
+    elif hist_state not in {"MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO", "MACD_HIST_POSITIVE_EXPANDING"}:
         negatives.append("macd_below_signal")
-    if hist is not None and hist_change is not None:
-        if hist > 0 and hist_change >= 0:
-            positives.append("macd_hist_positive_and_improving")
-        elif hist_change < 0:
-            negatives.append("macd_hist_deteriorating")
-    if sma20_slope is not None:
-        if sma20_slope > 0:
-            positives.append("sma20_rising")
-        elif sma20_slope < 0:
-            negatives.append("sma20_falling")
+    if hist_state == "MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO":
+        positives.append("macd_hist_bullish_inflection_below_zero")
+    elif hist_state == "MACD_HIST_POSITIVE_EXPANDING":
+        positives.append("macd_hist_positive_expanding")
+    elif hist_state == "MACD_HIST_DETERIORATING":
+        negatives.append("macd_hist_deteriorating")
+    elif hist_state == "MACD_HIST_FLATTENING":
+        negatives.append("macd_hist_flattening")
+
+    slope = ema20_slope if ema20_slope is not None else sma20_slope
+    slope_label = "ema20" if ema20_slope is not None else "sma20"
+    if slope is not None:
+        if slope > 0:
+            positives.append(f"{slope_label}_rising")
+        elif slope < 0:
+            negatives.append(f"{slope_label}_falling")
 
     if len(negatives) >= 3 or "rsi_weak" in negatives:
         state = "WEAK"
@@ -189,26 +305,68 @@ def classify_extension(evidence: dict, setup_type: str) -> tuple[str, list[str]]
     rsi = _float(evidence.get("technical_rsi"))
     trigger_pct = _float(evidence.get("technical_trigger_distance_pct"))
     trigger_atr = _float(evidence.get("technical_trigger_distance_atr"))
+    ema20_pct = _float(evidence.get("technical_distance_ema20_pct"))
+    sma20_pct = _float(evidence.get("technical_distance_sma20_pct"))
+    ema20_atr = _float(evidence.get("technical_distance_ema20_atr"))
     sma20_atr = _float(evidence.get("technical_distance_sma20_atr"))
     reasons: list[str] = []
+    caution_reasons: list[str] = []
+    severe_reasons: list[str] = []
 
     if rsi is not None and rsi > 75:
-        reasons.append("rsi_above_75")
+        severe_reasons.append("rsi_above_75")
+    reference_atr = ema20_atr if ema20_atr is not None else sma20_atr
+    reference_pct = ema20_pct if ema20_pct is not None else sma20_pct
+    reference_label = "ema20" if ema20_atr is not None else "sma20_fallback"
+    if reference_atr is not None:
+        if reference_atr > 2.0 and (reference_pct is None or reference_pct > 0.06):
+            severe_reasons.append(f"price_more_than_2atr_and_6pct_above_{reference_label}")
+        elif reference_atr > 1.25 and reference_pct is not None and reference_pct > 0.05:
+            reasons.append(f"price_more_than_1_25atr_and_5pct_above_{reference_label}")
+        elif reference_atr > 1.25:
+            caution_reasons.append(f"price_more_than_1_25atr_above_{reference_label}")
+        elif reference_atr > 0.75:
+            caution_reasons.append(f"price_more_than_0_75atr_above_{reference_label}")
     if setup_type == "BREAKOUT":
         if trigger_pct is not None and trigger_pct > 0.03:
-            reasons.append("price_more_than_3pct_above_breakout")
+            severe_reasons.append("price_more_than_3pct_above_breakout")
         if trigger_atr is not None and trigger_atr > 1.0:
-            reasons.append("price_more_than_1atr_above_breakout")
-    elif setup_type in {"PULLBACK", "RECLAIM"}:
-        if sma20_atr is not None and sma20_atr > 1.25:
-            reasons.append("price_more_than_1_25atr_above_sma20")
+            caution_reasons.append("price_more_than_1atr_above_breakout")
+    elif setup_type in {"PULLBACK", "RECLAIM", "MACD_MOMENTUM"}:
+        if sma20_atr is not None and sma20_atr > 1.25 and sma20_pct is not None and sma20_pct > 0.05:
+            reasons.append("price_more_than_1_25atr_and_5pct_above_sma20")
+        elif sma20_atr is not None and sma20_atr > 1.25:
+            caution_reasons.append("price_more_than_1_25atr_above_sma20")
+    all_reasons = severe_reasons + reasons + caution_reasons
+    if severe_reasons:
+        return "LATE_ENTRY", all_reasons
     if len(reasons) >= 2:
-        return "LATE_ENTRY", reasons
+        return "LATE_ENTRY", all_reasons
     if reasons:
-        return "OVEREXTENDED", reasons
+        return "OVEREXTENDED", all_reasons
+    if caution_reasons:
+        return "CAUTION", all_reasons
     if trigger_atr is not None and trigger_atr > 0.65:
         return "CAUTION", ["price_extended_from_trigger"]
-    return "HEALTHY", reasons
+    return "HEALTHY", all_reasons
+
+
+def classify_ema20_extension_status(evidence: dict) -> str:
+    ema20_atr = _float(evidence.get("technical_distance_ema20_atr"))
+    ema20_pct = _float(evidence.get("technical_distance_ema20_pct"))
+    if ema20_atr is None:
+        return "UNKNOWN"
+    if ema20_atr > 2.0 and (ema20_pct is None or ema20_pct > 0.06):
+        return "LATE_ENTRY"
+    if ema20_atr > 1.25 and ema20_pct is not None and ema20_pct > 0.05:
+        return "OVEREXTENDED"
+    if ema20_atr > 0.75:
+        return "CAUTION"
+    return "HEALTHY"
+
+
+def _state_score(state: str, mapping: dict[str, float], default: float = 50.0) -> float:
+    return float(mapping.get(str(state or "").upper(), default))
 
 
 def analyze_scenario(
@@ -228,7 +386,11 @@ def analyze_scenario(
             "scenario_contradictions": "[]",
             "momentum_state": "UNKNOWN",
             "extension_state": "UNKNOWN",
+            "ema20_extension_status": "UNKNOWN",
             "entry_timing_status": "NOT_EVALUATED",
+            "timing_quality_score": 0.0,
+            "momentum_confirmation_score": 0.0,
+            "macd_histogram_state": "MACD_HIST_UNKNOWN",
             "required_confirmation": "",
             "invalidation_reason": "",
             "engine_recommendation": "FUNNEL_ONLY",
@@ -246,7 +408,11 @@ def analyze_scenario(
             "scenario_contradictions": _json(["technical_evidence_missing"]),
             "momentum_state": "UNKNOWN",
             "extension_state": "UNKNOWN",
+            "ema20_extension_status": "UNKNOWN",
             "entry_timing_status": "NOT_EVALUATED",
+            "timing_quality_score": 0.0,
+            "momentum_confirmation_score": 0.0,
+            "macd_histogram_state": "MACD_HIST_UNKNOWN",
             "required_confirmation": "obtain_complete_technical_history",
             "invalidation_reason": "technical_evidence_missing",
             "engine_recommendation": "DO_NOT_ADVANCE",
@@ -256,6 +422,47 @@ def analyze_scenario(
     setup = str(setup_type or "NO_VALID_SETUP").upper()
     momentum_state, momentum_evidence, momentum_conflicts = classify_momentum(evidence)
     extension_state, extension_reasons = classify_extension(evidence, setup)
+    macd_histogram_state = classify_macd_histogram(evidence)
+    weekly_macd_histogram_state = str(evidence.get("weekly_macd_histogram_state") or "WEEKLY_MACD_HIST_UNKNOWN")
+    weekly_macd_improving = weekly_macd_histogram_state == "WEEKLY_MACD_HIST_IMPROVING"
+    weekly_macd_non_bearish = weekly_macd_histogram_state != "WEEKLY_MACD_HIST_BEARISH"
+    ema20_extension_status = classify_ema20_extension_status(evidence)
+    ema20_distance_atr = _float(evidence.get("technical_distance_ema20_atr"))
+    ema20_distance_pct = _float(evidence.get("technical_distance_ema20_pct"))
+    ema20_caution_strong = bool(
+        ema20_extension_status == "CAUTION"
+        and (
+            (ema20_distance_atr is not None and ema20_distance_atr > 1.25)
+            or (ema20_distance_pct is not None and ema20_distance_pct > 0.04)
+        )
+    )
+    momentum_confirmation_score = _state_score(
+        momentum_state,
+        {
+            "STRONG": 95.0,
+            "IMPROVING": 82.0,
+            "STABLE": 65.0,
+            "DETERIORATING": 35.0,
+            "WEAK": 20.0,
+            "UNKNOWN": 45.0,
+        },
+    )
+    if macd_histogram_state == "MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO":
+        momentum_confirmation_score = max(momentum_confirmation_score, 74.0)
+    elif macd_histogram_state == "MACD_HIST_POSITIVE_EXPANDING":
+        momentum_confirmation_score = max(momentum_confirmation_score, 82.0)
+    elif macd_histogram_state == "MACD_HIST_DETERIORATING":
+        momentum_confirmation_score = min(momentum_confirmation_score, 42.0)
+    timing_quality_score = _state_score(
+        extension_state,
+        {
+            "HEALTHY": 90.0,
+            "CAUTION": 58.0,
+            "OVEREXTENDED": 28.0,
+            "LATE_ENTRY": 10.0,
+            "UNKNOWN": 45.0,
+        },
+    )
     supportive = list(momentum_evidence)
     conflicts = list(momentum_conflicts) + extension_reasons
     relative_volume = _float(evidence.get("technical_relative_volume"), 0.0) or 0.0
@@ -267,7 +474,19 @@ def analyze_scenario(
     thesis = ""
     scenario_trigger = False
 
-    if setup not in {"BREAKOUT", "PULLBACK", "RECLAIM"}:
+    if weekly_macd_histogram_state == "WEEKLY_MACD_HIST_BEARISH":
+        conflicts.append("weekly_macd_hist_bearish")
+    elif weekly_macd_histogram_state == "WEEKLY_MACD_HIST_DECELERATING":
+        conflicts.append("weekly_macd_hist_decelerating")
+    elif weekly_macd_histogram_state == "WEEKLY_MACD_HIST_MIXED":
+        conflicts.append("weekly_macd_hist_mixed")
+    elif weekly_macd_histogram_state == "WEEKLY_MACD_HIST_UNKNOWN":
+        conflicts.append("weekly_macd_hist_unknown")
+
+    if ema20_caution_strong:
+        conflicts.append("ema20_extension_caution_strong")
+
+    if setup not in {"BREAKOUT", "PULLBACK", "RECLAIM", "MACD_MOMENTUM"}:
         status = "STRUCTURE_INVALID"
         thesis = "No actionable scenario structure is present."
         conflicts.append("unsupported_or_missing_setup")
@@ -289,7 +508,13 @@ def analyze_scenario(
             supportive.append("breakout_volume_confirmed")
         else:
             conflicts.append("breakout_volume_below_1_3")
-        scenario_trigger = bool(level_ok and volume_ok and momentum_state in {"STRONG", "IMPROVING"})
+        scenario_trigger = bool(
+            level_ok
+            and volume_ok
+            and weekly_macd_improving
+            and not ema20_caution_strong
+            and momentum_state in {"STRONG", "IMPROVING"}
+        )
         status = "VALID_TRIGGER" if scenario_trigger else "WAIT_FOR_CONFIRMATION"
         thesis = "Breakout continuation with volume and momentum confirmation."
         required_confirmation = "" if scenario_trigger else "close_above_resistance_with_volume_and_momentum"
@@ -319,12 +544,14 @@ def analyze_scenario(
         scenario_trigger = bool(
             support_ok
             and rejection_candle
+            and weekly_macd_improving
+            and not ema20_caution_strong
             and momentum_state in {"STRONG", "IMPROVING", "STABLE"}
         )
         status = "VALID_TRIGGER" if scenario_trigger else "WAIT_FOR_CONFIRMATION"
         thesis = "Orderly pullback into support with rejection and momentum stabilization."
         required_confirmation = "" if scenario_trigger else "bullish_rejection_near_support_with_stable_momentum"
-    else:
+    elif setup == "RECLAIM":
         level_ok = close is not None and trigger is not None and close > trigger
         volume_ok = relative_volume >= 1.10
         if level_ok:
@@ -336,11 +563,60 @@ def analyze_scenario(
         else:
             conflicts.append("reclaim_volume_below_1_1")
         scenario_trigger = bool(
-            level_ok and bullish_candle and volume_ok and momentum_state not in {"WEAK", "DETERIORATING"}
+            level_ok
+            and bullish_candle
+            and volume_ok
+            and weekly_macd_improving
+            and not ema20_caution_strong
+            and momentum_state not in {"WEAK", "DETERIORATING"}
         )
         status = "VALID_TRIGGER" if scenario_trigger else "WAIT_FOR_CONFIRMATION"
         thesis = "Reclaim of support with closing and volume confirmation."
         required_confirmation = "" if scenario_trigger else "hold_reclaimed_level_with_volume"
+    else:
+        hist_ok = macd_histogram_state in {
+            "MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO",
+            "MACD_HIST_POSITIVE_EXPANDING",
+        }
+        weekly_ok = weekly_macd_improving
+        volume_ok = relative_volume >= 0.80
+        if hist_ok:
+            supportive.append("daily_macd_hist_two_day_rising")
+        else:
+            conflicts.append("daily_macd_hist_not_two_day_rising")
+        if weekly_ok:
+            supportive.append("weekly_macd_hist_improving")
+        else:
+            conflicts.append("weekly_macd_hist_not_improving")
+        if volume_ok:
+            supportive.append("relative_volume_acceptable_for_momentum")
+        else:
+            conflicts.append("relative_volume_below_0_8")
+        scenario_trigger = bool(
+            hist_ok
+            and weekly_ok
+            and bullish_candle
+            and momentum_state in {"STRONG", "IMPROVING"}
+            and extension_state == "HEALTHY"
+        )
+        status = "VALID_TRIGGER" if scenario_trigger else "WAIT_FOR_CONFIRMATION"
+        thesis = "MACD histogram momentum is improving inside a constructive trend."
+        required_confirmation = "" if scenario_trigger else "daily_macd_hist_2d_rising_weekly_improving_and_clean_candle"
+
+    if not weekly_macd_improving and status == "VALID_TRIGGER":
+        status = "WEAK_MOMENTUM" if weekly_macd_histogram_state == "WEEKLY_MACD_HIST_BEARISH" else "WAIT_FOR_CONFIRMATION"
+        scenario_trigger = False
+        required_confirmation = "weekly_macd_histogram_resumes_rising"
+
+    if ema20_caution_strong and status == "VALID_TRIGGER":
+        status = "WAIT_FOR_CONFIRMATION"
+        scenario_trigger = False
+        required_confirmation = "wait_for_pullback_or_consolidation_near_ema20"
+
+    if not weekly_macd_improving and status == "WAIT_FOR_CONFIRMATION":
+        required_confirmation = "weekly_macd_histogram_resumes_rising"
+    elif ema20_caution_strong and status == "WAIT_FOR_CONFIRMATION":
+        required_confirmation = "wait_for_pullback_or_consolidation_near_ema20"
 
     if str(market_regime).upper() == "RISK_OFF" and status == "VALID_TRIGGER":
         status = "CONTEXT_CONFLICT"
@@ -367,7 +643,19 @@ def analyze_scenario(
         "scenario_contradictions": _json(conflicts),
         "momentum_state": momentum_state,
         "extension_state": extension_state,
+        "ema20_extension_status": ema20_extension_status,
         "entry_timing_status": "ON_TIME" if extension_state == "HEALTHY" else extension_state,
+        "timing_quality_score": round(timing_quality_score, 2),
+        "momentum_confirmation_score": round(momentum_confirmation_score, 2),
+        "macd_histogram_state": macd_histogram_state,
+        "weekly_macd_histogram_state": weekly_macd_histogram_state,
+        "weekly_macd_hist_non_bearish": weekly_macd_non_bearish,
+        "weekly_macd_hist_improving": weekly_macd_improving,
+        "weekly_macd_hist": evidence.get("weekly_macd_hist"),
+        "weekly_macd_hist_change_1w": evidence.get("weekly_macd_hist_change_1w"),
+        "weekly_macd_hist_change_2w": evidence.get("weekly_macd_hist_change_2w"),
+        "weekly_macd_hist_two_week_rising": evidence.get("weekly_macd_hist_two_week_rising"),
+        "weekly_macd_hist_two_week_falling": evidence.get("weekly_macd_hist_two_week_falling"),
         "required_confirmation": required_confirmation,
         "invalidation_reason": "; ".join(conflicts),
         "engine_recommendation": recommendation_map.get(status, "MANUAL_REVIEW"),

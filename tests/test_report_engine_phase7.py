@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -107,6 +108,14 @@ def test_save_reports_creates_csv_json_markdown_html(tmp_path: Path):
     assert csv_path.exists()
     assert md_path.exists()
     assert html_path.exists()
+
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "compact_scan_summary_v1"
+    assert payload["json_is_compact"] is True
+    assert payload["csv_is_full_audit_source"] is True
+    assert payload["rows"] == 1
+    assert payload["counts"]["signal"] == {"WATCHLIST": 1}
+    assert payload["top_candidates"][0]["ticker"] == "AAA"
 
     csv_df = pd.read_csv(csv_path)
     assert "recommendation" in csv_df.columns
