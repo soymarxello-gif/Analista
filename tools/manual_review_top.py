@@ -30,8 +30,40 @@ TOP_COLUMNS = [
     "momentum_penalty_reason",
     "engine_block_reason",
     "execution_readiness_status",
+    "operational_status",
+    "sector_leadership_override_status",
+    "sector_headwind_strength",
+    "technical_opportunity_score",
+    "decision_lane",
+    "decision_reasons",
+    "technical_asset_quality_score",
+    "entry_readiness_score",
+    "research_priority_score",
+    "reset_watch_score",
+    "context_confidence_score",
+    "technical_analysis_lane",
+    "deep_analysis_tier",
+    "operational_eligibility",
+    "research_eligibility_reason",
+    "setup_readiness_score",
+    "setup_readiness_state",
+    "setup_candidate_type",
+    "primary_setup_hypothesis",
+    "primary_setup_hypothesis_state",
+    "primary_setup_hypothesis_score",
+    "alternative_setup_hypotheses",
+    "setup_hypothesis_count",
+    "technical_eligibility_reason",
+    "trend_setup_compatibility",
+    "research_trend_compatibility",
+    "research_trend_compatibility_reason",
+    "momentum_gate_status",
+    "timing_gate_status",
+    "core_liquidity_status",
+    "execution_spread_status",
     "technical_prefilter_status",
     "technical_prefilter_reason",
+    "technical_prefilter_triage",
     "daily_macd_prefilter_status",
     "weekly_macd_prefilter_status",
     "ema20_extension_prefilter_status",
@@ -40,6 +72,20 @@ TOP_COLUMNS = [
     "setup_quality_score",
     "final_score",
     "rr",
+    "rr_status",
+    "rr_stressed",
+    "risk_geometry_status",
+    "risk_geometry_reason",
+    "rr_confidence",
+    "target_validation_source",
+    "target_validation_sources",
+    "entry_zone_low",
+    "entry_zone_high",
+    "technical_as_of_date",
+    "technical_bar_policy",
+    "daily_bar_complete",
+    "weekly_bar_complete",
+    "intraday_bar_excluded",
     "setup_type",
     "quote_status",
     "execution_quote_quality",
@@ -47,6 +93,16 @@ TOP_COLUMNS = [
     "stop_atr_status",
     "sector",
     "industry",
+    "earnings_date",
+    "days_to_earnings",
+    "earnings_as_of_date",
+    "earnings_event_status",
+    "earnings_data_confidence",
+    "earnings_days_recomputed",
+    "earnings_refresh_required",
+    "earnings_operability_block",
+    "earnings_review_reason",
+    "earnings_consistency_status",
     "signal_path",
     "score_delta",
     "rank_delta",
@@ -65,10 +121,34 @@ TOP_COLUMNS = [
     "entry_timing_status",
     "macd_histogram_state",
     "weekly_macd_histogram_state",
+    "daily_macd_trajectory_state",
+    "daily_macd_trajectory_confidence",
+    "daily_macd_hist_slope",
+    "daily_macd_hist_acceleration",
+    "daily_macd_non_decelerating",
+    "weekly_macd_trajectory_state",
+    "weekly_macd_trajectory_confidence",
+    "weekly_macd_hist_slope",
+    "weekly_macd_hist_acceleration",
+    "weekly_macd_non_decelerating",
+    "momentum_alignment",
+    "momentum_alignment_confidence",
+    "momentum_acceleration_score",
+    "momentum_persistence_score",
+    "momentum_operability_status",
     "weekly_macd_hist_improving",
     "weekly_macd_hist",
     "weekly_macd_hist_change_1w",
     "weekly_macd_hist_change_2w",
+    "ema20_extension_risk",
+    "ema20_extension_confidence",
+    "ema20_extension_driver",
+    "ema20_distance_percentile_1y",
+    "ema20_extension_model",
+    "trend_transition_score",
+    "trend_transition_state",
+    "trend_transition_reason",
+    "entry_chase_risk",
     "sector_benchmark_symbol",
     "sector_weekly_macd_hist",
     "sector_weekly_macd_slope_1w",
@@ -79,12 +159,20 @@ TOP_COLUMNS = [
     "sector_context_status",
     "sector_context_reason",
     "required_confirmation",
+    "required_confirmations",
+    "invalidation_conditions",
     "engine_recommendation",
     "shadow_entry",
     "shadow_stop",
     "shadow_target",
     "shadow_rr",
     "shadow_stop_atr_multiple",
+    "market_opportunity_status",
+    "sector_relative_return_20d",
+    "sector_relative_return_60d",
+    "sector_relative_line_slope_20d",
+    "sector_relative_strength_score",
+    "sector_relative_leadership_status",
     "shadow_level_status",
     "technical_distance_ema20_atr",
     "technical_distance_ema20_pct",
@@ -95,9 +183,10 @@ TOP_COLUMNS = [
 
 GROUP_ORDER = {
     "1_ALTA_CALIDAD_OPERATIVA": 0,
-    "2_REQUIERE_RECHECK_QUOTE": 1,
-    "3_PERSISTENTE_NO_ACCIONABLE_TODAVIA": 2,
-    "4_DETERIORADO_O_DEBIL": 3,
+    "1B_REVISION_OPERATIVA_PRIORITARIA": 1,
+    "2_REQUIERE_RECHECK_QUOTE": 2,
+    "3_PERSISTENTE_NO_ACCIONABLE_TODAVIA": 3,
+    "4_DETERIORADO_O_DEBIL": 4,
 }
 
 
@@ -149,7 +238,8 @@ def _is_deteriorated(row: dict) -> bool:
     penalty = _safe_text(row.get("persistence_penalty_reason")).lower()
     scenario_status = _safe_text(row.get("scenario_status")).upper()
     weekly_macd_state = _safe_text(row.get("weekly_macd_histogram_state")).upper()
-    sector_macd_state = _safe_text(row.get("sector_weekly_macd_state")).upper()
+    daily_trajectory = _safe_text(row.get("daily_macd_trajectory_state")).upper()
+    weekly_trajectory = _safe_text(row.get("weekly_macd_trajectory_state")).upper()
     technical_prefilter_status = _safe_text(row.get("technical_prefilter_status")).upper()
 
     return (
@@ -166,8 +256,9 @@ def _is_deteriorated(row: dict) -> bool:
             "CONTEXT_CONFLICT",
             "DATA_INSUFFICIENT",
         }
+        or daily_trajectory in {"IMPROVING_BUT_DECELERATING", "DECLINING"}
+        or weekly_trajectory in {"IMPROVING_BUT_DECELERATING", "DECLINING"}
         or weekly_macd_state in {"WEEKLY_MACD_HIST_BEARISH", "WEEKLY_MACD_HIST_DECELERATING"}
-        or sector_macd_state in {"SECTOR_MACD_BEARISH", "SECTOR_MACD_DECELERATING"}
     )
 
 
@@ -201,11 +292,17 @@ def _scenario_allows_high_quality(row: dict) -> bool:
         return False
 
     weekly_macd_state = _safe_text(row.get("weekly_macd_histogram_state")).upper()
-    if weekly_macd_state and weekly_macd_state != "WEEKLY_MACD_HIST_IMPROVING":
+    daily_trajectory = _safe_text(row.get("daily_macd_trajectory_state")).upper()
+    weekly_trajectory = _safe_text(row.get("weekly_macd_trajectory_state")).upper()
+    if daily_trajectory and daily_trajectory not in {"ACCELERATING", "IMPROVING_STEADY"}:
         return False
-
-    sector_macd_state = _safe_text(row.get("sector_weekly_macd_state")).upper()
-    if sector_macd_state and sector_macd_state not in {"SECTOR_MACD_ACCELERATING", "SECTOR_MACD_IMPROVING"}:
+    if weekly_trajectory and weekly_trajectory not in {"ACCELERATING", "IMPROVING_STEADY"}:
+        return False
+    if (
+        not weekly_trajectory
+        and weekly_macd_state
+        and weekly_macd_state != "WEEKLY_MACD_HIST_IMPROVING"
+    ):
         return False
 
     return True
@@ -247,15 +344,48 @@ def _is_high_quality(row: dict) -> bool:
     )
 
 
+def _is_operational_review_priority(row: dict) -> bool:
+    signal = _safe_text(row.get("signal")).upper()
+    scenario_status = _safe_text(row.get("scenario_status")).upper()
+    quote_status = _safe_text(row.get("quote_status")).upper()
+    execution_quality = _safe_text(row.get("execution_quote_quality")).upper()
+    execution_readiness = _safe_text(row.get("execution_readiness_status")).upper()
+    technical_lane = _safe_text(row.get("technical_analysis_lane")).upper()
+    engine_block = _safe_text(row.get("engine_block_reason"))
+    readiness = _safe_float(row.get("operational_readiness_score"), 0.0)
+    entry_timing = _safe_text(row.get("entry_timing_status")).upper()
+    ema20_extension = _safe_text(row.get("ema20_extension_status")).upper()
+    daily_trajectory = _safe_text(row.get("daily_macd_trajectory_state")).upper()
+    weekly_trajectory = _safe_text(row.get("weekly_macd_trajectory_state")).upper()
+
+    return (
+        signal in {"WATCHLIST", "READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED"}
+        and scenario_status == "VALID_TRIGGER"
+        and quote_status == "VALID"
+        and execution_quality == "HIGH"
+        and execution_readiness in {"", "EXECUTION_READY_REVIEW"}
+        and technical_lane in {"", "ADVANCE_DEEP_ANALYSIS"}
+        and not engine_block
+        and readiness >= 65.0
+        and entry_timing in {"", "ON_TIME"}
+        and ema20_extension in {"", "HEALTHY"}
+        and daily_trajectory in {"", "ACCELERATING", "IMPROVING_STEADY"}
+        and weekly_trajectory in {"", "ACCELERATING", "IMPROVING_STEADY"}
+    )
+
+
 def classify_top_group(row: dict) -> str:
     if _is_deteriorated(row):
         return "4_DETERIORADO_O_DEBIL"
 
-    if _is_quote_recheck(row):
-        return "2_REQUIERE_RECHECK_QUOTE"
-
     if _is_high_quality(row):
         return "1_ALTA_CALIDAD_OPERATIVA"
+
+    if _is_operational_review_priority(row):
+        return "1B_REVISION_OPERATIVA_PRIORITARIA"
+
+    if _is_quote_recheck(row):
+        return "2_REQUIERE_RECHECK_QUOTE"
 
     return "3_PERSISTENTE_NO_ACCIONABLE_TODAVIA"
 
@@ -437,6 +567,8 @@ def save_manual_review_top_reports(
     csv_out.parent.mkdir(parents=True, exist_ok=True)
     markdown_out.parent.mkdir(parents=True, exist_ok=True)
 
+    if top_df.empty and len(top_df.columns) == 0:
+        top_df = pd.DataFrame(columns=TOP_COLUMNS)
     top_df.to_csv(csv_out, index=False)
 
     markdown = build_manual_review_top_markdown(top_df)

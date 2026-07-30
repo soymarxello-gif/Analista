@@ -231,10 +231,17 @@ def audit_latest_scan() -> list[str]:
             .str.upper()
             .eq("FAIL")
         )
+        canonical_non_advance = (
+            df.get("technical_analysis_lane", pd.Series("", index=df.index))
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .isin({"RADAR_FORMING_SETUP", "REJECT_MOMENTUM", "REJECT_RISK"})
+        )
         allowed_prefilter_avoid = (
-            technical_prefilter_failed
-            & df["signal"].astype(str).str.upper().eq("AVOID")
-            & recommendation.eq("AVOID_FOR_NOW")
+            (technical_prefilter_failed | canonical_non_advance)
+            & df["signal"].astype(str).str.upper().isin({"VETO", "AVOID"})
+            & recommendation.isin({"DO_NOT_TRADE", "AVOID_FOR_NOW"})
         )
         bad_setup = df[
             (df["setup_type"].astype(str) == "NO_VALID_SETUP")
@@ -242,7 +249,7 @@ def audit_latest_scan() -> list[str]:
             & ~allowed_prefilter_avoid
         ]
         if len(bad_setup) > 0:
-            issues.append("NO_VALID_SETUP fuera de VETO")
+            issues.append("NO_VALID_SETUP operable fuera de VETO/AVOID")
 
     return issues
 

@@ -123,7 +123,10 @@ def test_weekly_macd_decelerating_blocks_valid_trigger(monkeypatch) -> None:
     assert result["scenario_status"] == "WAIT_FOR_CONFIRMATION"
     assert result["scenario_trigger_confirmed"] is False
     assert result["weekly_macd_histogram_state"] == "WEEKLY_MACD_HIST_DECELERATING"
-    assert result["required_confirmation"] == "weekly_macd_histogram_resumes_rising"
+    assert (
+        result["required_confirmation"]
+        == "daily_and_weekly_macd_trajectories_resume_without_deceleration"
+    )
 
 
 def test_breakout_far_above_trigger_is_late_entry() -> None:
@@ -140,6 +143,39 @@ def test_breakout_far_above_trigger_is_late_entry() -> None:
     assert result["scenario_status"] == "LATE_ENTRY_OVEREXTENDED"
     assert result["engine_recommendation"] == "DO_NOT_CHASE"
     assert result["scenario_trigger_confirmed"] is False
+
+
+def test_scenario_reuses_precomputed_extension_evidence(monkeypatch) -> None:
+    df = _constructive_momentum(_history())
+    evidence = scenario_engine.build_technical_evidence(df, trigger_level=100.0)
+    evidence.update(
+        {
+            "ema20_extension_status": "HEALTHY",
+            "ema20_extension_risk": 0.12,
+            "ema20_extension_confidence": "HIGH",
+            "ema20_extension_driver": "extension_risk_controlled",
+            "ema20_extension_reasons": "extension_risk_controlled",
+            "entry_chase_risk": "HEALTHY",
+        }
+    )
+    monkeypatch.setattr(
+        scenario_engine,
+        "calculate_extension_risk",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("extension should be reused")
+        ),
+    )
+
+    result = analyze_scenario(
+        df,
+        setup_type="BREAKOUT",
+        trigger_level=100.0,
+        market_regime="RISK_ON",
+        technical_evidence=evidence,
+    )
+
+    assert result["ema20_extension_status"] == "HEALTHY"
+    assert result["technical_extension_evidence_reused"] is True
 
 
 def test_breakout_far_above_ema20_is_late_even_if_near_trigger() -> None:

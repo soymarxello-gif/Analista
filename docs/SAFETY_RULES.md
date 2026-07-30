@@ -25,6 +25,11 @@ Before any external trading decision, review:
 - Volume and relative volume.
 - Bid, ask, spread, and current price.
 - Actionable entry, stop, target, and R/R.
+- Only completed daily and weekly bars may confirm EOD momentum or a setup.
+- Research-lane candidates are not operational and cannot enter the automatic posttest.
+- A single ATR target projection is diagnostic. Only confluence between
+  independent target models can validate R/R with `MEDIUM` confidence; it still
+  requires every execution and P0 guardrail.
 - ATR stop status.
 - Earnings date or next earnings date.
 - News, gaps, unusual events, and macro context.

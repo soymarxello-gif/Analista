@@ -19,6 +19,7 @@ from tools.trade_candidate_cards import (
 )
 from tools.trade_decision_checklist import evaluate_checklist_row
 from engine.scanner_engine import apply_operational_signal_guardrails
+from scoring.operational_readiness import calculate_operational_readiness
 
 
 def _operational_candidate(**overrides) -> dict:
@@ -107,7 +108,7 @@ def test_non_operable_scenario_is_blocked_even_with_high_score_and_quote() -> No
 
     assert result["checklist_status"] == "BLOCKED"
     assert "scenario_not_operable_weak_momentum" in result["checklist_blockers"]
-    assert "scenario_not_eligible_for_backtest" in result["checklist_blockers"]
+    assert "scenario_not_eligible_for_backtest" not in result["checklist_blockers"]
     assert "wait_for_momentum_improvement" in result["checklist_required_actions"]
 
 
@@ -119,6 +120,16 @@ def test_invalid_shadow_levels_prevent_high_quality_without_replacing_levels() -
     assert result["checklist_status"] == "REVIEW_MANUALLY"
     assert "shadow_level_status_rr_below_minimum" in result["checklist_warnings"]
     assert "shadow" not in result["checklist_blockers"]
+
+
+def test_invalid_shadow_levels_do_not_create_an_engine_block() -> None:
+    result = calculate_operational_readiness(
+        _operational_candidate(shadow_level_status="RR_BELOW_MINIMUM"),
+        {},
+    )
+
+    assert result["engine_block_reason"] == ""
+    assert result["operational_status"] != "REJECTED_TECHNICAL"
 
 
 def test_ema20_overextension_prevents_high_quality_and_buy_now_memory() -> None:
@@ -133,8 +144,9 @@ def test_ema20_overextension_prevents_high_quality_and_buy_now_memory() -> None:
 
     assert result["checklist_status"] == "REVIEW_MANUALLY"
     assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
-    assert "ema20_extension_status_overextended" in result["checklist_warnings"]
-    assert "entry_timing_status_overextended" in result["checklist_warnings"]
+    assert "entry_timing_overextended" in result["checklist_warnings"]
+    assert "ema20_extension_status_overextended" not in result["checklist_warnings"]
+    assert "entry_timing_status_overextended" not in result["checklist_warnings"]
 
 
 def test_macd_histogram_deterioration_prevents_high_quality_and_buy_now_memory() -> None:

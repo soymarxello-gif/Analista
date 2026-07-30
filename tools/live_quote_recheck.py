@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from engine.data_sources.analysis_quotes import fetch_alpaca_iex_analysis_quotes
+
 
 BAD_QUOTE_STATUSES = {
     "INVALID",
@@ -34,6 +36,10 @@ RECHECK_DECISIONS = {
 
 OUTPUT_COLUMNS = [
     "ticker",
+    "prior_decision_lane",
+    "selection_origin",
+    "recheck_priority",
+    "prior_level_type",
     "prior_signal",
     "prior_recommendation",
     "prior_quote_status",
@@ -49,6 +55,15 @@ OUTPUT_COLUMNS = [
     "live_execution_quote_quality",
     "live_quote_source",
     "live_quote_timestamp",
+    "live_quote_age_minutes",
+    "live_data_freshness",
+    "corroboration_price",
+    "corroboration_bid",
+    "corroboration_ask",
+    "corroboration_source",
+    "corroboration_timestamp",
+    "corroboration_freshness",
+    "corroboration_status",
     "price_vs_entry_pct",
     "price_within_entry_band",
     "recheck_decision",
@@ -135,15 +150,122 @@ def select_recheck_candidates(input_df: pd.DataFrame) -> pd.DataFrame:
     return out[mask].copy().reset_index(drop=True)
 
 
+def _decision_lane(row: dict) -> str:
+    lane = _get_first_text(row, ["prior_decision_lane", "decision_lane", "technical_analysis_lane"])
+    return lane.upper() or "UNKNOWN"
+
+
+def _candidate_priority(row: dict) -> int | None:
+    lane = _decision_lane(row)
+    recommendation = _safe_text(row.get("recommendation")).upper()
+    bad_quote = (
+        _safe_text(row.get("quote_status")).upper() in BAD_QUOTE_STATUSES
+        or _safe_text(row.get("execution_quote_quality")).upper() == "LOW"
+    )
+    if lane == "EXECUTION_CANDIDATE" and bad_quote:
+        return 0
+    if recommendation in RECHECK_RECOMMENDATIONS:
+        return 1
+    if lane in {
+        "TACTICAL_RESEARCH",
+        "ADVANCE_RESEARCH_ANALYSIS",
+        "LEADERSHIP_RESET_WATCH",
+        "EXECUTION_CANDIDATE",
+    } and bad_quote:
+        return 2
+    if is_quote_recheck_candidate(row) and _safe_text(row.get("signal")).upper() != "VETO":
+        return 3
+    return None
+
+
+def build_recheck_input(
+    manual_df: pd.DataFrame | None,
+    scan_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    frames: list[pd.DataFrame] = []
+    for origin, frame in [("LATEST_SCAN", scan_df), ("MANUAL_REVIEW", manual_df)]:
+        if frame is None or frame.empty or "ticker" not in frame.columns:
+            continue
+        current = frame.copy()
+        current["ticker"] = current["ticker"].astype(str).str.strip().str.upper()
+        current["selection_origin"] = origin
+        frames.append(current)
+    if not frames:
+        return pd.DataFrame()
+
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    rows: list[dict] = []
+    for ticker, group in combined.groupby("ticker", sort=False):
+        scan_rows = group[group["selection_origin"] == "LATEST_SCAN"]
+        manual_rows = group[group["selection_origin"] == "MANUAL_REVIEW"]
+        base = (
+            scan_rows.iloc[-1].to_dict()
+            if not scan_rows.empty
+            else manual_rows.iloc[-1].to_dict()
+        )
+        if not manual_rows.empty:
+            for key, value in manual_rows.iloc[-1].to_dict().items():
+                if not _missing(value):
+                    base[key] = value
+        origins = sorted(set(group["selection_origin"].astype(str)))
+        base["ticker"] = ticker
+        base["selection_origin"] = "+".join(origins)
+        priority = _candidate_priority(base)
+        if priority is None:
+            continue
+        base["prior_decision_lane"] = _decision_lane(base)
+        base["recheck_priority"] = priority
+        rows.append(base)
+
+    if not rows:
+        return pd.DataFrame()
+    out = pd.DataFrame(rows)
+    score_col = "operational_readiness_score" if "operational_readiness_score" in out.columns else "final_trade_score"
+    sort_cols = ["recheck_priority"]
+    ascending = [True]
+    if score_col in out.columns:
+        sort_cols.append(score_col)
+        ascending.append(False)
+    sort_cols.append("ticker")
+    ascending.append(True)
+    return out.sort_values(sort_cols, ascending=ascending).reset_index(drop=True)
+
+
+def _timestamp_context(value, *, now: datetime | None = None) -> tuple[str, float | None, str]:
+    if value is None or _safe_text(value) == "":
+        return "", None, "UNKNOWN"
+    try:
+        if isinstance(value, (int, float)) or _safe_text(value).isdigit():
+            timestamp = datetime.fromtimestamp(float(value), tz=timezone.utc)
+        else:
+            timestamp = pd.to_datetime(value, utc=True).to_pydatetime()
+        current = now or datetime.now(timezone.utc)
+        age_minutes = max((current - timestamp).total_seconds() / 60.0, 0.0)
+        freshness = "REALTIME" if age_minutes <= 2 else "DELAYED_15_MIN" if age_minutes <= 20 else "STALE"
+        return timestamp.isoformat(), round(float(age_minutes), 2), freshness
+    except Exception:
+        return _safe_text(value), None, "UNKNOWN"
+
+
 def validate_live_quote(
     last_price: float | None,
     bid: float | None,
     ask: float | None,
     max_quote_distance_pct: float = 0.10,
     max_spread_pct: float | None = 0.03,
+    quote_timestamp=None,
+    require_timestamp: bool = False,
+    max_quote_age_minutes: float = 15.0,
 ) -> dict:
+    normalized_timestamp, age_minutes, freshness = _timestamp_context(quote_timestamp)
+    timestamp_fields = {
+        "live_quote_timestamp": normalized_timestamp,
+        "live_quote_age_minutes": age_minutes,
+        "live_data_freshness": freshness,
+    }
     if last_price is None or last_price <= 0:
         return {
+            **timestamp_fields,
             "live_quote_status": "MISSING",
             "live_execution_quote_quality": "LOW",
             "live_spread_pct": None,
@@ -153,6 +275,7 @@ def validate_live_quote(
 
     if bid is None or ask is None:
         return {
+            **timestamp_fields,
             "live_quote_status": "MISSING",
             "live_execution_quote_quality": "LOW",
             "live_spread_pct": None,
@@ -162,6 +285,7 @@ def validate_live_quote(
 
     if bid <= 0 or ask <= 0:
         return {
+            **timestamp_fields,
             "live_quote_status": "INVALID",
             "live_execution_quote_quality": "LOW",
             "live_spread_pct": None,
@@ -171,6 +295,7 @@ def validate_live_quote(
 
     if ask <= bid:
         return {
+            **timestamp_fields,
             "live_quote_status": "INVALID",
             "live_execution_quote_quality": "LOW",
             "live_spread_pct": None,
@@ -184,6 +309,7 @@ def validate_live_quote(
 
     if bid_distance > max_quote_distance_pct or ask_distance > max_quote_distance_pct:
         return {
+            **timestamp_fields,
             "live_quote_status": "STALE_POSSIBLE",
             "live_execution_quote_quality": "LOW",
             "live_spread_pct": round(float(spread_pct), 6),
@@ -193,6 +319,7 @@ def validate_live_quote(
 
     if max_spread_pct is not None and spread_pct > max_spread_pct:
         return {
+            **timestamp_fields,
             "live_quote_status": "WIDE_OR_INCOHERENT",
             "live_execution_quote_quality": "LOW",
             "live_spread_pct": round(float(spread_pct), 6),
@@ -200,7 +327,18 @@ def validate_live_quote(
             "live_recheck_decision": "AVOID_EXECUTION_RISK",
         }
 
+    if require_timestamp and (age_minutes is None or age_minutes > max_quote_age_minutes):
+        return {
+            **timestamp_fields,
+            "live_quote_status": "STALE_POSSIBLE",
+            "live_execution_quote_quality": "LOW",
+            "live_spread_pct": round(float(spread_pct), 6),
+            "live_quote_warning": "missing_or_stale_verifiable_timestamp",
+            "live_recheck_decision": "KEEP_RECHECK",
+        }
+
     return {
+        **timestamp_fields,
         "live_quote_status": "VALID",
         "live_execution_quote_quality": "HIGH",
         "live_spread_pct": round(float(spread_pct), 6),
@@ -242,22 +380,27 @@ def fetch_yahoo_live_quote(ticker: str) -> dict:
             except Exception:
                 info = {}
 
-        payload = {}
-        payload.update(fast_info)
-        payload.update(info)
-
         live_price = _get_first_number(
-            payload,
+            fast_info,
             [
                 "lastPrice",
                 "last_price",
-                "regularMarketPrice",
-                "currentPrice",
-                "previousClose",
             ],
         )
-        live_bid = _get_first_number(payload, ["bid"])
-        live_ask = _get_first_number(payload, ["ask"])
+        if live_price is None:
+            live_price = _get_first_number(
+                info,
+                ["regularMarketPrice", "currentPrice", "previousClose"],
+            )
+        live_bid = _get_first_number(info, ["bid"])
+        live_ask = _get_first_number(info, ["ask"])
+        raw_timestamp = (
+            fast_info.get("last_trade_time")
+            or fast_info.get("lastTradeTime")
+            or info.get("regularMarketTime")
+            or info.get("postMarketTime")
+        )
+        normalized_timestamp, _, _ = _timestamp_context(raw_timestamp)
 
         return {
             "ticker": ticker,
@@ -267,6 +410,7 @@ def fetch_yahoo_live_quote(ticker: str) -> dict:
             "live_bid": live_bid,
             "live_ask": live_ask,
             "live_quote_source": "YAHOO_FINANCE",
+            "live_quote_timestamp": normalized_timestamp,
         }
 
     except Exception as exc:
@@ -281,11 +425,25 @@ def fetch_yahoo_live_quote(ticker: str) -> dict:
         }
 
 
-def _levels(row: dict) -> tuple[float | None, float | None, float | None]:
-    entry = _safe_float(row.get("actionable_entry") or row.get("entry") or row.get("theoretical_entry"), None)
-    stop = _safe_float(row.get("actionable_stop") or row.get("stop") or row.get("theoretical_stop"), None)
-    target = _safe_float(row.get("actionable_target") or row.get("target") or row.get("theoretical_target"), None)
-    return entry, stop, target
+def _levels(row: dict) -> tuple[float | None, float | None, float | None, str]:
+    actionable = tuple(
+        _safe_float(row.get(key), None)
+        for key in ("actionable_entry", "actionable_stop", "actionable_target")
+    )
+    if all(value is not None for value in actionable):
+        return actionable[0], actionable[1], actionable[2], "ACTIONABLE"
+
+    scenario = tuple(
+        _safe_float(row.get(key), None)
+        for key in ("scenario_entry", "scenario_stop", "scenario_target")
+    )
+    if all(value is not None for value in scenario):
+        return scenario[0], scenario[1], scenario[2], "SCENARIO_DIAGNOSTIC"
+
+    entry = _safe_float(row.get("entry") or row.get("theoretical_entry"), None)
+    stop = _safe_float(row.get("stop") or row.get("theoretical_stop"), None)
+    target = _safe_float(row.get("target") or row.get("theoretical_target"), None)
+    return entry, stop, target, "LEGACY_DIAGNOSTIC"
 
 
 def _live_rr(live_price: float | None, stop: float | None, target: float | None) -> float | None:
@@ -312,7 +470,7 @@ def decide_recheck(
     min_live_rr: float = 1.50,
 ) -> dict:
     live_price = _safe_float(quote.get("live_price"), None)
-    entry, stop, target = _levels(original)
+    entry, stop, target, level_type = _levels(original)
 
     price_vs_entry_pct = None
     price_within_entry_band = False
@@ -369,10 +527,19 @@ def decide_recheck(
         decision = "KEEP_RECHECK"
         _append_reason(reasons, "unknown_decision_guard")
 
+    prior_lane = _decision_lane(original)
+    if (
+        decision == "EXECUTION_OK_REVIEW_MANUALLY"
+        and prior_lane not in {"UNKNOWN", "EXECUTION_CANDIDATE"}
+    ):
+        decision = "WATCHLIST_MONITOR"
+        _append_reason(reasons, "technical_lane_not_execution_eligible")
+
     return {
         "prior_actionable_entry": entry,
         "prior_actionable_stop": stop,
         "prior_actionable_target": target,
+        "prior_level_type": level_type,
         "price_vs_entry_pct": round(float(price_vs_entry_pct), 6) if price_vs_entry_pct is not None else None,
         "price_within_entry_band": bool(price_within_entry_band),
         "recheck_decision": decision,
@@ -390,6 +557,9 @@ def build_live_quote_recheck_dataframe(
     entry_band_pct: float = 0.02,
     avoid_price_distance_pct: float = 0.05,
     min_live_rr: float = 1.50,
+    require_timestamp: bool = False,
+    max_quote_age_minutes: float = 15.0,
+    alpaca_fetcher: Callable[[list[str]], dict[str, dict]] | None = None,
 ) -> pd.DataFrame:
     fetcher = fetcher or fetch_yahoo_live_quote
 
@@ -399,6 +569,19 @@ def build_live_quote_recheck_dataframe(
 
     if max_tickers is not None and max_tickers > 0:
         candidates = candidates.head(max_tickers).copy()
+
+    corroboration_quotes: dict[str, dict] = {}
+    tickers = candidates["ticker"].astype(str).str.upper().tolist()
+    if alpaca_fetcher is not None:
+        try:
+            corroboration_quotes = alpaca_fetcher(tickers) or {}
+        except Exception:
+            corroboration_quotes = {}
+    elif fetcher is fetch_yahoo_live_quote:
+        try:
+            corroboration_quotes = fetch_alpaca_iex_analysis_quotes(tickers)
+        except Exception:
+            corroboration_quotes = {}
 
     rows: list[dict] = []
 
@@ -417,7 +600,11 @@ def build_live_quote_recheck_dataframe(
             ask=_safe_float(quote.get("live_ask"), None),
             max_quote_distance_pct=max_quote_distance_pct,
             max_spread_pct=max_spread_pct,
+            quote_timestamp=quote.get("live_quote_timestamp"),
+            require_timestamp=require_timestamp,
+            max_quote_age_minutes=max_quote_age_minutes,
         )
+        corroboration = corroboration_quotes.get(ticker, {})
 
         decision = decide_recheck(
             original=original,
@@ -433,6 +620,10 @@ def build_live_quote_recheck_dataframe(
                 "recheck_timestamp": timestamp,
                 "rank": original.get("rank"),
                 "ticker": ticker,
+                "prior_decision_lane": original.get("prior_decision_lane") or _decision_lane(original),
+                "selection_origin": original.get("selection_origin") or "INPUT",
+                "recheck_priority": original.get("recheck_priority"),
+                "prior_level_type": decision.get("prior_level_type"),
                 "prior_signal": _get_first_text(original, ["signal", "source_signal"]),
                 "prior_recommendation": _get_first_text(original, ["recommendation", "source_recommendation"]),
                 "prior_quote_status": _get_first_text(original, ["quote_status", "source_quote_status"]),
@@ -456,7 +647,16 @@ def build_live_quote_recheck_dataframe(
                 "live_quote_status": validation.get("live_quote_status"),
                 "live_execution_quote_quality": validation.get("live_execution_quote_quality"),
                 "live_quote_source": quote.get("live_quote_source") or "UNKNOWN",
-                "live_quote_timestamp": timestamp,
+                "live_quote_timestamp": validation.get("live_quote_timestamp") or quote.get("live_quote_timestamp") or timestamp,
+                "live_quote_age_minutes": validation.get("live_quote_age_minutes"),
+                "live_data_freshness": validation.get("live_data_freshness"),
+                "corroboration_price": corroboration.get("analysis_price"),
+                "corroboration_bid": corroboration.get("analysis_bid"),
+                "corroboration_ask": corroboration.get("analysis_ask"),
+                "corroboration_source": corroboration.get("analysis_quote_source"),
+                "corroboration_timestamp": corroboration.get("analysis_quote_timestamp"),
+                "corroboration_freshness": corroboration.get("analysis_quote_freshness"),
+                "corroboration_status": corroboration.get("status"),
                 "live_quote_warning": validation.get("live_quote_warning"),
                 "price_vs_entry_pct": decision.get("price_vs_entry_pct"),
                 "price_within_entry_band": decision.get("price_within_entry_band"),
@@ -480,7 +680,7 @@ def build_live_quote_recheck_dataframe(
     }
     out["_decision_order"] = out["recheck_decision"].map(decision_order).fillna(99).astype(int)
 
-    sort_cols = [col for col in ["_decision_order", "rank", "final_trade_score"] if col in out.columns]
+    sort_cols = [col for col in ["recheck_priority", "_decision_order", "rank", "final_trade_score"] if col in out.columns]
     ascending = [False if col == "final_trade_score" else True for col in sort_cols]
     out = out.sort_values(sort_cols, ascending=ascending).drop(columns=["_decision_order"])
 
@@ -580,6 +780,7 @@ def _write_json(path: Path, payload: dict) -> None:
 
 def save_live_quote_recheck_reports(
     input_csv: Path | None = None,
+    scan_csv: Path | None = None,
     csv_out: Path | None = None,
     markdown_out: Path | None = None,
     json_out: Path | None = None,
@@ -591,8 +792,13 @@ def save_live_quote_recheck_reports(
     avoid_price_distance_pct: float = 0.05,
     min_live_rr: float = 1.50,
     fetcher: Callable[[str], dict] | None = None,
+    alpaca_fetcher: Callable[[list[str]], dict[str, dict]] | None = None,
+    require_timestamp: bool | None = None,
 ) -> dict:
+    explicit_manual_input = input_csv is not None or manual_csv is not None
     input_csv = input_csv or manual_csv or ROOT / "reports" / "manual_review_latest.csv"
+    if scan_csv is None and not explicit_manual_input:
+        scan_csv = ROOT / "reports" / "latest_scan_audited.csv"
     csv_out = csv_out or ROOT / "reports" / "live_quote_recheck_latest.csv"
     markdown_out = markdown_out or ROOT / "reports" / "live_quote_recheck_latest.md"
     json_out = json_out or ROOT / "reports" / "live_quote_recheck_latest.json"
@@ -601,12 +807,13 @@ def save_live_quote_recheck_reports(
     markdown_out.parent.mkdir(parents=True, exist_ok=True)
     json_out.parent.mkdir(parents=True, exist_ok=True)
 
-    if not input_csv.exists():
+    scan_exists = bool(scan_csv is not None and scan_csv.exists())
+    if not input_csv.exists() and not scan_exists:
         out = _empty_output_dataframe()
         out.to_csv(csv_out, index=False)
         markdown_out.write_text(
             "# Analista - live quote recheck\n\nStatus: FAIL\n\nInput no encontrado: "
-            + str(input_csv)
+            + f"{input_csv} / {scan_csv or 'not_provided'}"
             + "\n",
             encoding="utf-8",
         )
@@ -618,14 +825,26 @@ def save_live_quote_recheck_reports(
             "csv_out": str(csv_out),
             "markdown_out": str(markdown_out),
             "json_out": str(json_out),
-            "error": "input_csv_not_found",
+            "scan_csv": str(scan_csv) if scan_csv else "",
+            "error": "input_csv_not_found" if explicit_manual_input and scan_csv is None else "recheck_inputs_not_found",
         }
         _write_json(json_out, result)
         return result
 
-    try:
-        input_df = pd.read_csv(input_csv)
-    except Exception as exc:
+    manual_df = pd.DataFrame()
+    scan_df = pd.DataFrame()
+    read_errors: list[str] = []
+    if input_csv.exists():
+        try:
+            manual_df = pd.read_csv(input_csv)
+        except Exception as exc:
+            read_errors.append(f"manual_input_read_failed:{exc}")
+    if scan_exists and scan_csv is not None:
+        try:
+            scan_df = pd.read_csv(scan_csv)
+        except Exception as exc:
+            read_errors.append(f"scan_input_read_failed:{exc}")
+    if manual_df.empty and scan_df.empty and read_errors:
         out = _empty_output_dataframe()
         out.to_csv(csv_out, index=False)
         result = {
@@ -636,12 +855,15 @@ def save_live_quote_recheck_reports(
             "csv_out": str(csv_out),
             "markdown_out": str(markdown_out),
             "json_out": str(json_out),
-            "error": f"input_csv_read_failed:{exc}",
+            "scan_csv": str(scan_csv) if scan_csv else "",
+            "error": "; ".join(read_errors),
         }
         markdown_out.write_text(build_live_quote_recheck_markdown(out, status="FAIL"), encoding="utf-8")
         _write_json(json_out, result)
         return result
 
+    input_df = build_recheck_input(manual_df, scan_df)
+    effective_require_timestamp = fetcher is None if require_timestamp is None else bool(require_timestamp)
     out = build_live_quote_recheck_dataframe(
         input_df=input_df,
         fetcher=fetcher,
@@ -651,6 +873,8 @@ def save_live_quote_recheck_reports(
         entry_band_pct=entry_band_pct,
         avoid_price_distance_pct=avoid_price_distance_pct,
         min_live_rr=min_live_rr,
+        require_timestamp=effective_require_timestamp,
+        alpaca_fetcher=alpaca_fetcher,
     )
 
     out.to_csv(csv_out, index=False)
@@ -667,6 +891,8 @@ def save_live_quote_recheck_reports(
         "avoid_execution_risk": int(decisions.get("AVOID_EXECUTION_RISK", 0)),
         "data_unavailable": int(decisions.get("DATA_UNAVAILABLE", 0)),
         "input_csv": str(input_csv),
+        "scan_csv": str(scan_csv) if scan_csv else "",
+        "input_read_warnings": read_errors,
         "csv_out": str(csv_out),
         "markdown_out": str(markdown_out),
         "json_out": str(json_out),
@@ -679,6 +905,7 @@ def save_live_quote_recheck_reports(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Revalida quotes live para candidatos RECHECK_LIVE_QUOTE.")
     parser.add_argument("--input-csv", default="reports/manual_review_latest.csv")
+    parser.add_argument("--scan-csv", default="reports/latest_scan_audited.csv")
     parser.add_argument("--manual-csv", default=None, help="Alias legacy de --input-csv.")
     parser.add_argument("--csv-out", default="reports/live_quote_recheck_latest.csv")
     parser.add_argument("--markdown-out", default="reports/live_quote_recheck_latest.md")
@@ -695,6 +922,7 @@ def main() -> int:
 
     result = save_live_quote_recheck_reports(
         input_csv=ROOT / input_arg,
+        scan_csv=ROOT / args.scan_csv,
         csv_out=ROOT / args.csv_out,
         markdown_out=ROOT / args.markdown_out,
         json_out=ROOT / args.json_out,

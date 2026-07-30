@@ -85,13 +85,13 @@ streamlit run .\app.py
 The cockpit has three main sections:
 
 - `Resumen`: quality, release, candidate and macro context summary.
-- `Candidatos`: selectable watchlist, per-ticker operational card, single-ticker deep dive, and universe analytics.
+- `Candidatos`: operational watchlist, research radar, per-ticker card, and universe analytics.
 - `Control`: quality rules, macro context, calibration, automatic posttest, and report status.
 
-The `Candidatos` view includes `Consulta puntual por ticker`. This runs only the
-deep technical/scenario review for the requested ticker. It does not use the
-full universe screener, does not apply the macro filter as a blocker, does not
-create scanner signals, and does not create `TRIGGER_CONFIRMED`.
+The candidates cockpit separates strict **Oportunidades operativas** from the
+**Radar de investigación**. Technical calculations use closed daily bars and
+completed weekly bars. Research rows can receive deep analysis but cannot enter
+the execution checklist, automatic posttest or create `TRIGGER_CONFIRMED`.
 
 Before daily GUI use, validate:
 
@@ -156,7 +156,23 @@ Outputs:
 
 ## Automatic candidate posttest
 
-`tools/simple_candidate_posttest.py` is the preferred simple diagnostic loop. It takes only rows saved as automatic `BUY_NOW` posttest memory by the checklist and evaluates outcomes after 5, 10, and 15 sessions. It does not depend on manual trade records, does not modify scanner outputs, and does not change weights or thresholds.
+`tools/simple_candidate_posttest.py` is the preferred simple diagnostic loop. It takes only rows saved as automatic `BUY_NOW` posttest memory by the checklist and evaluates outcomes after 5, 10, and 15 sessions. A separate shadow cohort measures technically clean `TACTICAL_RESEARCH` candidates to identify possible false negatives; shadow results never become signals or change weights automatically.
+
+## Institutional opportunity books
+
+The engine separates setup quality from entry readiness. Every ticker is assigned
+to one auditable book:
+
+- `EXECUTION_CANDIDATE`: strict operational review, still subject to P0 and live quote quality.
+- `TACTICAL_RESEARCH`: promising thesis requiring trigger, timing, context or levels.
+- `LEADERSHIP_RESET_WATCH`: strong asset that must pull back or consolidate.
+- `MOMENTUM_RECOVERY_WATCH`: daily or weekly MACD must resume improvement.
+- `STRUCTURAL_REJECT`: invalid instrument, liquidity or insufficient opportunity evidence.
+- `DATA_BLOCKED`: the engine cannot form a reliable view.
+
+Setup hypotheses are evaluated together rather than in detector order. A ticker
+may therefore keep a primary thesis and alternative hypotheses without creating
+an automatic entry.
 
 Run:
 

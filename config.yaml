@@ -75,7 +75,7 @@ screener:
       enabled: true
       min_market_cap_usd: 2500000000
       min_price: 10
-      min_avg_volume_3m: 250000
+      min_avg_volume_3m: 0
       exchanges: ["NMS", "NYQ", "ASE"]
       target_size: 0
       page_size: 250
@@ -86,7 +86,7 @@ screener:
       enabled: true
       min_market_cap_usd: 10000000000
       min_price: 10
-      min_avg_volume_3m: 250000
+      min_avg_volume_3m: 0
       exchanges: ["NMS", "NYQ", "ASE"]
       target_size: 0
       page_size: 250
@@ -245,17 +245,29 @@ price_data:
   retry_batch_size: 50
   timeout_seconds: 15
   max_individual_fallbacks: 10
+  cache_dir: "cache/prices/daily"
+  cache_ttl_minutes: 30
+  max_stale_hours: 120
+  technical_bar_policy: "CLOSED_DAILY_AND_WEEKLY_ONLY"
 
 deep_analysis:
   mode: "shadow"
   candidate_funnel:
-    target_tickers: 150
-    min_tickers: 120
+    target_tickers: 0
+    min_tickers: 0
     max_tickers: 5000
-    max_sector_share: 0.20
+    max_sector_share: 1.00
   scenario_engine:
     promotion_enabled: false
     target_success_primary: true
+
+opportunity_model:
+  version: "INSTITUTIONAL_OPPORTUNITY_V2"
+  tactical_research_min_score: 68
+  reset_watch_min_score: 72
+  max_research_extension_risk: 0.72
+  execution_requires_macd_operable_daily_weekly: true
+  no_forced_candidate_quota: true
 
 indicators:
   moving_averages: [20, 50, 200]
@@ -322,6 +334,7 @@ risk_reward:
   min_rr_absolute: 1.5
   min_rr_acceptable: 1.7
   min_rr_ideal: 2.0
+  model_confluence_tolerance_pct: 0.25
 
 risk_profile:
   mode: "aggressive"
@@ -478,7 +491,6 @@ signal_thresholds:
 
 veto_rules:
   thresholds:
-    min_trend_score: 0.55
     min_rr: 1.5
   data_quality:
     veto_low_confidence: true

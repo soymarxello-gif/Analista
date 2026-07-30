@@ -71,6 +71,10 @@ def test_streamlit_app_has_compact_navigation_and_manual_review_warning():
     assert "No automatic trading" in text
     assert "candidate_watchlist" in text
     assert "candidate_watchlist_v3" in text
+    assert "Oportunidades operativas" in text
+    assert "Radar de investigación" in text
+    assert "candidate_research_radar" in text
+    assert "No pasan a checklist" in text
     assert '"operational_state"' not in text
     assert "_apply_watchlist_preferences" in text
     assert "selected_candidate = None" in text

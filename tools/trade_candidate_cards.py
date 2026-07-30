@@ -47,8 +47,38 @@ CARD_FIELDS = [
     "momentum_penalty_reason",
     "engine_block_reason",
     "execution_readiness_status",
+    "technical_opportunity_score",
+    "decision_lane",
+    "decision_reasons",
+    "technical_asset_quality_score",
+    "entry_readiness_score",
+    "research_priority_score",
+    "reset_watch_score",
+    "context_confidence_score",
+    "technical_analysis_lane",
+    "deep_analysis_tier",
+    "operational_eligibility",
+    "research_eligibility_reason",
+    "setup_readiness_score",
+    "setup_readiness_state",
+    "setup_candidate_type",
+    "primary_setup_hypothesis",
+    "primary_setup_hypothesis_state",
+    "primary_setup_hypothesis_score",
+    "alternative_setup_hypotheses",
+    "setup_hypothesis_count",
+    "technical_eligibility_reason",
+    "trend_setup_compatibility",
+    "research_trend_compatibility",
+    "research_trend_compatibility_reason",
+    "momentum_gate_status",
+    "timing_gate_status",
+    "core_liquidity_status",
+    "execution_spread_status",
     "technical_prefilter_status",
     "technical_prefilter_reason",
+    "technical_prefilter_triage",
+    "operational_status",
     "daily_macd_prefilter_status",
     "weekly_macd_prefilter_status",
     "ema20_extension_prefilter_status",
@@ -67,9 +97,32 @@ CARD_FIELDS = [
     "actionable_stop",
     "actionable_target",
     "rr",
+    "rr_status",
+    "rr_stressed",
+    "risk_geometry_status",
+    "risk_geometry_reason",
+    "rr_confidence",
+    "target_validation_source",
+    "target_validation_sources",
+    "entry_zone_low",
+    "entry_zone_high",
+    "technical_as_of_date",
+    "technical_bar_policy",
+    "daily_bar_complete",
+    "weekly_bar_complete",
+    "intraday_bar_excluded",
     "stop_atr_status",
     "earnings_date",
     "next_earnings_date",
+    "days_to_earnings",
+    "earnings_event_status",
+    "earnings_data_confidence",
+    "earnings_refresh_required",
+    "earnings_operability_block",
+    "earnings_review_reason",
+    "market_opportunity_status",
+    "sector_relative_strength_score",
+    "sector_relative_leadership_status",
     "checklist_blockers",
     "checklist_warnings",
     "checklist_required_actions",
@@ -83,9 +136,20 @@ CARD_FIELDS = [
     "momentum_state",
     "extension_state",
     "ema20_extension_status",
+    "ema20_distance_percentile_1y",
+    "ema20_extension_model",
+    "trend_transition_score",
+    "trend_transition_state",
+    "trend_transition_reason",
     "entry_timing_status",
     "macd_histogram_state",
     "weekly_macd_histogram_state",
+    "daily_macd_trajectory_state",
+    "daily_macd_trajectory_confidence",
+    "weekly_macd_trajectory_state",
+    "weekly_macd_trajectory_confidence",
+    "momentum_alignment",
+    "momentum_operability_status",
     "weekly_macd_hist_improving",
     "weekly_macd_hist",
     "weekly_macd_hist_change_1w",
@@ -99,7 +163,13 @@ CARD_FIELDS = [
     "sector_weekly_macd_acceleration_state",
     "sector_context_status",
     "sector_context_reason",
+    "sector_leadership_override_status",
+    "ema20_extension_risk",
+    "ema20_extension_confidence",
+    "ema20_extension_driver",
     "required_confirmation",
+    "required_confirmations",
+    "invalidation_conditions",
     "engine_recommendation",
     "shadow_entry",
     "shadow_stop",
@@ -178,9 +248,16 @@ def _prepare_cards_dataframe(input_df: pd.DataFrame) -> pd.DataFrame:
 
     out = input_df.copy()
 
-    for col in CARD_FIELDS:
-        if col not in out.columns:
-            out[col] = ""
+    missing_columns = [col for col in CARD_FIELDS if col not in out.columns]
+    if missing_columns:
+        out = pd.concat(
+            [
+                out,
+                pd.DataFrame("", index=out.index, columns=missing_columns),
+            ],
+            axis=1,
+        )
+    out = out.copy()
 
     out["ticker"] = out["ticker"].apply(lambda value: _display(value, "UNKNOWN").upper())
     out["checklist_status"] = out["checklist_status"].apply(
@@ -283,6 +360,8 @@ def _render_card(row: dict) -> list[str]:
     lines.append("")
     lines.append("### Tecnica")
     lines.append(f"- prefiltro_tecnico: {_display(row.get('technical_prefilter_status'))}")
+    lines.append(f"- triage_tecnico: {_display(row.get('technical_prefilter_triage'))}")
+    lines.append(f"- estado_operativo: {_display(row.get('operational_status'))}")
     lines.append(f"- razon_prefiltro: {_display(row.get('technical_prefilter_reason'), 'NONE')}")
     lines.append(f"- macd_diario_prefiltro: {_display(row.get('daily_macd_prefilter_status'))}")
     lines.append(f"- macd_semanal_prefiltro: {_display(row.get('weekly_macd_prefilter_status'))}")
@@ -302,6 +381,9 @@ def _render_card(row: dict) -> list[str]:
     lines.append(f"- entry_timing_status: {_display(row.get('entry_timing_status'))}")
     lines.append(f"- macd_histogram_state: {_display(row.get('macd_histogram_state'))}")
     lines.append(f"- weekly_macd_histogram_state: {_display(row.get('weekly_macd_histogram_state'))}")
+    lines.append(f"- trayectoria_macd_diaria: {_display(row.get('daily_macd_trajectory_state'))}")
+    lines.append(f"- trayectoria_macd_semanal: {_display(row.get('weekly_macd_trajectory_state'))}")
+    lines.append(f"- sincronia_momentum: {_display(row.get('momentum_alignment'))}")
     lines.append(f"- weekly_macd_hist_change_1w: {_display(row.get('weekly_macd_hist_change_1w'))}")
     lines.append(f"- sector_benchmark_symbol: {_display(row.get('sector_benchmark_symbol'))}")
     lines.append(f"- sector_weekly_macd_state: {_display(row.get('sector_weekly_macd_state'))}")

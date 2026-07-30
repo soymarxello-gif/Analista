@@ -12,7 +12,7 @@ def make_df():
     )
 
 
-def test_invalid_bid_ask_does_not_auto_fail_but_reduces_score():
+def test_invalid_bid_ask_does_not_change_structural_liquidity():
     cfg = {
         "liquidity": {
             "min_price": 5,
@@ -26,12 +26,13 @@ def test_invalid_bid_ask_does_not_auto_fail_but_reduces_score():
     result = compute_liquidity("ABC", make_df(), cfg, metadata)
 
     assert result["liquidity_pass"] is True
+    assert result["liquidity_core_pass"] is True
     assert result["bid_ask_valid"] is False
-    assert result["liquidity_score"] < 1.0
+    assert result["execution_spread_status"] == "INVALID"
     assert "bid/ask inválido" in result["liquidity_warning"]
 
 
-def test_valid_wide_spread_can_fail_if_configured():
+def test_valid_wide_spread_blocks_execution_but_not_core_liquidity():
     cfg = {
         "liquidity": {
             "min_price": 5,
@@ -45,9 +46,11 @@ def test_valid_wide_spread_can_fail_if_configured():
     result = compute_liquidity("ABC", make_df(), cfg, metadata)
 
     assert result["bid_ask_valid"] is True
-    assert result["liquidity_pass"] is False
+    assert result["liquidity_pass"] is True
     assert result["liquidity_core_pass"] is True
     assert result["liquidity_spread_pass"] is False
+    assert result["execution_spread_status"] == "WIDE"
+    assert result["execution_quote_quality"] == "LOW"
 
 
 def test_nominal_share_volume_is_not_a_hard_filter_when_dollar_volume_passes():

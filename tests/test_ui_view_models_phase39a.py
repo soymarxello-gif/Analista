@@ -90,6 +90,49 @@ def test_candidate_table_model_preserves_critical_columns_when_present():
     assert model["data"]["rows"][0]["ticker"] == "AAA"
 
 
+def test_candidate_table_model_separates_research_from_operational_rows():
+    operational = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "technical_analysis_lane": "ADVANCE_DEEP_ANALYSIS",
+                "deep_analysis_tier": "OPERATIONAL",
+                "signal": "WATCHLIST",
+            }
+        ]
+    )
+    scan = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "technical_analysis_lane": "ADVANCE_DEEP_ANALYSIS",
+                "deep_analysis_tier": "OPERATIONAL",
+                "signal": "WATCHLIST",
+            },
+            {
+                "ticker": "BBB",
+                "technical_analysis_lane": "ADVANCE_RESEARCH_ANALYSIS",
+                "deep_analysis_tier": "RESEARCH",
+                "setup_readiness_score": 78.0,
+                "signal": "VETO",
+            },
+        ]
+    )
+    sources = {
+        "sources": {
+            "manual_review_top": _csv_source("manual_review_top", operational),
+            "latest_scan_audited": _csv_source("latest_scan_audited", scan),
+        }
+    }
+
+    model = build_candidate_table_model(sources)
+
+    assert [row["ticker"] for row in model["data"]["rows"]] == ["AAA"]
+    assert [row["ticker"] for row in model["data"]["research_rows"]] == ["BBB"]
+    assert model["summary"]["operational_rows"] == 1
+    assert model["summary"]["research_rows"] == 1
+
+
 def test_macro_context_model_exposes_fred_series_and_events():
     sources = {
         "sources": {

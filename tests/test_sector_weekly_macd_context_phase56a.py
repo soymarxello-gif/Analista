@@ -101,17 +101,17 @@ def test_sector_context_fields_are_attached_by_ticker() -> None:
     assert out.loc[0, "sector_weekly_macd_state"].startswith("SECTOR_MACD_")
 
 
-def test_sector_decelerating_blocks_high_quality_review() -> None:
+def test_sector_decelerating_is_context_warning_not_hard_block() -> None:
     result = evaluate_checklist_row(
         _base_candidate(sector_weekly_macd_state="SECTOR_MACD_DECELERATING")
     )
 
-    assert result["checklist_status"] == "BLOCKED"
-    assert "sector_weekly_macd_sector_macd_decelerating" in result["checklist_blockers"]
-    assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
+    assert result["checklist_status"] == "HIGH_QUALITY_REVIEW"
+    assert "sector_weekly_macd_sector_macd_decelerating" in result["checklist_warnings"]
+    assert result["automatic_posttest_status"] == "BUY_NOW"
 
 
-def test_sector_improving_but_decelerating_prevents_buy_now_memory() -> None:
+def test_sector_improving_but_decelerating_does_not_override_ticker_momentum() -> None:
     df = pd.DataFrame(
         [
             _base_candidate(
@@ -121,7 +121,8 @@ def test_sector_improving_but_decelerating_prevents_buy_now_memory() -> None:
         ]
     )
 
-    assert select_top_candidates(df, top_n=5).empty
+    selected = select_top_candidates(df, top_n=5)
+    assert selected["ticker"].tolist() == ["AAA"]
 
 
 def test_sector_macd_does_not_modify_p0_quote_or_signal_fields() -> None:

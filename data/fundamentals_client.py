@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from data.earnings_context import normalize_earnings_context
 from engine.data_sources.metadata_fallback import apply_metadata_fallback, build_metadata_providers
 
 try:
@@ -196,6 +197,18 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
         .get("cache_ttl_minutes", {})
         .get("earnings", 720)
     )
+
+    def _finalize(payload: dict) -> dict:
+        enriched = apply_metadata_fallback(
+            payload,
+            config,
+            fallback_providers,
+        )
+        return normalize_earnings_context(
+            enriched,
+            earnings_ttl_minutes=int(earnings_ttl),
+        )
+
     metadata_cfg = config.get("fundamentals", {}).get("metadata_enrichment", {})
     prefer_stale_cache = bool(metadata_cfg.get("prefer_stale_cache", False))
     network_enabled = bool(metadata_cfg.get("network_enabled", True))
@@ -230,25 +243,53 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
             earnings_status="HIT",
             earnings_age=earnings_age,
         )
-        return apply_metadata_fallback(result, config, fallback_providers)
+        return _finalize(result)
 
     if cached is not None and prefer_stale_cache:
+        data = dict(cached)
+        earnings_status = "HIT" if earnings_fresh else "STALE_FALLBACK"
+        if not earnings_fresh and network_enabled and yf is not None:
+            earnings_date = None
+            days_to_earnings = None
+            warning = ""
+            query_succeeded = False
+            try:
+                earnings_date, days_to_earnings, warning, query_succeeded = (
+                    _extract_earnings_date(yf.Ticker(ticker))
+                )
+            except Exception as exc:
+                warning = f"earnings refresh falló: {exc}"
+            if query_succeeded:
+                data["earnings_date"] = earnings_date
+                data["days_to_earnings"] = days_to_earnings
+                data["_earnings_fetched_at"] = datetime.now(timezone.utc).isoformat()
+                earnings_status = "REFRESHED"
+                earnings_age = 0.0
+                _save_cache(ticker, data)
+            elif warning:
+                data["fundamental_warning"] = "; ".join(
+                    value
+                    for value in [data.get("fundamental_warning"), warning]
+                    if value
+                )
+
         result = _set_cache_trace(
-            dict(cached),
+            data,
             fundamentals_status="HIT" if fundamentals_fresh else "STALE_FALLBACK",
             fundamentals_age=fundamentals_age,
-            earnings_status="HIT" if earnings_fresh else "STALE_FALLBACK",
+            earnings_status=earnings_status,
             earnings_age=earnings_age,
         )
-        result["fundamental_warning"] = "; ".join(
-            value
-            for value in [
-                result.get("fundamental_warning"),
-                "cache stale usado sin refresco de red para evitar bloqueo del scanner",
-            ]
-            if value
-        )
-        return apply_metadata_fallback(result, config, fallback_providers)
+        if earnings_status == "STALE_FALLBACK":
+            result["fundamental_warning"] = "; ".join(
+                value
+                for value in [
+                    result.get("fundamental_warning"),
+                    "cache stale usado; earnings refresh no disponible",
+                ]
+                if value
+            )
+        return _finalize(result)
 
     if yf is None:
         if cached is not None:
@@ -260,14 +301,14 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
                 earnings_age=earnings_age,
             )
             result["fundamental_warning"] = "yfinance no disponible; usando cache stale"
-            return apply_metadata_fallback(result, config, fallback_providers)
-        return apply_metadata_fallback({
+            return _finalize(result)
+        return _finalize({
             "ticker": ticker,
             "metadata_source": "none",
             "fundamental_warning": "yfinance no disponible",
             "fundamentals_cache_status": "NETWORK_MISSING",
             "earnings_cache_status": "NETWORK_MISSING",
-        }, config, fallback_providers)
+        })
 
     if not network_enabled:
         if cached is not None:
@@ -279,17 +320,15 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
                 earnings_age=earnings_age,
             )
             result["fundamental_warning"] = "network metadata disabled; usando cache stale"
-            return apply_metadata_fallback(result, config, fallback_providers)
-        return apply_metadata_fallback(
+            return _finalize(result)
+        return _finalize(
             {
                 "ticker": ticker,
                 "metadata_source": "none",
                 "fundamental_warning": "network metadata disabled; sin cache local",
                 "fundamentals_cache_status": "NETWORK_SKIPPED",
                 "earnings_cache_status": "NETWORK_SKIPPED",
-            },
-            config,
-            fallback_providers,
+            }
         )
 
     warnings = []
@@ -320,7 +359,7 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
             earnings_status=earnings_status,
             earnings_age=earnings_age,
         )
-        return apply_metadata_fallback(result, config, fallback_providers)
+        return _finalize(result)
 
     info: dict = {}
     info_succeeded = False
@@ -377,8 +416,7 @@ def fetch_ticker_metadata(ticker: str, config: dict, fallback_providers=None) ->
         earnings_status=earnings_status,
         earnings_age=earnings_age,
     )
-    data = apply_metadata_fallback(data, config, fallback_providers)
-    return data
+    return _finalize(data)
 
 
 def enrich_metadata(
@@ -501,6 +539,16 @@ def enrich_metadata(
         "fundamentals_cache_age_minutes",
         "earnings_cache_status",
         "earnings_cache_age_minutes",
+        "days_to_earnings",
+        "earnings_as_of_date",
+        "earnings_event_status",
+        "earnings_data_confidence",
+        "earnings_days_recomputed",
+        "earnings_refresh_required",
+        "earnings_operability_block",
+        "earnings_review_reason",
+        "earnings_consistency_status",
+        "fundamental_warning",
     ]:
         enriched_col = f"{col}_enriched"
         if enriched_col in merged.columns:

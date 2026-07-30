@@ -39,10 +39,18 @@ def _append_reason(reasons: list[str], reason: str) -> None:
 
 
 def _execution_readiness_status(row: dict[str, Any]) -> str:
+    technical_lane = _safe_text(row.get("technical_analysis_lane")).upper()
     signal = _safe_text(row.get("signal")).upper()
     recommendation = _safe_text(row.get("recommendation")).upper()
     quote_status = _safe_text(row.get("quote_status")).upper()
     execution_quality = _safe_text(row.get("execution_quote_quality")).upper()
+    risk_geometry_status = _safe_text(row.get("risk_geometry_status")).upper()
+
+    if technical_lane == "ADVANCE_RESEARCH_ANALYSIS":
+        return "NOT_OPERABLE"
+
+    if _bool(row.get("earnings_operability_block")) or risk_geometry_status in {"FRAGILE", "INVALID"}:
+        return "NOT_OPERABLE"
 
     if signal in {"VETO", "AVOID"} or recommendation in {"DO_NOT_TRADE", "AVOID_FOR_NOW"}:
         return "NOT_OPERABLE"
@@ -88,7 +96,11 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
     shadow_level_status = _safe_text(row.get("shadow_level_status")).upper()
     macd_histogram_state = _safe_text(row.get("macd_histogram_state")).upper()
     weekly_macd_histogram_state = _safe_text(row.get("weekly_macd_histogram_state")).upper()
+    daily_trajectory_state = _safe_text(row.get("daily_macd_trajectory_state")).upper()
+    weekly_trajectory_state = _safe_text(row.get("weekly_macd_trajectory_state")).upper()
+    momentum_operability_status = _safe_text(row.get("momentum_operability_status")).upper()
     sector_weekly_macd_state = _safe_text(row.get("sector_weekly_macd_state")).upper()
+    technical_analysis_lane = _safe_text(row.get("technical_analysis_lane")).upper()
     ema20_distance_atr = _safe_float(row.get("technical_distance_ema20_atr"), 0.0)
     ema20_distance_pct = _safe_float(row.get("technical_distance_ema20_pct"), 0.0)
 
@@ -110,7 +122,9 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
             _append_reason(reasons, f"scenario_{scenario_status.lower()}")
 
     timing_penalty_reason = ""
-    if scenario_status == "LATE_ENTRY_OVEREXTENDED" or extension_state in {"OVEREXTENDED", "LATE_ENTRY"}:
+    if scenario_status == "LATE_ENTRY_OVEREXTENDED":
+        timing_penalty_reason = "late_entry_overextended"
+    elif extension_state in {"OVEREXTENDED", "LATE_ENTRY"}:
         timing_penalty_reason = "late_entry_overextended"
         adjustment += float(cfg.get("late_timing_extra_penalty", -10.0))
     elif ema20_extension_status in {"OVEREXTENDED", "LATE_ENTRY"}:
@@ -127,14 +141,17 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
         )
 
     momentum_penalty_reason = ""
-    if scenario_status == "WEAK_MOMENTUM" or momentum_state in {"WEAK", "DETERIORATING"}:
+    if scenario_status == "WEAK_MOMENTUM":
+        momentum_penalty_reason = "weak_momentum"
+    elif momentum_state in {"WEAK", "DETERIORATING"}:
         momentum_penalty_reason = "weak_momentum"
         adjustment += float(cfg.get("weak_momentum_extra_penalty", -10.0))
     elif macd_histogram_state == "MACD_HIST_DETERIORATING":
         momentum_penalty_reason = "macd_hist_deteriorating"
         adjustment += float(cfg.get("macd_hist_deteriorating_penalty", -8.0))
 
-    if weekly_macd_histogram_state in {
+    legacy_trajectory_missing = not daily_trajectory_state and not weekly_trajectory_state
+    if legacy_trajectory_missing and weekly_macd_histogram_state in {
         "WEEKLY_MACD_HIST_DECELERATING",
         "WEEKLY_MACD_HIST_MIXED",
         "WEEKLY_MACD_HIST_BEARISH",
@@ -154,6 +171,8 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
         _append_reason(reasons, weekly_reason)
 
     if (
+        legacy_trajectory_missing
+        and
         ema20_extension_status == "CAUTION"
         and weekly_macd_histogram_state
         and weekly_macd_histogram_state != "WEEKLY_MACD_HIST_IMPROVING"
@@ -162,6 +181,20 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
         _append_reason(reasons, "ema20_caution_with_weekly_macd_not_improving")
 
     sector_context_penalty_reason = ""
+    rs_score = _safe_float(row.get("rs_score"), 0.0)
+    relative_volume = _safe_float(row.get("relative_volume"), 0.0)
+    sector_relative_strength_score = _safe_float(
+        row.get("sector_relative_strength_score"),
+        rs_score * 100.0 if rs_score <= 1.0 else rs_score,
+    )
+    leadership_override = (
+        sector_weekly_macd_state in {"SECTOR_MACD_DECELERATING", "SECTOR_MACD_BEARISH"}
+        and sector_relative_strength_score
+        >= float(cfg.get("sector_relative_strength_score_min", 70.0))
+        and relative_volume >= float(cfg.get("sector_leadership_relative_volume_min", 1.10))
+        and daily_trajectory_state in {"ACCELERATING", "IMPROVING_STEADY"}
+        and weekly_trajectory_state in {"ACCELERATING", "IMPROVING_STEADY"}
+    )
     if sector_weekly_macd_state in {
         "SECTOR_MACD_DECELERATING",
         "SECTOR_MACD_BEARISH",
@@ -170,8 +203,13 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
             "SECTOR_MACD_DECELERATING": cfg.get("sector_macd_decelerating_penalty", -14.0),
             "SECTOR_MACD_BEARISH": cfg.get("sector_macd_bearish_penalty", -20.0),
         }
-        adjustment += float(sector_penalties[sector_weekly_macd_state])
-        sector_context_penalty_reason = sector_weekly_macd_state.lower()
+        sector_penalty = float(sector_penalties[sector_weekly_macd_state])
+        if leadership_override:
+            sector_penalty *= float(cfg.get("sector_leadership_penalty_multiplier", 0.35))
+            sector_context_penalty_reason = "sector_headwind_with_leadership_override"
+        else:
+            sector_context_penalty_reason = sector_weekly_macd_state.lower()
+        adjustment += sector_penalty
         _append_reason(reasons, sector_context_penalty_reason)
     elif sector_weekly_macd_state == "SECTOR_MACD_IMPROVING_BUT_DECELERATING":
         adjustment += float(cfg.get("sector_macd_improving_but_decelerating_penalty", -8.0))
@@ -182,8 +220,17 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
         _append_reason(reasons, "sector_macd_accelerating_context")
 
     engine_block_reason = ""
-    if signal in {"VETO", "AVOID"}:
+    if technical_analysis_lane == "ADVANCE_RESEARCH_ANALYSIS":
+        engine_block_reason = "research_lane_not_operational"
+    elif signal in {"VETO", "AVOID"}:
         engine_block_reason = f"signal_{signal.lower()}_not_operable"
+    elif _bool(row.get("earnings_operability_block")):
+        engine_block_reason = "earnings_operability_block"
+    elif _safe_text(row.get("risk_geometry_status")).upper() in {"FRAGILE", "INVALID"}:
+        engine_block_reason = (
+            _safe_text(row.get("risk_geometry_reason"))
+            or "risk_geometry_not_robust"
+        )
     elif scenario_status in {
         "LATE_ENTRY_OVEREXTENDED",
         "WEAK_MOMENTUM",
@@ -196,19 +243,33 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
         engine_block_reason = "ema20_late_entry"
     elif ema20_extension_status == "OVEREXTENDED":
         engine_block_reason = "ema20_overextended"
-    elif weekly_macd_histogram_state == "WEEKLY_MACD_HIST_BEARISH":
+    elif momentum_operability_status == "REJECT_MOMENTUM":
+        engine_block_reason = "daily_or_weekly_macd_decelerating"
+    elif daily_trajectory_state in {"IMPROVING_BUT_DECELERATING", "DECLINING"}:
+        engine_block_reason = "daily_macd_decelerating"
+    elif weekly_trajectory_state in {"IMPROVING_BUT_DECELERATING", "DECLINING"}:
+        engine_block_reason = "weekly_macd_decelerating"
+    elif legacy_trajectory_missing and weekly_macd_histogram_state == "WEEKLY_MACD_HIST_BEARISH":
         engine_block_reason = "weekly_macd_bearish"
-    elif sector_weekly_macd_state == "SECTOR_MACD_BEARISH":
-        engine_block_reason = "sector_weekly_macd_bearish"
-    elif sector_weekly_macd_state == "SECTOR_MACD_DECELERATING":
-        engine_block_reason = "sector_weekly_macd_decelerating"
-    elif _safe_text(row.get("scenario_eligible_for_backtest")) and not _bool(row.get("scenario_eligible_for_backtest")):
+    elif (
+        scenario_status != "WAIT_FOR_CONFIRMATION"
+        and _safe_text(row.get("scenario_eligible_for_backtest"))
+        and not _bool(row.get("scenario_eligible_for_backtest"))
+    ):
         engine_block_reason = "scenario_not_eligible_for_backtest"
-    elif shadow_level_status in {"INVALID_STOP_DISTANCE", "RR_BELOW_MINIMUM"}:
-        engine_block_reason = f"shadow_level_{shadow_level_status.lower()}"
-
+    engine_block_is_distinct = bool(
+        engine_block_reason
+        and not engine_block_reason.startswith(("signal_", "scenario_"))
+        and engine_block_reason
+        not in {
+            timing_penalty_reason,
+            momentum_penalty_reason,
+            f"ema20_{ema20_extension_status.lower()}" if ema20_extension_status else "",
+        }
+    )
     if engine_block_reason:
-        adjustment += float(cfg.get("engine_block_penalty", -12.0))
+        if engine_block_is_distinct:
+            adjustment += float(cfg.get("engine_block_penalty", -12.0))
         _append_reason(reasons, engine_block_reason)
 
     execution_readiness = _execution_readiness_status(row)
@@ -227,7 +288,9 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
 
     readiness_score = round(_clamp(base_score + adjustment), 2)
 
-    if engine_block_reason or execution_readiness == "NOT_OPERABLE":
+    if technical_analysis_lane == "ADVANCE_RESEARCH_ANALYSIS":
+        bucket = "R_RESEARCH"
+    elif engine_block_reason or execution_readiness == "NOT_OPERABLE":
         bucket = "D_BLOCKED"
     elif execution_readiness == "NEEDS_LIVE_QUOTE_RECHECK":
         bucket = "C_RECHECK_QUOTE"
@@ -242,6 +305,48 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
     else:
         bucket = "D_BLOCKED"
 
+    if technical_analysis_lane == "ADVANCE_RESEARCH_ANALYSIS":
+        operational_status = "RESEARCH_ONLY"
+    elif engine_block_reason:
+        operational_status = "REJECTED_TECHNICAL"
+    elif execution_readiness in {"NEEDS_LIVE_QUOTE_RECHECK", "EXECUTION_DATA_BLOCKED"}:
+        operational_status = "DATA_BLOCKED"
+    elif (
+        scenario_status == "VALID_TRIGGER"
+        and execution_readiness == "EXECUTION_READY_REVIEW"
+        and daily_trajectory_state in {"ACCELERATING", "IMPROVING_STEADY", ""}
+        and weekly_trajectory_state in {"ACCELERATING", "IMPROVING_STEADY", ""}
+    ):
+        operational_status = "OPERABLE_REVIEW"
+    else:
+        operational_status = "MONITOR_NEXT_TRIGGER"
+
+    decision_lane = _safe_text(row.get("decision_lane")).upper()
+    if (
+        decision_lane == "EXECUTION_CANDIDATE"
+        and not engine_block_reason
+        and execution_readiness == "EXECUTION_READY_REVIEW"
+    ):
+        market_opportunity_status = "EXECUTION_READY_REVIEW"
+    elif decision_lane == "EXECUTION_CANDIDATE" and (
+        _safe_text(row.get("quote_status")).upper() in {
+            "MISSING",
+            "INVALID",
+            "STALE_POSSIBLE",
+            "WIDE_OR_INCOHERENT",
+        }
+        or _safe_text(row.get("execution_quote_quality")).upper() == "LOW"
+    ):
+        market_opportunity_status = "EXECUTION_RECHECK_PENDING"
+    elif decision_lane in {
+        "TACTICAL_RESEARCH",
+        "LEADERSHIP_RESET_WATCH",
+        "MOMENTUM_RECOVERY_WATCH",
+    } or technical_analysis_lane == "ADVANCE_RESEARCH_ANALYSIS":
+        market_opportunity_status = "RESEARCH_ONLY"
+    else:
+        market_opportunity_status = "NO_CLEAN_EXECUTION"
+
     return {
         "operational_readiness_score": readiness_score,
         "operational_readiness_bucket": bucket,
@@ -254,5 +359,14 @@ def calculate_operational_readiness(row: dict[str, Any], config: dict | None = N
         ),
         "engine_block_reason": engine_block_reason,
         "execution_readiness_status": execution_readiness,
+        "operational_status": operational_status,
+        "market_opportunity_status": market_opportunity_status,
+        "sector_leadership_override_status": (
+            "LEADERSHIP_OVERRIDE" if leadership_override else "NOT_APPLIED"
+        ),
+        "sector_headwind_strength": round(
+            abs(float(sector_penalty)) if "sector_penalty" in locals() else 0.0,
+            2,
+        ),
         "operational_readiness_reason": "; ".join(reasons),
     }

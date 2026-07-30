@@ -85,15 +85,13 @@ def classify_signal(row: dict, config: dict):
 
     risk_cfg = config.get("risk_reward", {})
     veto_cfg = config.get("veto_rules", {})
-    threshold_cfg = veto_cfg.get("thresholds", {})
     filters_cfg = config.get("filters", {})
     universe_cfg = config.get("universe", {})
     signals_cfg = config.get("signals", {})
 
     min_rr_absolute = risk_cfg.get("min_rr_absolute", 1.5)
-    min_trend_score = threshold_cfg.get("min_trend_score", 0.55)
     min_price = _safe_float(filters_cfg.get("min_price"), 10)
-    min_market_cap_usd = _safe_float(filters_cfg.get("min_market_cap_usd"), 1_500_000_000)
+    min_market_cap_usd = _safe_float(filters_cfg.get("min_market_cap_usd"), 2_500_000_000)
 
     allowed_quote_types = {
         str(x).upper()
@@ -146,15 +144,19 @@ def classify_signal(row: dict, config: dict):
             _append_unique(veto, "missing_critical_data")
 
     # Liquidity is still a hard gate.
-    if row.get("liquidity_pass") is False:
+    liquidity_core = row.get("liquidity_core_pass", row.get("liquidity_pass"))
+    if liquidity_core is False:
         _append_unique(veto, "liquidity_fail")
 
     # R:R is an operational hard gate.
-    if row.get("rr") is None or _safe_float(row.get("rr"), 0) < min_rr_absolute:
+    rr_status = str(row.get("rr_status") or "").upper().strip()
+    rr_is_validated = rr_status in {"", "VALIDATED"}
+    if (
+        not rr_is_validated
+        or row.get("rr") is None
+        or _safe_float(row.get("rr"), 0) < min_rr_absolute
+    ):
         _append_unique(veto, "rr_below_minimum")
-
-    if _safe_float(row.get("trend_score"), 0) < min_trend_score:
-        _append_unique(veto, "trend_score_too_weak")
 
     if row.get("setup_type") in {None, "", "NO_VALID_SETUP"}:
         _append_unique(veto, "no_valid_setup")

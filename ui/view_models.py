@@ -20,8 +20,52 @@ CANDIDATE_COLUMNS = [
     "timing_quality_score",
     "momentum_confirmation_score",
     "execution_readiness_status",
+    "market_opportunity_status",
+    "operational_status",
+    "technical_opportunity_score",
+    "decision_lane",
+    "rr_stressed",
+    "risk_geometry_status",
+    "risk_geometry_reason",
+    "earnings_event_status",
+    "earnings_data_confidence",
+    "earnings_refresh_required",
+    "earnings_review_reason",
+    "sector_relative_strength_score",
+    "sector_relative_leadership_status",
+    "decision_reasons",
+    "technical_asset_quality_score",
+    "entry_readiness_score",
+    "research_priority_score",
+    "reset_watch_score",
+    "context_confidence_score",
+    "data_confidence_score",
+    "technical_analysis_lane",
+    "deep_analysis_tier",
+    "operational_eligibility",
+    "research_eligibility_reason",
+    "setup_readiness_score",
+    "setup_readiness_state",
+    "setup_candidate_type",
+    "primary_setup_hypothesis",
+    "primary_setup_hypothesis_state",
+    "primary_setup_hypothesis_score",
+    "alternative_setup_hypotheses",
+    "setup_hypothesis_count",
+    "technical_eligibility_reason",
+    "trend_setup_compatibility",
+    "trend_setup_compatibility_reason",
+    "research_trend_compatibility",
+    "research_trend_compatibility_reason",
+    "momentum_gate_status",
+    "timing_gate_status",
+    "core_liquidity_status",
+    "execution_spread_status",
+    "daily_macd_operable",
+    "weekly_macd_operable",
     "technical_prefilter_status",
     "technical_prefilter_reason",
+    "technical_prefilter_triage",
     "daily_macd_prefilter_status",
     "weekly_macd_prefilter_status",
     "ema20_extension_prefilter_status",
@@ -33,6 +77,17 @@ CANDIDATE_COLUMNS = [
     "actionable_stop",
     "actionable_target",
     "rr",
+    "rr_status",
+    "rr_confidence",
+    "target_validation_source",
+    "target_validation_sources",
+    "entry_zone_low",
+    "entry_zone_high",
+    "technical_as_of_date",
+    "technical_bar_policy",
+    "daily_bar_complete",
+    "weekly_bar_complete",
+    "intraday_bar_excluded",
     "scenario_status",
     "scenario_confidence",
     "momentum_state",
@@ -41,6 +96,19 @@ CANDIDATE_COLUMNS = [
     "entry_timing_status",
     "macd_histogram_state",
     "weekly_macd_histogram_state",
+    "daily_macd_trajectory_state",
+    "daily_macd_trajectory_confidence",
+    "daily_macd_hist_slope",
+    "daily_macd_hist_acceleration",
+    "daily_macd_non_decelerating",
+    "weekly_macd_trajectory_state",
+    "weekly_macd_trajectory_confidence",
+    "weekly_macd_hist_slope",
+    "weekly_macd_hist_acceleration",
+    "weekly_macd_non_decelerating",
+    "momentum_alignment",
+    "momentum_alignment_confidence",
+    "momentum_operability_status",
     "weekly_macd_hist_improving",
     "weekly_macd_hist",
     "weekly_macd_hist_change_1w",
@@ -52,6 +120,16 @@ CANDIDATE_COLUMNS = [
     "sector_weekly_macd_acceleration",
     "sector_context_status",
     "sector_context_reason",
+    "sector_leadership_override_status",
+    "sector_headwind_strength",
+    "ema20_extension_risk",
+    "ema20_extension_confidence",
+    "ema20_extension_driver",
+    "ema20_distance_percentile_1y",
+    "ema20_extension_model",
+    "trend_transition_score",
+    "trend_transition_state",
+    "trend_transition_reason",
     "timing_penalty_reason",
     "momentum_penalty_reason",
     "engine_block_reason",
@@ -60,6 +138,8 @@ CANDIDATE_COLUMNS = [
     "scenario_evidence",
     "scenario_contradictions",
     "required_confirmation",
+    "required_confirmations",
+    "invalidation_conditions",
     "technical_rsi",
     "technical_macd_hist",
     "technical_macd_hist_change_3d",
@@ -177,16 +257,41 @@ def build_candidate_table_model(sources) -> dict:
     if df.empty:
         df = _df(sources, "manual_review_latest")
         source_name = "manual_review_latest"
-    if df.empty:
+    scan_df = _df(sources, "latest_scan_audited")
+    research_df = pd.DataFrame()
+    if not scan_df.empty and "technical_analysis_lane" in scan_df.columns:
+        if "decision_lane" in scan_df.columns:
+            research_mask = (
+                scan_df["decision_lane"]
+                .fillna("")
+                .astype(str)
+                .str.upper()
+                .isin({"TACTICAL_RESEARCH", "LEADERSHIP_RESET_WATCH"})
+            )
+        else:
+            research_mask = (
+                scan_df["technical_analysis_lane"]
+                .fillna("")
+                .astype(str)
+                .str.upper()
+                .eq("ADVANCE_RESEARCH_ANALYSIS")
+            )
+        research_df = scan_df[research_mask].copy()
+
+    if df.empty and research_df.empty:
         return _model(
             "Candidate table",
             status="EMPTY",
             summary={"source": source_name, "columns": []},
             warnings=["candidate_source_empty_or_missing"],
-            data={"columns": CANDIDATE_COLUMNS, "rows": []},
+            data={
+                "columns": CANDIDATE_COLUMNS,
+                "rows": [],
+                "research_columns": CANDIDATE_COLUMNS,
+                "research_rows": [],
+            },
         )
 
-    scan_df = _df(sources, "latest_scan_audited")
     if not scan_df.empty and "ticker" in df.columns and "ticker" in scan_df.columns:
         enrichment_columns = [
             col for col in CANDIDATE_COLUMNS if col in scan_df.columns and col not in df.columns
@@ -194,14 +299,67 @@ def build_candidate_table_model(sources) -> dict:
         if enrichment_columns:
             scan_subset = scan_df[["ticker", *enrichment_columns]].drop_duplicates("ticker")
             df = df.merge(scan_subset, on="ticker", how="left")
+    if "technical_analysis_lane" in df.columns:
+        df = df[
+            ~df["technical_analysis_lane"]
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .eq("ADVANCE_RESEARCH_ANALYSIS")
+        ].copy()
+
     columns = [col for col in CANDIDATE_COLUMNS if col in df.columns]
     table = df[columns].copy() if columns else pd.DataFrame()
+    research_columns = [col for col in CANDIDATE_COLUMNS if col in research_df.columns]
+    research_table = (
+        research_df[research_columns]
+        .sort_values(
+            [
+                col
+                for col in [
+                    "research_priority_score",
+                    "reset_watch_score",
+                    "setup_readiness_score",
+                    "technical_opportunity_score",
+                    "ticker",
+                ]
+                if col in research_df.columns
+            ],
+            ascending=[
+                col == "ticker"
+                for col in [
+                    col
+                    for col in [
+                        "research_priority_score",
+                        "reset_watch_score",
+                        "setup_readiness_score",
+                        "technical_opportunity_score",
+                        "ticker",
+                    ]
+                    if col in research_df.columns
+                ]
+            ],
+        )
+        .reset_index(drop=True)
+        if research_columns
+        else pd.DataFrame()
+    )
     return _model(
         "Candidate table",
-        status="PASS",
-        summary={"source": source_name, "columns": columns},
+        status="PASS" if not table.empty or not research_table.empty else "EMPTY",
+        summary={
+            "source": source_name,
+            "columns": columns,
+            "operational_rows": len(table),
+            "research_rows": len(research_table),
+        },
         rows_count=len(table),
-        data={"columns": columns, "rows": table.to_dict(orient="records")},
+        data={
+            "columns": columns,
+            "rows": table.to_dict(orient="records"),
+            "research_columns": research_columns,
+            "research_rows": research_table.to_dict(orient="records"),
+        },
     )
 
 

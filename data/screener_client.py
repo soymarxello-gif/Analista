@@ -95,15 +95,16 @@ def _custom_query_from_config(query_cfg: dict) -> Any:
     exchanges = query_cfg.get("exchanges", ["NMS", "NYQ", "ASE"])
     min_market_cap = query_cfg.get("min_market_cap_usd", 2_500_000_000)
     min_price = query_cfg.get("min_price", 10)
-    min_avg_volume_3m = query_cfg.get("min_avg_volume_3m", 250_000)
+    min_avg_volume_3m = query_cfg.get("min_avg_volume_3m", 0)
 
     operands = [
         EquityQuery("is-in", ["exchange", *exchanges]),
         EquityQuery("eq", ["region", query_cfg.get("region", "us")]),
         EquityQuery("gte", ["intradaymarketcap", min_market_cap]),
         EquityQuery("gte", ["intradayprice", min_price]),
-        EquityQuery("gte", ["avgdailyvol3m", min_avg_volume_3m]),
     ]
+    if min_avg_volume_3m and float(min_avg_volume_3m) > 0:
+        operands.append(EquityQuery("gte", ["avgdailyvol3m", min_avg_volume_3m]))
     return EquityQuery("and", operands)
 
 

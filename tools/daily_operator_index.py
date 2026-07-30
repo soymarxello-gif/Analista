@@ -565,6 +565,7 @@ def _normalize_portfolio_concentration_status(data: dict) -> dict:
             "rows": 0,
             "warnings": 0,
             "concentration_flags": 0,
+            "cohort_rows": {},
         }
     return {
         "available": True,
@@ -572,6 +573,7 @@ def _normalize_portfolio_concentration_status(data: dict) -> dict:
         "rows": _safe_int(data.get("rows"), 0),
         "warnings": len(data.get("warnings", []) or []),
         "concentration_flags": len(data.get("concentration_flags", []) or []),
+        "cohort_rows": data.get("cohort_rows", {}) or {},
     }
 
 
@@ -970,8 +972,21 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         options_available = _value_counts(scan_df, "options_data_available")
     options_error = _value_counts(scan_df, "options_error")
     technical_prefilter = _value_counts(scan_df, "technical_prefilter_status")
+    technical_prefilter_triage = _value_counts(scan_df, "technical_prefilter_triage")
+    technical_analysis_lane = _value_counts(scan_df, "technical_analysis_lane")
+    decision_lane = _value_counts(scan_df, "decision_lane")
+    deep_analysis_tier = _value_counts(scan_df, "deep_analysis_tier")
+    setup_readiness_state = _value_counts(scan_df, "setup_readiness_state")
+    rr_status = _value_counts(scan_df, "rr_status")
+    risk_geometry_status = _value_counts(scan_df, "risk_geometry_status")
+    market_opportunity_status = _value_counts(scan_df, "market_opportunity_status")
+    earnings_event_status = _value_counts(scan_df, "earnings_event_status")
+    technical_bar_policy = _value_counts(scan_df, "technical_bar_policy")
     daily_macd_prefilter = _value_counts(scan_df, "daily_macd_prefilter_status")
     weekly_macd_prefilter = _value_counts(scan_df, "weekly_macd_prefilter_status")
+    daily_macd_trajectory = _value_counts(scan_df, "daily_macd_trajectory_state")
+    weekly_macd_trajectory = _value_counts(scan_df, "weekly_macd_trajectory_state")
+    momentum_alignment = _value_counts(scan_df, "momentum_alignment")
     ema20_extension_prefilter = _value_counts(scan_df, "ema20_extension_prefilter_status")
     sector_weekly_macd = _value_counts(scan_df, "sector_weekly_macd_state")
     sector_weekly_macd_acceleration = _value_counts(scan_df, "sector_weekly_macd_acceleration_state")
@@ -1069,8 +1084,21 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "options_available": options_available,
         "options_error": options_error,
         "technical_prefilter": technical_prefilter,
+        "technical_prefilter_triage": technical_prefilter_triage,
+        "technical_analysis_lane": technical_analysis_lane,
+        "decision_lane": decision_lane,
+        "deep_analysis_tier": deep_analysis_tier,
+        "setup_readiness_state": setup_readiness_state,
+        "rr_status": rr_status,
+        "risk_geometry_status": risk_geometry_status,
+        "market_opportunity_status": market_opportunity_status,
+        "earnings_event_status": earnings_event_status,
+        "technical_bar_policy": technical_bar_policy,
         "daily_macd_prefilter": daily_macd_prefilter,
         "weekly_macd_prefilter": weekly_macd_prefilter,
+        "daily_macd_trajectory": daily_macd_trajectory,
+        "weekly_macd_trajectory": weekly_macd_trajectory,
+        "momentum_alignment": momentum_alignment,
         "ema20_extension_prefilter": ema20_extension_prefilter,
         "sector_weekly_macd": sector_weekly_macd,
         "sector_weekly_macd_acceleration": sector_weekly_macd_acceleration,
@@ -1241,8 +1269,28 @@ def build_daily_operator_index_markdown(data: dict) -> str:
     else:
         lines.append(f"- pass: {technical_prefilter.get('PASS', 0)}")
         lines.append(f"- fail: {technical_prefilter.get('FAIL', 0)}")
+        lines.append(f"- triage: {data.get('technical_prefilter_triage', {})}")
+        lines.append(f"- carriles canonicos: {data.get('technical_analysis_lane', {})}")
+        lines.append(f"- libros institucionales: {data.get('decision_lane', {})}")
+        lanes = data.get("technical_analysis_lane", {}) or {}
+        lines.append(
+            f"- investigacion profunda: {lanes.get('ADVANCE_RESEARCH_ANALYSIS', 0)}"
+        )
+        lines.append(
+            f"- candidatos operativos: {lanes.get('ADVANCE_DEEP_ANALYSIS', 0)}"
+        )
+        lines.append(f"- rechazados por riesgo: {lanes.get('REJECT_RISK', 0)}")
+        lines.append(f"- madurez setup: {data.get('setup_readiness_state', {})}")
+        lines.append(f"- estado R/R: {data.get('rr_status', {})}")
+        lines.append(f"- geometria de riesgo: {data.get('risk_geometry_status', {})}")
+        lines.append(f"- estado de oportunidad: {data.get('market_opportunity_status', {})}")
+        lines.append(f"- earnings: {data.get('earnings_event_status', {})}")
+        lines.append(f"- politica de velas: {data.get('technical_bar_policy', {})}")
         lines.append(f"- daily_macd: {data.get('daily_macd_prefilter', {})}")
         lines.append(f"- weekly_macd: {data.get('weekly_macd_prefilter', {})}")
+        lines.append(f"- daily_macd_trajectory: {data.get('daily_macd_trajectory', {})}")
+        lines.append(f"- weekly_macd_trajectory: {data.get('weekly_macd_trajectory', {})}")
+        lines.append(f"- momentum_alignment: {data.get('momentum_alignment', {})}")
         lines.append(f"- ema20_extension: {data.get('ema20_extension_prefilter', {})}")
         lines.append("- Uso: gate temprano read-only; no crea TRIGGER_CONFIRMED ni relaja quote quality.")
     lines.append("")
@@ -1419,6 +1467,7 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append(f"- rows: {concentration.get('rows', 0)}")
         lines.append(f"- warnings: {concentration.get('warnings', 0)}")
         lines.append(f"- concentration_flags: {concentration.get('concentration_flags', 0)}")
+        lines.append(f"- cohortes: {concentration.get('cohort_rows', {})}")
         lines.append("- markdown: reports/portfolio_concentration_latest.md")
         lines.append("- json: reports/portfolio_concentration_latest.json")
         lines.append("- Auditoria read-only de concentración sector/factor.")

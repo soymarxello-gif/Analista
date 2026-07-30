@@ -53,3 +53,34 @@ def test_source_coverage_report_handles_empty_dataframe():
 
     assert report["rows"] == 0
     assert report["counts"] == {}
+
+
+def test_source_coverage_excludes_intentionally_unrequested_metadata_from_rate():
+    df = pd.DataFrame(
+        [
+            {
+                "ticker": "RADAR",
+                "sector": None,
+                "industry": None,
+                "market_cap": 3_000_000_000,
+                "metadata_source": "NOT_REQUESTED_TECHNICAL_ASSESSMENT",
+                "technical_analysis_lane": "RADAR_FORMING_SETUP",
+            },
+            {
+                "ticker": "ADVANCE",
+                "sector": "Technology",
+                "industry": "Software",
+                "market_cap": 10_000_000_000,
+                "metadata_source": "yfinance",
+                "technical_analysis_lane": "ADVANCE_DEEP_ANALYSIS",
+            },
+        ]
+    )
+
+    report = build_source_coverage_report(df)
+
+    assert report["coverage_scopes"]["metadata_requested_rows"] == 1
+    assert report["coverage_scopes"]["metadata_not_requested_rows"] == 1
+    assert report["missing_rates"]["sector"] == 0.0
+    assert report["missing_rates"]["industry"] == 0.0
+    assert report["top_missing_metadata"] == []

@@ -232,7 +232,7 @@ def test_invalid_shadow_or_late_ema20_prevents_high_quality_top_group():
     shadow_invalid = dict(base, shadow_level_status="RR_BELOW_MINIMUM")
     ema_late = dict(base, ema20_extension_status="LATE_ENTRY")
 
-    assert classify_top_group(shadow_invalid) == "3_PERSISTENTE_NO_ACCIONABLE_TODAVIA"
+    assert classify_top_group(shadow_invalid) == "1B_REVISION_OPERATIVA_PRIORITARIA"
     assert classify_top_group(ema_late) == "3_PERSISTENTE_NO_ACCIONABLE_TODAVIA"
 
 

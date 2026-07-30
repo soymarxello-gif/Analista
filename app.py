@@ -24,7 +24,7 @@ from ui.view_models import (
 ROOT = Path(__file__).resolve().parent
 
 WATCHLIST_FILTER_COLUMNS = [
-    "technical_prefilter_status",
+    "technical_analysis_lane",
     "scenario_status",
     "setup_type",
     "quote_status",
@@ -35,7 +35,10 @@ WATCHLIST_FILTER_COLUMNS = [
 WATCHLIST_DEFAULT_COLUMNS = [
     "ticker",
     "execution_readiness_status",
-    "technical_prefilter_status",
+    "market_opportunity_status",
+    "deep_analysis_tier",
+    "technical_opportunity_score",
+    "technical_analysis_lane",
     "weekly_macd_histogram_state",
     "ema20_extension_status",
     "operational_readiness_score",
@@ -44,6 +47,22 @@ WATCHLIST_DEFAULT_COLUMNS = [
     "quote_status",
     "execution_quote_quality",
     "rr",
+    "rr_status",
+    "risk_geometry_status",
+]
+
+RESEARCH_DEFAULT_COLUMNS = [
+    "ticker",
+    "setup_candidate_type",
+    "setup_readiness_score",
+    "setup_readiness_state",
+    "technical_opportunity_score",
+    "research_eligibility_reason",
+    "ema20_extension_status",
+    "daily_macd_trajectory_state",
+    "weekly_macd_trajectory_state",
+    "rr_status",
+    "risk_geometry_status",
 ]
 
 
@@ -88,7 +107,12 @@ def _r_multiple_chart(chart: dict | None) -> None:
     st.altair_chart(rendered, width="stretch")
 
 
-def _filtered_dataframe(df: pd.DataFrame, filters: list[str]) -> pd.DataFrame:
+def _filtered_dataframe(
+    df: pd.DataFrame,
+    filters: list[str],
+    *,
+    key_prefix: str = "filter",
+) -> pd.DataFrame:
     out = df.copy()
     available_filters = [column for column in filters if column in out.columns]
     if available_filters:
@@ -100,7 +124,7 @@ def _filtered_dataframe(df: pd.DataFrame, filters: list[str]) -> pd.DataFrame:
                     ui_formatters.spanish_column_label(column),
                     values,
                     default=values,
-                    key=f"filter_{column}",
+                    key=f"{key_prefix}_{column}",
                 )
                 if selected:
                     out = out[out[column].astype(str).isin(selected)]
@@ -481,14 +505,22 @@ def main() -> None:
 
     if active_view == "Candidatos":
         ui_layout.render_section_heading("Candidatos / Watchlist", candidates["status"])
-        st.caption("Centro operativo: filtra, selecciona una fila y revisa la ficha. Nada de esta vista ejecuta órdenes reales.")
+        st.caption(
+            "Oportunidades operativas y radar de investigación se muestran por separado. "
+            "Nada de esta vista ejecuta órdenes reales."
+        )
         candidate_df = _records_to_dataframe(candidates.get("data", {}).get("rows", []))
+        research_df = _records_to_dataframe(
+            candidates.get("data", {}).get("research_rows", [])
+        )
         if candidate_df.empty:
-            ui_layout.render_empty_state("No hay candidatos disponibles.")
+            ui_layout.render_section_title("Oportunidades operativas")
+            ui_layout.render_empty_state("No hay oportunidades operativas disponibles.")
         else:
             filtered = _filtered_dataframe(
                 candidate_df,
                 WATCHLIST_FILTER_COLUMNS,
+                key_prefix="operational_filter",
             ).reset_index(drop=True)
             if filtered.empty:
                 ui_layout.render_empty_state("Ningún candidato coincide con los filtros.")
@@ -505,7 +537,9 @@ def main() -> None:
                 )
                 watchlist_panel, detail_panel = st.columns([1.48, 1.62], gap="large")
                 with watchlist_panel:
-                    ui_layout.render_section_title(f"Watchlist · {len(filtered)} candidatos")
+                    ui_layout.render_section_title(
+                        f"Oportunidades operativas · {len(filtered)}"
+                    )
                     event, _display = ui_layout.render_display_dataframe(
                         filtered,
                         columns=watchlist_columns,
@@ -567,6 +601,60 @@ def main() -> None:
                                     height=320,
                                     key="ai_review_prompt_output",
                                 )
+
+        ui_layout.render_section_title("Radar de investigación")
+        st.caption(
+            "Setups en formación o con cautela leve. No pasan a checklist, "
+            "recheck de ejecución ni posttest automático."
+        )
+        if research_df.empty:
+            ui_layout.render_empty_state("No hay setups elegibles para investigación profunda.")
+        else:
+            research_filtered = _filtered_dataframe(
+                research_df,
+                [
+                    "setup_readiness_state",
+                    "setup_candidate_type",
+                    "ema20_extension_status",
+                    "rr_status",
+                ],
+                key_prefix="research_filter",
+            ).reset_index(drop=True)
+            research_filtered, research_columns = _apply_watchlist_preferences(
+                table_key="candidate_research_radar_v1",
+                df=research_filtered,
+                default_columns=RESEARCH_DEFAULT_COLUMNS,
+                default_sort_column="setup_readiness_score",
+                default_sort_desc=True,
+            )
+            radar_panel, research_detail_panel = st.columns([1.48, 1.62], gap="large")
+            with radar_panel:
+                event, _display = ui_layout.render_display_dataframe(
+                    research_filtered,
+                    columns=research_columns,
+                    key="candidate_research_radar",
+                    height=430,
+                    selectable=True,
+                    compact=True,
+                )
+                selected_research_rows = (
+                    getattr(getattr(event, "selection", None), "rows", [])
+                    if event is not None
+                    else []
+                )
+            with research_detail_panel:
+                ui_layout.render_section_title("Ficha diagnóstica")
+                if not selected_research_rows:
+                    ui_layout.render_candidate_detail({}, research=True)
+                else:
+                    research_index = min(
+                        int(selected_research_rows[0]),
+                        len(research_filtered) - 1,
+                    )
+                    ui_layout.render_candidate_detail(
+                        research_filtered.iloc[research_index].to_dict(),
+                        research=True,
+                    )
 
             with st.expander("Analítica del universo", expanded=False):
                 ui_layout.render_section_title("Señales")

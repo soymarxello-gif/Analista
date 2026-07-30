@@ -27,10 +27,16 @@ def _read_csv(path: Path) -> pd.DataFrame:
         return pd.DataFrame()
     if df.empty:
         return df
-    df["_source_path"] = str(path)
-    df["_source_mtime"] = path.stat().st_mtime
-    df["_report_date"] = datetime.fromtimestamp(path.stat().st_mtime).date().isoformat()
-    return df
+    source_mtime = path.stat().st_mtime
+    source_columns = pd.DataFrame(
+        {
+            "_source_path": str(path),
+            "_source_mtime": source_mtime,
+            "_report_date": datetime.fromtimestamp(source_mtime).date().isoformat(),
+        },
+        index=df.index,
+    )
+    return pd.concat([df.copy(), source_columns], axis=1)
 
 
 def load_report_sessions(patterns: list[str] | None = None) -> list[pd.DataFrame]:
@@ -40,6 +46,7 @@ def load_report_sessions(patterns: list[str] | None = None) -> list[pd.DataFrame
         str(ROOT / "reports" / "trade_decision_checklist_latest.csv"),
         str(ROOT / "reports" / "history" / "**" / "manual_review_top.csv"),
         str(ROOT / "reports" / "history" / "**" / "latest_scan_audited.csv"),
+        str(ROOT / "reports" / "posttest_memory" / "**" / "automatic_buy_now_memory.csv"),
     ]
     sessions: list[pd.DataFrame] = []
     seen: set[str] = set()
@@ -52,8 +59,42 @@ def load_report_sessions(patterns: list[str] | None = None) -> list[pd.DataFrame
             frame = _read_csv(Path(path))
             if not frame.empty:
                 sessions.append(frame)
-    sessions.sort(key=lambda df: float(df["_source_mtime"].iloc[0]))
-    return sessions
+    for raw in glob.glob(
+        str(ROOT / "reports" / "posttest_memory" / "**" / "session_manifest.json"),
+        recursive=True,
+    ):
+        path = Path(raw).resolve()
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if int(payload.get("buy_now_rows", 0) or 0) > 0:
+            continue
+        mtime = path.stat().st_mtime
+        sessions.append(
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "",
+                        "_session_empty": True,
+                        "_source_path": str(path),
+                        "_source_mtime": mtime,
+                        "_report_date": str(payload.get("session_date") or path.parent.name),
+                    }
+                ]
+            )
+        )
+    canonical_by_date: dict[str, pd.DataFrame] = {}
+    for session in sessions:
+        report_date = _safe_text(session["_report_date"].iloc[0])
+        existing = canonical_by_date.get(report_date)
+        if existing is None or float(session["_source_mtime"].iloc[0]) >= float(
+            existing["_source_mtime"].iloc[0]
+        ):
+            canonical_by_date[report_date] = session
+    canonical = list(canonical_by_date.values())
+    canonical.sort(key=lambda df: float(df["_source_mtime"].iloc[0]))
+    return canonical
 
 
 def _safe_float(value: Any) -> float | None:
@@ -107,9 +148,16 @@ def _is_buy_now_candidate(row: pd.Series) -> bool:
     blockers = _safe_text(row.get("checklist_blockers"))
     engine_block = _safe_text(row.get("engine_block_reason"))
     shadow_status = _safe_text(row.get("shadow_level_status")).upper()
+    daily_macd_state = _safe_text(row.get("macd_histogram_state")).upper()
     weekly_macd_state = _safe_text(row.get("weekly_macd_histogram_state")).upper()
-    sector_macd_state = _safe_text(row.get("sector_weekly_macd_state")).upper()
+    daily_trajectory_state = _safe_text(row.get("daily_macd_trajectory_state")).upper()
+    weekly_trajectory_state = _safe_text(row.get("weekly_macd_trajectory_state")).upper()
+    momentum_operability = _safe_text(row.get("momentum_operability_status")).upper()
     technical_prefilter_status = _safe_text(row.get("technical_prefilter_status")).upper()
+    technical_analysis_lane = _safe_text(row.get("technical_analysis_lane")).upper()
+    decision_lane = _safe_text(row.get("decision_lane")).upper()
+    rr_status = _safe_text(row.get("rr_status")).upper()
+    risk_geometry_status = _safe_text(row.get("risk_geometry_status")).upper()
     rr = _safe_float(row.get("rr"))
 
     if signal in {"VETO", "AVOID"}:
@@ -130,11 +178,32 @@ def _is_buy_now_candidate(row: pd.Series) -> bool:
         return False
     if technical_prefilter_status and technical_prefilter_status != "PASS":
         return False
+    if technical_analysis_lane and technical_analysis_lane != "ADVANCE_DEEP_ANALYSIS":
+        return False
+    if decision_lane and decision_lane != "EXECUTION_CANDIDATE":
+        return False
+    if rr_status and rr_status != "VALIDATED":
+        return False
+    if risk_geometry_status and risk_geometry_status != "ROBUST":
+        return False
+    if _bool(row.get("earnings_operability_block")):
+        return False
     if shadow_status not in {"", "VALID", "NOT_AVAILABLE", "NOT_ELIGIBLE"}:
         return False
-    if weekly_macd_state != "WEEKLY_MACD_HIST_IMPROVING":
+    if daily_trajectory_state and daily_trajectory_state not in {"ACCELERATING", "IMPROVING_STEADY"}:
         return False
-    if sector_macd_state and sector_macd_state not in {"SECTOR_MACD_ACCELERATING", "SECTOR_MACD_IMPROVING"}:
+    if weekly_trajectory_state and weekly_trajectory_state not in {"ACCELERATING", "IMPROVING_STEADY"}:
+        return False
+    if not weekly_trajectory_state and weekly_macd_state != "WEEKLY_MACD_HIST_IMPROVING":
+        return False
+    if (
+        not daily_trajectory_state
+        and daily_macd_state
+        and daily_macd_state
+        not in {"MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO", "MACD_HIST_POSITIVE_EXPANDING"}
+    ):
+        return False
+    if momentum_operability and momentum_operability != "CONFIRMED_NON_DECELERATING":
         return False
     if rr is None or rr < 1.5:
         return False
@@ -179,6 +248,113 @@ def select_top_candidates(session: pd.DataFrame, top_n: int = 5) -> pd.DataFrame
     if "automatic_posttest_reason" not in candidates.columns:
         candidates["automatic_posttest_reason"] = "strict_automatic_posttest_memory_only"
     return candidates.drop(columns=["_selection_score", "_selection_trade_score", "_selection_ticker"], errors="ignore")
+
+
+def persist_daily_candidate_memory(
+    *,
+    source_csv: Path | None = None,
+    memory_root: Path | None = None,
+    session_date: str | None = None,
+    top_n: int = 5,
+) -> dict[str, Any]:
+    source_csv = source_csv or ROOT / "reports" / "latest_scan_audited.csv"
+    memory_root = memory_root or ROOT / "reports" / "posttest_memory"
+    date_text = session_date or datetime.now(timezone.utc).date().isoformat()
+    session_dir = memory_root / date_text
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    source = _read_csv(source_csv) if source_csv.exists() else pd.DataFrame()
+    selected = select_top_candidates(source, top_n=top_n) if not source.empty else pd.DataFrame()
+    shadow = (
+        select_shadow_research_candidates(source, top_n=top_n)
+        if not source.empty
+        else pd.DataFrame()
+    )
+    buy_path = session_dir / "automatic_buy_now_memory.csv"
+    shadow_path = session_dir / "research_shadow_memory.csv"
+    manifest_path = session_dir / "session_manifest.json"
+    selected.to_csv(buy_path, index=False)
+    shadow.to_csv(shadow_path, index=False)
+    payload = {
+        "session_date": date_text,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source_csv": str(source_csv),
+        "source_exists": source_csv.exists(),
+        "buy_now_rows": int(len(selected)),
+        "shadow_research_rows": int(len(shadow)),
+        "primary_memory": "BUY_NOW_ONLY",
+        "empty_session_recorded": selected.empty,
+        "notice": NOTICE,
+        "creates_trigger_confirmed": False,
+        "broker_execution": False,
+    }
+    manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return payload
+
+
+def _is_shadow_research_candidate(row: pd.Series) -> bool:
+    decision_lane = _safe_text(row.get("decision_lane")).upper()
+    if decision_lane != "TACTICAL_RESEARCH":
+        return False
+    daily = _safe_text(row.get("daily_macd_trajectory_state")).upper()
+    weekly = _safe_text(row.get("weekly_macd_trajectory_state")).upper()
+    if daily not in {"ACCELERATING", "IMPROVING_STEADY"}:
+        return False
+    if weekly not in {"ACCELERATING", "IMPROVING_STEADY"}:
+        return False
+    if _safe_text(row.get("ema20_extension_status")).upper() in {
+        "OVEREXTENDED",
+        "LATE_ENTRY",
+    }:
+        return False
+    return all(
+        _safe_float(row.get(field)) is not None
+        for field in ["shadow_entry", "shadow_stop", "shadow_target"]
+    )
+
+
+def select_shadow_research_candidates(
+    session: pd.DataFrame,
+    top_n: int = 5,
+) -> pd.DataFrame:
+    if session.empty:
+        return session.copy()
+    candidates = session[session.apply(_is_shadow_research_candidate, axis=1)].copy()
+    if candidates.empty:
+        return candidates
+    candidates["_research_score"] = pd.to_numeric(
+        candidates.get(
+            "research_priority_score",
+            pd.Series(index=candidates.index, dtype=float),
+        ),
+        errors="coerce",
+    ).fillna(float("-inf"))
+    candidates["_opportunity_score"] = pd.to_numeric(
+        candidates.get(
+            "technical_opportunity_score",
+            pd.Series(index=candidates.index, dtype=float),
+        ),
+        errors="coerce",
+    ).fillna(float("-inf"))
+    candidates["_ticker"] = candidates["ticker"].astype(str).str.upper()
+    candidates = candidates.sort_values(
+        ["_research_score", "_opportunity_score", "_ticker"],
+        ascending=[False, False, True],
+        kind="stable",
+    ).head(int(top_n))
+    candidates["shadow_posttest_rank"] = range(1, len(candidates) + 1)
+    return candidates.drop(
+        columns=["_research_score", "_opportunity_score", "_ticker"],
+        errors="ignore",
+    )
+
+
+def _as_shadow_evaluation_row(row: pd.Series) -> pd.Series:
+    shadow = row.copy()
+    shadow["actionable_entry"] = row.get("shadow_entry")
+    shadow["actionable_stop"] = row.get("shadow_stop")
+    shadow["actionable_target"] = row.get("shadow_target")
+    return shadow
 
 
 def _evaluate_with_history(row: pd.Series, history: pd.DataFrame, horizon: int) -> dict[str, Any]:
@@ -319,6 +495,7 @@ def run_posttest(
     horizons = sorted(set(horizons or DEFAULT_HORIZONS))
     sessions = load_report_sessions()
     rows: list[dict[str, Any]] = []
+    shadow_rows: list[dict[str, Any]] = []
     if not sessions:
         return {
             "status": "WARN",
@@ -328,6 +505,9 @@ def run_posttest(
             "horizon_summary": _empty_horizon_summary(horizons),
             "recommendations": ["need_more_report_history"],
             "buy_now_memory_rows": 0,
+            "shadow_research_rows": 0,
+            "shadow_false_negative_summary": _empty_horizon_summary(horizons),
+            "shadow_rows_data": [],
             "notice": NOTICE,
         }
 
@@ -336,7 +516,19 @@ def run_posttest(
             continue
         session = sessions[-(horizon + 1)]
         selected = select_top_candidates(session, top_n)
-        tickers = selected.get("ticker", pd.Series(dtype=str)).astype(str).str.upper().tolist()
+        shadow_selected = select_shadow_research_candidates(session, top_n)
+        tickers = sorted(
+            set(
+                selected.get("ticker", pd.Series(dtype=str))
+                .astype(str)
+                .str.upper()
+                .tolist()
+                + shadow_selected.get("ticker", pd.Series(dtype=str))
+                .astype(str)
+                .str.upper()
+                .tolist()
+            )
+        )
         try:
             histories = history_fn(tickers, period="3mo", interval="1d") if tickers else {}
         except Exception:
@@ -381,7 +573,35 @@ def run_posttest(
                     **evaluation,
                 }
             )
+        for _, row in shadow_selected.iterrows():
+            ticker = _safe_text(row.get("ticker")).upper()
+            evaluation = _evaluate_with_history(
+                _as_shadow_evaluation_row(row),
+                histories.get(ticker, pd.DataFrame()),
+                horizon,
+            )
+            shadow_rows.append(
+                {
+                    "report_session_index": len(sessions) - horizon - 1,
+                    "report_date": row.get("_report_date", ""),
+                    "source_path": row.get("_source_path", ""),
+                    "shadow_posttest_rank": row.get("shadow_posttest_rank", ""),
+                    "decision_lane": row.get("decision_lane", ""),
+                    "primary_setup_hypothesis": row.get(
+                        "primary_setup_hypothesis",
+                        row.get("setup_type", ""),
+                    ),
+                    "research_priority_score": row.get("research_priority_score", ""),
+                    "technical_opportunity_score": row.get(
+                        "technical_opportunity_score",
+                        "",
+                    ),
+                    "cohort": "TACTICAL_RESEARCH_SHADOW",
+                    **evaluation,
+                }
+            )
     out = pd.DataFrame(rows)
+    shadow_out = pd.DataFrame(shadow_rows)
     horizon_summary = summarize_results(out)
     for horizon in horizons:
         horizon_summary.setdefault(
@@ -418,7 +638,7 @@ def run_posttest(
         recommendations.append("revisar_timing_por_extension_ema20")
     if not recommendations:
         recommendations.append("NO_BUY_NOW_MEMORY" if out.empty else "NO_ACTION")
-    status = "PASS" if sessions else "WARN"
+    status = "PASS" if not out.empty else "PASS_NO_ELIGIBLE_COHORT"
     return {
         "status": status,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -428,11 +648,16 @@ def run_posttest(
         "horizon_summary": horizon_summary,
         "recommendations": recommendations,
         "buy_now_memory_rows": int(len(out)),
+        "shadow_research_rows": int(len(shadow_out)),
+        "shadow_false_negative_summary": summarize_results(shadow_out),
         "notice": NOTICE,
         "creates_trigger_confirmed": False,
         "broker_execution": False,
         "changes_scoring": False,
         "rows_data": out.to_dict(orient="records") if not out.empty else [],
+        "shadow_rows_data": (
+            shadow_out.to_dict(orient="records") if not shadow_out.empty else []
+        ),
     }
 
 
@@ -460,6 +685,17 @@ def save_reports(result: dict[str, Any], *, csv_out: Path, json_out: Path, markd
     ]
     for horizon, summary in (payload.get("horizon_summary") or {}).items():
         lines.append(f"- {horizon}: win_rate={summary.get('win_rate')} avg_return_pct={summary.get('avg_return_pct')}")
+    lines.extend(["", "## Cohorte shadow de investigación"])
+    lines.append(
+        f"- filas: {payload.get('shadow_research_rows', 0)}"
+    )
+    for horizon, summary in (
+        payload.get("shadow_false_negative_summary") or {}
+    ).items():
+        lines.append(
+            f"- {horizon}: win_rate={summary.get('win_rate')} "
+            f"avg_return_pct={summary.get('avg_return_pct')}"
+        )
     lines.extend(["", "## Recommendations"])
     for item in payload.get("recommendations", []):
         lines.append(f"- {item}")
@@ -484,14 +720,16 @@ def main() -> int:
     parser.add_argument("--json-out", default=str(ROOT / "reports" / "simple_candidate_posttest_latest.json"))
     parser.add_argument("--markdown-out", default=str(ROOT / "reports" / "simple_candidate_posttest_latest.md"))
     args = parser.parse_args()
+    memory = persist_daily_candidate_memory()
     result = run_posttest()
+    result["daily_memory"] = memory
     payload = save_reports(result, csv_out=Path(args.csv_out), json_out=Path(args.json_out), markdown_out=Path(args.markdown_out))
     print("=== ANALISTA SIMPLE CANDIDATE POSTTEST ===")
     print(f"Status: {payload.get('status')}")
     print(f"Rows: {payload.get('rows')}")
     print(f"JSON: {args.json_out}")
     print(f"Markdown: {args.markdown_out}")
-    return 0 if payload.get("status") in {"PASS", "WARN"} else 1
+    return 0 if payload.get("status") in {"PASS", "WARN", "PASS_NO_ELIGIBLE_COHORT"} else 1
 
 
 if __name__ == "__main__":

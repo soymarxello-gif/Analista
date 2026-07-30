@@ -100,7 +100,8 @@ def test_liquidity_funnel_runs_before_metadata_and_skips_rejected_tickers(
         {"performance": {"scan_report_path": str(report_path)}}
     )
 
-    assert result.empty
+    assert result["ticker"].tolist() == ["THIN"]
+    assert result.iloc[0]["technical_analysis_lane"] == "REJECT_RISK"
     assert enriched == ["LIQUID"]
     assert calls.index(("prices", ("LIQUID", "THIN"))) < calls.index(
         ("metadata", ("LIQUID",))
@@ -110,11 +111,11 @@ def test_liquidity_funnel_runs_before_metadata_and_skips_rejected_tickers(
     assert report_path.exists()
 
 
-def test_productive_deep_analysis_target_is_expanded_without_small_cap() -> None:
+def test_deep_analysis_has_no_minimum_quota_and_keeps_a_safety_ceiling() -> None:
     with open("config.yaml", "r", encoding="utf-8") as fh:
         config = yaml.safe_load(fh)
 
     funnel = config["deep_analysis"]["candidate_funnel"]
-    assert funnel["target_tickers"] >= 150
-    assert funnel["min_tickers"] >= 120
+    assert funnel["target_tickers"] == 0
+    assert funnel["min_tickers"] == 0
     assert funnel["max_tickers"] >= 1000

@@ -39,6 +39,8 @@ SKIP_DIR_NAMES = {
     "__pycache__",
     ".pytest_cache",
     "cache",
+    "history",
+    "posttests",
 }
 
 

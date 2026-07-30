@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from data.technical_bars import closed_weekly_close
+
 
 def _float(value, default=None):
     try:
@@ -18,7 +20,7 @@ def _weekly_macd_hist_non_bearish(df: pd.DataFrame) -> bool | None:
     if not isinstance(df.index, pd.DatetimeIndex) or len(df) < 90:
         return None
 
-    weekly_close = df["close"].astype(float).resample("W-FRI").last().dropna()
+    weekly_close, _ = closed_weekly_close(df["close"].astype(float))
     if len(weekly_close) < 35:
         return None
 

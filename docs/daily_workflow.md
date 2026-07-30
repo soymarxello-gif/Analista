@@ -179,8 +179,18 @@ The dashboard reads report data through `ui.report_loader.load_all_ui_sources` a
 Main cockpit sections:
 
 - `Resumen`: daily status, quote quality and compact macro context.
-- `Candidatos`: watchlist, ticker card, single-ticker deep dive and universe analytics.
+- `Candidatos`: operational watchlist, research radar, ticker card and universe analytics.
 - `Control`: safety rules, macro context, calibration, simple posttest and report health.
+
+Within `Candidatos`, review the two lanes separately:
+
+- `Oportunidades operativas`: strict closed-bar setups eligible for manual
+  execution review, still subject to valid/high quote requirements.
+- `Radar de investigación`: forming setups or mild timing cautions. These rows
+  do not enter the checklist, execution recheck or automatic posttest.
+
+Confirm `Cierre técnico`, `Política de velas`, `Estado setup` and `Estado R/R`
+before interpreting a candidate. `DIAGNOSTIC_ONLY` levels are not operational.
 
 Allowed GUI actions are limited:
 

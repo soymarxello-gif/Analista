@@ -55,3 +55,28 @@ def test_funnel_prefers_operable_preliminary_signals() -> None:
     selected, _audit = select_deep_analysis_candidates(candidates, target_tickers=40)
 
     assert all(int(ticker[1:]) < 100 for ticker in selected)
+
+
+def test_canonical_funnel_selects_every_advance_without_backfilling_radar() -> None:
+    candidates = [
+        {
+            **_candidate(index),
+            "technical_analysis_lane": (
+                "ADVANCE_DEEP_ANALYSIS" if index < 7 else "RADAR_FORMING_SETUP"
+            ),
+            "technical_opportunity_score": 90.0 - index,
+        }
+        for index in range(10)
+    ]
+
+    selected, audit = select_deep_analysis_candidates(
+        candidates,
+        target_tickers=2,
+        min_tickers=2,
+        max_tickers=100,
+    )
+
+    assert selected == [f"T{index:03d}" for index in range(7)]
+    assert all(audit[ticker]["deep_analysis_selected"] for ticker in selected)
+    assert not audit["T007"]["deep_analysis_selected"]
+    assert audit["T007"]["deep_analysis_reason"] == "not_selected_lane_radar_forming_setup"

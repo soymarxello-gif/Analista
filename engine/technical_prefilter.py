@@ -6,8 +6,13 @@ import pandas as pd
 
 from engine.scenario_engine import (
     build_technical_evidence,
+    calculate_extension_risk,
     classify_ema20_extension_status,
     classify_macd_histogram,
+)
+from engine.momentum_trajectory import (
+    DECELERATING_TRAJECTORY_STATES,
+    OPERABLE_TRAJECTORY_STATES,
 )
 
 
@@ -57,6 +62,11 @@ def evaluate_technical_prefilter(df: pd.DataFrame) -> dict[str, Any]:
             "macd_histogram_state": "MACD_HIST_UNKNOWN",
             "weekly_macd_histogram_state": "WEEKLY_MACD_HIST_UNKNOWN",
             "ema20_extension_status": "UNKNOWN",
+            "daily_macd_trajectory_state": "UNKNOWN",
+            "weekly_macd_trajectory_state": "UNKNOWN",
+            "daily_macd_non_decelerating": False,
+            "weekly_macd_non_decelerating": False,
+            "technical_prefilter_triage": "INSUFFICIENT_DATA",
         }
 
     evidence = build_technical_evidence(df)
@@ -75,6 +85,17 @@ def evaluate_technical_prefilter(df: pd.DataFrame) -> dict[str, Any]:
                 "WEEKLY_MACD_HIST_UNKNOWN",
             ),
             "ema20_extension_status": "UNKNOWN",
+            "daily_macd_trajectory_state": _safe_text(
+                evidence.get("daily_macd_trajectory_state"),
+                "UNKNOWN",
+            ),
+            "weekly_macd_trajectory_state": _safe_text(
+                evidence.get("weekly_macd_trajectory_state"),
+                "UNKNOWN",
+            ),
+            "daily_macd_non_decelerating": False,
+            "weekly_macd_non_decelerating": False,
+            "technical_prefilter_triage": "INSUFFICIENT_DATA",
         }
 
     daily_state = classify_macd_histogram(evidence)
@@ -82,13 +103,32 @@ def evaluate_technical_prefilter(df: pd.DataFrame) -> dict[str, Any]:
         evidence.get("weekly_macd_histogram_state"),
         "WEEKLY_MACD_HIST_UNKNOWN",
     )
-    ema20_state = classify_ema20_extension_status(evidence)
+    # Setup is not known at this stage. Extension is diagnostic only here and
+    # becomes authoritative after structure detection in technical_assessment.
+    extension_risk = calculate_extension_risk(evidence, "PREFILTER")
+    ema20_state = str(extension_risk.get("ema20_extension_status") or "UNKNOWN")
+    daily_trajectory = _safe_text(
+        evidence.get("daily_macd_trajectory_state"),
+        "UNKNOWN",
+    ).upper()
+    weekly_trajectory = _safe_text(
+        evidence.get("weekly_macd_trajectory_state"),
+        "UNKNOWN",
+    ).upper()
 
-    daily_status = "PASS" if daily_state in DAILY_MACD_PASS_STATES else "FAIL"
-    weekly_status = "PASS" if weekly_state in WEEKLY_MACD_PASS_STATES else "FAIL"
-    if ema20_state in EMA20_EXTENSION_FAIL_STATES:
-        ema20_status = "FAIL"
-    elif ema20_state in EMA20_EXTENSION_WARN_STATES:
+    daily_status = (
+        "PASS"
+        if daily_trajectory in OPERABLE_TRAJECTORY_STATES
+        or (daily_trajectory == "UNKNOWN" and daily_state in DAILY_MACD_PASS_STATES)
+        else "FAIL"
+    )
+    weekly_status = (
+        "PASS"
+        if weekly_trajectory in OPERABLE_TRAJECTORY_STATES
+        or (weekly_trajectory == "UNKNOWN" and weekly_state in WEEKLY_MACD_PASS_STATES)
+        else "FAIL"
+    )
+    if ema20_state in EMA20_EXTENSION_FAIL_STATES | EMA20_EXTENSION_WARN_STATES:
         ema20_status = "WARN"
     else:
         ema20_status = "PASS" if ema20_state == "HEALTHY" else "UNKNOWN"
@@ -98,13 +138,30 @@ def evaluate_technical_prefilter(df: pd.DataFrame) -> dict[str, Any]:
         reasons.append(f"daily_macd_{daily_state.lower()}")
     if weekly_status != "PASS":
         reasons.append(f"weekly_macd_{weekly_state.lower()}")
-    if ema20_status == "FAIL":
-        reasons.append(f"ema20_extension_{ema20_state.lower()}")
 
-    status = "PASS" if not reasons else "FAIL"
+    daily_decelerating = (
+        daily_trajectory in DECELERATING_TRAJECTORY_STATES
+        or daily_state in {"MACD_HIST_DETERIORATING", "MACD_HIST_IMPROVING_BUT_DECELERATING"}
+    )
+    weekly_decelerating = (
+        weekly_trajectory in DECELERATING_TRAJECTORY_STATES
+        or weekly_state in {
+            "WEEKLY_MACD_HIST_DECELERATING",
+            "WEEKLY_MACD_HIST_BEARISH",
+        }
+    )
+    if daily_decelerating or weekly_decelerating:
+        triage = "REJECT_MOMENTUM"
+    elif daily_status != "PASS" or weekly_status != "PASS":
+        triage = "MONITOR_MOMENTUM"
+    else:
+        triage = "ADVANCE_DEEP_ANALYSIS"
+
+    status = "PASS" if triage == "ADVANCE_DEEP_ANALYSIS" else "FAIL"
 
     return {
         **evidence,
+        **extension_risk,
         "technical_prefilter_status": status,
         "technical_prefilter_reason": "; ".join(reasons) if reasons else "technical_prefilter_pass",
         "daily_macd_prefilter_status": daily_status,
@@ -113,6 +170,11 @@ def evaluate_technical_prefilter(df: pd.DataFrame) -> dict[str, Any]:
         "ema20_extension_reference_source": _ema20_reference_source(evidence),
         "macd_histogram_state": daily_state,
         "weekly_macd_histogram_state": weekly_state,
+        "daily_macd_trajectory_state": daily_trajectory,
+        "weekly_macd_trajectory_state": weekly_trajectory,
+        "daily_macd_non_decelerating": daily_status == "PASS",
+        "weekly_macd_non_decelerating": weekly_status == "PASS",
+        "technical_prefilter_triage": triage,
         "ema20_extension_status": ema20_state,
         "technical_prefilter_guardrail": "analysis_only_no_trigger_promotion",
     }

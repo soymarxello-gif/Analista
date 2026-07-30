@@ -13,6 +13,10 @@ from engine.scan_audit_engine import audit_scan_file, print_audit_report
 
 
 def _discover_latest_csv(reports_dir: Path) -> Path:
+    canonical_scan = reports_dir / "latest_scan_audited.csv"
+    if canonical_scan.exists():
+        return canonical_scan
+
     files = list(reports_dir.glob("*.csv"))
 
     history = reports_dir / "history"

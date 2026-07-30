@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from data.technical_bars import closed_weekly_close
 
 DEFAULT_SECTOR_BENCHMARKS = {
     "Technology": "XLK",
@@ -29,6 +30,11 @@ SECTOR_CONTEXT_COLUMNS = [
     "sector_weekly_macd_acceleration_state",
     "sector_context_status",
     "sector_context_reason",
+    "sector_relative_return_20d",
+    "sector_relative_return_60d",
+    "sector_relative_line_slope_20d",
+    "sector_relative_strength_score",
+    "sector_relative_leadership_status",
 ]
 
 
@@ -164,7 +170,10 @@ def calculate_weekly_sector_macd_context(price_frame: pd.DataFrame, config: dict
     if close.empty:
         return _classify_sector_macd_histogram(latest=None, previous=None, two_ago=None)
 
-    weekly = close.resample(str(cfg.get("weekly_rule", "W-FRI"))).last().dropna()
+    weekly, _ = closed_weekly_close(
+        close,
+        weekly_rule=str(cfg.get("weekly_rule", "W-FRI")),
+    )
     if len(weekly) < min_weeks:
         result = _classify_sector_macd_histogram(latest=None, previous=None, two_ago=None)
         result["sector_context_reason"] = "sector_weekly_history_insufficient"
@@ -189,6 +198,7 @@ def calculate_sector_benchmark_context(
     meta: pd.DataFrame,
     sector_prices: dict[str, pd.DataFrame],
     config: dict | None = None,
+    ticker_prices: dict[str, pd.DataFrame] | None = None,
 ) -> pd.DataFrame:
     if meta.empty or "ticker" not in meta.columns:
         return _empty_sector_context()
@@ -220,12 +230,82 @@ def calculate_sector_benchmark_context(
                 "ticker": ticker,
                 "sector_benchmark_symbol": symbol,
                 **context,
+                **_calculate_relative_strength(
+                    (ticker_prices or {}).get(ticker),
+                    sector_prices.get(symbol) if symbol else None,
+                ),
             }
         )
 
     if not rows:
         return _empty_sector_context()
     return pd.DataFrame(rows, columns=SECTOR_CONTEXT_COLUMNS)
+
+
+def _calculate_relative_strength(
+    ticker_frame: pd.DataFrame | None,
+    benchmark_frame: pd.DataFrame | None,
+) -> dict:
+    empty = {
+        "sector_relative_return_20d": None,
+        "sector_relative_return_60d": None,
+        "sector_relative_line_slope_20d": None,
+        "sector_relative_strength_score": None,
+        "sector_relative_leadership_status": "UNKNOWN",
+    }
+    if ticker_frame is None or benchmark_frame is None or ticker_frame.empty or benchmark_frame.empty:
+        return empty
+
+    def close_series(frame: pd.DataFrame) -> pd.Series:
+        column = "adj_close" if "adj_close" in frame.columns else "close"
+        if column not in frame.columns:
+            return pd.Series(dtype=float)
+        series = pd.to_numeric(frame[column], errors="coerce").dropna()
+        series.index = pd.to_datetime(series.index, errors="coerce")
+        return series[~series.index.isna()].sort_index()
+
+    ticker_close = close_series(ticker_frame)
+    benchmark_close = close_series(benchmark_frame)
+    aligned = pd.concat(
+        [ticker_close.rename("ticker"), benchmark_close.rename("benchmark")],
+        axis=1,
+        join="inner",
+    ).dropna()
+    if len(aligned) < 61:
+        return empty
+
+    ticker_return_20 = float(aligned["ticker"].iloc[-1] / aligned["ticker"].iloc[-21] - 1.0)
+    benchmark_return_20 = float(aligned["benchmark"].iloc[-1] / aligned["benchmark"].iloc[-21] - 1.0)
+    ticker_return_60 = float(aligned["ticker"].iloc[-1] / aligned["ticker"].iloc[-61] - 1.0)
+    benchmark_return_60 = float(aligned["benchmark"].iloc[-1] / aligned["benchmark"].iloc[-61] - 1.0)
+    excess_20 = ticker_return_20 - benchmark_return_20
+    excess_60 = ticker_return_60 - benchmark_return_60
+
+    relative_line = aligned["ticker"] / aligned["benchmark"]
+    slope_20 = float(relative_line.iloc[-1] / relative_line.iloc[-21] - 1.0)
+    score = max(
+        0.0,
+        min(
+            100.0,
+            50.0
+            + 350.0 * excess_20
+            + 150.0 * excess_60
+            + 250.0 * slope_20,
+        ),
+    )
+    if score >= 70 and excess_20 > 0 and slope_20 > 0:
+        status = "LEADING"
+    elif score <= 35 and excess_20 < 0 and slope_20 < 0:
+        status = "LAGGING"
+    else:
+        status = "IN_LINE"
+    return {
+        "sector_relative_return_20d": excess_20,
+        "sector_relative_return_60d": excess_60,
+        "sector_relative_line_slope_20d": slope_20,
+        "sector_relative_strength_score": round(score, 2),
+        "sector_relative_leadership_status": status,
+    }
 
 
 def calculate_sector_rotation(meta: pd.DataFrame, prices: dict[str, pd.DataFrame]) -> pd.DataFrame:

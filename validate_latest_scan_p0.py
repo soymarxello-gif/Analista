@@ -66,8 +66,15 @@ def main() -> None:
         .str.upper()
         .eq("FAIL")
     )
-    allowed_prefilter_avoid = (
-        technical_prefilter_failed
+    canonical_non_advance = (
+        df.get("technical_analysis_lane", pd.Series("", index=df.index))
+        .fillna("")
+        .astype(str)
+        .str.upper()
+        .isin({"RADAR_FORMING_SETUP", "REJECT_MOMENTUM", "REJECT_RISK"})
+    )
+    allowed_non_operable_avoid = (
+        (technical_prefilter_failed | canonical_non_advance)
         & signal.str.upper().eq("AVOID")
         & recommendation.eq("AVOID_FOR_NOW")
     )
@@ -96,8 +103,10 @@ def main() -> None:
         & pd.to_numeric(df["market_cap"], errors="coerce").lt(2_500_000_000)
     ).sum()
 
-    checks["NO_VALID_SETUP fuera de VETO"] = (
-        (setup_type == "NO_VALID_SETUP") & (signal != "VETO") & ~allowed_prefilter_avoid
+    checks["NO_VALID_SETUP operable fuera de VETO/AVOID"] = (
+        (setup_type == "NO_VALID_SETUP")
+        & (signal != "VETO")
+        & ~allowed_non_operable_avoid
     ).sum()
 
     veto = signal == "VETO"

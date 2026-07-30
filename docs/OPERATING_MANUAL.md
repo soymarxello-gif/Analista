@@ -294,6 +294,9 @@ The current diagnostic posttest is fully automatic. It reads the scanner memory
 created by `trade_decision_checklist`, keeps only `BUY_NOW` posttest candidates,
 and reviews what happened after 5, 10 and 15 sessions. It reports recurring
 successes and failures without changing scoring, thresholds or signals.
+It also tracks a separate shadow cohort of technically clean
+`TACTICAL_RESEARCH` rows to measure possible false negatives. Shadow results
+cannot become execution candidates.
 
 Run:
 
@@ -302,6 +305,37 @@ python .\tools\simple_candidate_posttest.py
 ```
 
 Review `reports/simple_candidate_posttest_latest.md`.
+
+## Closed-Bar Policy And Analysis Tiers
+
+All EOD technical evidence uses completed bars. Before 16:20 New York time,
+the current Yahoo daily candle is excluded from EMA20, ATR, relative volume,
+setups, MACD and R/R. Weekly MACD uses completed weeks only.
+
+- `ADVANCE_DEEP_ANALYSIS` / `OPERATIONAL`: strict technical candidate. It still
+  requires every quote and P0 guardrail.
+- `ADVANCE_RESEARCH_ANALYSIS` / `RESEARCH`: high-quality forming setup or mild
+  timing caution. It cannot enter the execution checklist, automatic posttest,
+  or produce `TRIGGER_CONFIRMED`.
+- `rr_status = DIAGNOSTIC_ONLY`: the target lacks sufficient independent
+  confirmation. Confluent target models may validate R/R with `MEDIUM`
+  confidence, still subject to every guardrail.
+
+The candidate cockpit keeps **Oportunidades operativas** and **Radar de
+investigación** visibly separate.
+
+The institutional decision book adds:
+
+- `EXECUTION_CANDIDATE`: strict operational review.
+- `TACTICAL_RESEARCH`: promising thesis requiring confirmation.
+- `LEADERSHIP_RESET_WATCH`: strong but extended; wait for reset.
+- `MOMENTUM_RECOVERY_WATCH`: daily or weekly MACD must improve again.
+- `STRUCTURAL_REJECT`: invalid structure, instrument or liquidity.
+- `DATA_BLOCKED`: insufficient evidence.
+
+The engine evaluates all setup hypotheses and retains a primary thesis plus
+alternatives. Daily or weekly MACD deceleration never reaches execution or
+tactical research.
 
 ```powershell
 python .\tools\trade_score_calibration.py

@@ -123,6 +123,8 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
         return {
             "ticker": ticker,
             "liquidity_pass": False,
+            "liquidity_core_pass": False,
+            "liquidity_spread_pass": False,
             "liquidity_score": 0.0,
             "liquidity_warning": "historial insuficiente",
             "bid_ask_valid": False,
@@ -130,6 +132,8 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
             "spread_validated_pct": None,
             "quote_status": "MISSING",
             "execution_quote_quality": "LOW",
+            "execution_spread_status": "UNKNOWN",
+            "execution_spread_score": 0.0,
         }
 
     close = float(df["close"].iloc[-1])
@@ -183,9 +187,10 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
     if max_spread is not None and bid_ask["bid_ask_valid"]:
         spread_pass = spread_validated_pct <= max_spread
 
-    # Do not veto solely on invalid Yahoo bid/ask because quotes can be stale.
+    # Universe liquidity is structural. Execution spread is evaluated separately
+    # because Yahoo bid/ask can be stale or internally inconsistent.
     liquidity_core_pass = bool(all(core_checks.values()))
-    liquidity_pass = bool(liquidity_core_pass and spread_pass)
+    liquidity_pass = liquidity_core_pass
 
     price_score = _ratio_score(close, min_price)
     dollar20_score = _ratio_score(dollar20, min_dollar20)
@@ -205,13 +210,20 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
         spread_score = cfg.get("invalid_bid_ask_score", 0.50)
 
     liquidity_score = (
-        0.35 * adjusted20_score
-        + 0.25 * adjusted60_score
-        + 0.15 * consistency_score
-        + 0.10 * price_score
-        + 0.15 * spread_score
+        0.40 * adjusted20_score
+        + 0.30 * adjusted60_score
+        + 0.18 * consistency_score
+        + 0.12 * price_score
     )
     liquidity_score = float(np.clip(liquidity_score, 0, 1))
+    quote_status = str(bid_ask["quote_status"] or "MISSING").upper()
+    execution_spread_status = (
+        "VALID"
+        if quote_status == "VALID" and spread_pass
+        else "WIDE"
+        if quote_status == "WIDE_OR_INCOHERENT" or not spread_pass
+        else quote_status
+    )
 
     warnings = []
     if not all(core_checks.values()):
@@ -242,6 +254,8 @@ def compute_liquidity(ticker: str, df: pd.DataFrame, config: dict, metadata: dic
         "liquidity_dollar_pass_60d": dollar60_pass,
         "liquidity_core_pass": liquidity_core_pass,
         "liquidity_spread_pass": spread_pass,
+        "execution_spread_status": execution_spread_status,
+        "execution_spread_score": spread_score,
         "median_volume_20d": med20,
         "mean_volume_20d": mean20,
         "median_to_mean_volume_ratio": ratio,

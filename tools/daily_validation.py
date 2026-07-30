@@ -186,6 +186,8 @@ POST_SUMMARY_STEPS = [
             "tools/live_quote_recheck.py",
             "--input-csv",
             "reports/manual_review_latest.csv",
+            "--scan-csv",
+            "reports/latest_scan_audited.csv",
             "--csv-out",
             "reports/live_quote_recheck_latest.csv",
             "--markdown-out",
@@ -245,7 +247,7 @@ POST_SUMMARY_STEPS = [
             sys.executable,
             "tools/portfolio_concentration_audit.py",
             "--input-csv",
-            "reports/manual_review_top.csv",
+            "reports/latest_scan_audited.csv",
             "--json-out",
             "reports/portfolio_concentration_latest.json",
             "--markdown-out",
@@ -467,6 +469,9 @@ POST_SUMMARY_STEPS = [
 ]
 
 FINAL_DERIVED_REFRESH_STEP_NAMES = [
+    "simple_candidate_posttest",
+    "live_quote_recheck",
+    "portfolio_concentration_audit",
     "trade_decision_checklist",
     "trade_candidate_cards",
     "ui_data_contract_audit",
@@ -477,6 +482,15 @@ FINAL_DERIVED_REFRESH_STEP_NAMES = [
     "daily_operator_index",
     "daily_run_manifest",
 ]
+
+DEFERRED_POST_SUMMARY_STEP_NAMES = {
+    "live_quote_recheck",
+    "portfolio_concentration_audit",
+    "encoding_audit",
+}
+DEFERRED_DEFAULT_STEP_NAMES = {
+    "simple_candidate_posttest",
+}
 
 
 def _steps_with_scanner_timeout(steps: list[dict], scanner_timeout_seconds: int | None) -> list[dict]:
@@ -1534,6 +1548,8 @@ def run_daily_validation(summary_out: Path, *, scanner_timeout_seconds: int | No
         started_at=started_at,
     )
     for step in default_steps:
+        if step["name"] in DEFERRED_DEFAULT_STEP_NAMES:
+            continue
         _write_validation_progress(
             results=results,
             current_step=step["name"],
@@ -1564,6 +1580,8 @@ def run_daily_validation(summary_out: Path, *, scanner_timeout_seconds: int | No
 
     post_summary_results = []
     for step in POST_SUMMARY_STEPS:
+        if step["name"] in DEFERRED_POST_SUMMARY_STEP_NAMES:
+            continue
         _write_validation_progress(
             results=results + post_summary_results,
             current_step=step["name"],
@@ -1622,7 +1640,10 @@ def run_daily_validation(summary_out: Path, *, scanner_timeout_seconds: int | No
         per_group_limit=0,
     )
 
-    post_steps_by_name = {step["name"]: step for step in POST_SUMMARY_STEPS}
+    post_steps_by_name = {
+        step["name"]: step
+        for step in [*DEFAULT_STEPS, *POST_SUMMARY_STEPS]
+    }
     final_refresh_results = []
     for step_name in FINAL_DERIVED_REFRESH_STEP_NAMES:
         step = post_steps_by_name.get(step_name)

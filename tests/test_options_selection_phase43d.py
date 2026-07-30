@@ -98,3 +98,36 @@ def test_options_selection_skips_missing_spot() -> None:
 
     assert selected == []
     assert audit == {}
+
+
+def test_options_selection_does_not_fill_budget_with_invalid_candidates() -> None:
+    selected, audit = select_options_tickers(
+        [
+            candidate(
+                "VALID",
+                preliminary_signal="WATCHLIST",
+                technical_analysis_lane="ADVANCE_DEEP_ANALYSIS",
+                scenario_status="WAIT_FOR_CONFIRMATION",
+            ),
+            candidate(
+                "NOSETUP",
+                preliminary_signal="WATCHLIST",
+                setup_type="NO_VALID_SETUP",
+            ),
+            candidate(
+                "RADAR",
+                preliminary_signal="WATCHLIST",
+                technical_analysis_lane="RADAR_FORMING_SETUP",
+            ),
+            candidate(
+                "INVALID_SCENARIO",
+                preliminary_signal="WATCHLIST",
+                technical_analysis_lane="ADVANCE_DEEP_ANALYSIS",
+                scenario_status="STRUCTURE_INVALID",
+            ),
+        ],
+        max_tickers=75,
+    )
+
+    assert selected == ["VALID"]
+    assert set(audit) == {"VALID"}

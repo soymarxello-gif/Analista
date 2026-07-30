@@ -690,11 +690,12 @@ def _section(title: str, fields: list[tuple[str, Any]]) -> str:
     )
 
 
-def render_candidate_detail(row: dict[str, Any]) -> None:
+def render_candidate_detail(row: dict[str, Any], *, research: bool = False) -> None:
     if not row:
+        detail_type = "diagnóstica" if research else "operativa"
         st.markdown(
             '<div class="analista-ribbon analista-ribbon-neutral">'
-            "Selecciona un ticker para ver su ficha operativa."
+            f"Selecciona un ticker para ver su ficha {detail_type}."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -707,14 +708,20 @@ def render_candidate_detail(row: dict[str, Any]) -> None:
         or row.get("signal")
     )
     status_class = formatters.trading_value_class(status)
+    card_label = "Ficha diagnóstica de investigación" if research else "Ficha operativa del candidato"
+    notice = (
+        "Solo investigación profunda. No es operable, no pasa a ejecución y no entra al posttest automático."
+        if research
+        else "Ficha operativa para revisión manual. No comprar automáticamente; validar gráfico, volumen, spread, noticia, earnings, macro y sector."
+    )
     st.markdown(
-        '<article class="candidate-card" aria-label="Ficha operativa del candidato">'
+        f'<article class="candidate-card" aria-label="{escape(card_label)}">'
         '<div class="candidate-header">'
         "<div>"
         f'<h3 class="candidate-title">{escape(title)}</h3>'
         f'<div class="candidate-subtitle value-{status_class}">{escape(formatters.display_status_with_code(status))}</div>'
         "</div>"
-        '<div class="candidate-notice">Ficha operativa para revisión manual. No comprar automáticamente; validar gráfico, volumen, spread, noticia, earnings, macro y sector.</div>'
+        f'<div class="candidate-notice">{escape(notice)}</div>'
         "</div>"
         + _section(
             "Prioridad operativa",
@@ -727,7 +734,12 @@ def render_candidate_detail(row: dict[str, Any]) -> None:
                 ("Score activo", row.get("asset_attractiveness_score") or row.get("asset_quality_score")),
                 ("Score timing", row.get("timing_quality_score")),
                 ("Score momentum", row.get("momentum_confirmation_score")),
+                ("Libro institucional", row.get("decision_lane")),
+                ("Prioridad investigación", row.get("research_priority_score")),
+                ("Readiness entrada", row.get("entry_readiness_score")),
+                ("Prioridad de reset", row.get("reset_watch_score")),
                 ("Estado operativo", row.get("execution_readiness_status")),
+                ("Estado de oportunidad", row.get("market_opportunity_status")),
                 ("Score operativo", row.get("final_trade_score")),
             ],
         )
@@ -740,6 +752,8 @@ def render_candidate_detail(row: dict[str, Any]) -> None:
                 ("Stop", row.get("actionable_stop")),
                 ("Target", row.get("actionable_target")),
                 ("R/R", row.get("rr")),
+                ("R/R estresado", row.get("rr_stressed")),
+                ("Geometría", row.get("risk_geometry_status")),
             ],
         )
         + "</div><div>"
@@ -757,13 +771,36 @@ def render_candidate_detail(row: dict[str, Any]) -> None:
         + _section(
             "Ejecución, escenario y contexto",
             [
+                ("Oportunidad técnica", row.get("technical_opportunity_score")),
+                ("Tesis principal", row.get("primary_setup_hypothesis")),
+                ("Estado tesis", row.get("primary_setup_hypothesis_state")),
+                ("Score tesis", row.get("primary_setup_hypothesis_score")),
+                ("Tesis alternativas", row.get("alternative_setup_hypotheses")),
+                ("Carril de análisis", row.get("technical_analysis_lane")),
+                ("Nivel de análisis", row.get("deep_analysis_tier")),
+                ("Madurez setup", row.get("setup_readiness_score")),
+                ("Estado setup", row.get("setup_readiness_state")),
+                ("Setup candidato", row.get("setup_candidate_type")),
+                ("Razón investigación", row.get("research_eligibility_reason")),
+                ("Razón de elegibilidad", row.get("technical_eligibility_reason")),
+                ("Tendencia/setup", row.get("trend_setup_compatibility")),
+                ("Tendencia investigación", row.get("research_trend_compatibility")),
+                ("Transición de tendencia", row.get("trend_transition_state")),
+                ("Score transición", row.get("trend_transition_score")),
+                ("Razón tendencia investigación", row.get("research_trend_compatibility_reason")),
+                ("Gate momentum", row.get("momentum_gate_status")),
+                ("Gate timing", row.get("timing_gate_status")),
+                ("Liquidez estructural", row.get("core_liquidity_status")),
                 ("Prefiltro técnico", row.get("technical_prefilter_status")),
+                ("Triage técnico", row.get("technical_prefilter_triage")),
+                ("Estado operativo", row.get("operational_status")),
                 ("MACD diario prefiltro", row.get("daily_macd_prefilter_status")),
                 ("MACD semanal prefiltro", row.get("weekly_macd_prefilter_status")),
                 ("EMA20 prefiltro", row.get("ema20_extension_prefilter_status")),
                 ("Referencia EMA20", row.get("ema20_extension_reference_source")),
                 ("Quote", row.get("quote_status")),
                 ("Calidad ejecución", row.get("execution_quote_quality")),
+                ("Estado spread", row.get("execution_spread_status")),
                 ("Escenario", row.get("scenario_status")),
                 ("Confianza escenario", row.get("scenario_confidence")),
                 ("Momentum", row.get("momentum_state")),
@@ -772,20 +809,38 @@ def render_candidate_detail(row: dict[str, Any]) -> None:
                 ("Timing entrada", row.get("entry_timing_status")),
                 ("MACD diario", row.get("macd_histogram_state")),
                 ("MACD semanal", row.get("weekly_macd_histogram_state")),
+                ("Trayectoria MACD diaria", row.get("daily_macd_trajectory_state")),
+                ("Trayectoria MACD semanal", row.get("weekly_macd_trajectory_state")),
+                ("Sincronía momentum", row.get("momentum_alignment")),
+                ("Condición momentum", row.get("momentum_operability_status")),
                 ("MACD semanal 1s", row.get("weekly_macd_hist_change_1w")),
                 ("ETF sector", row.get("sector_benchmark_symbol")),
                 ("MACD semanal sector", row.get("sector_weekly_macd_state")),
                 ("Aceleración sector", row.get("sector_weekly_macd_acceleration_state")),
                 ("Pendiente sector", row.get("sector_weekly_macd_slope_1w")),
                 ("Contexto sector", row.get("sector_context_status")),
+                ("Fuerza vs. sector", row.get("sector_relative_strength_score")),
+                ("Liderazgo sectorial", row.get("sector_relative_leadership_status")),
+                ("Estado earnings", row.get("earnings_event_status")),
+                ("Confianza earnings", row.get("earnings_data_confidence")),
+                ("Riesgo earnings", row.get("earnings_review_reason")),
                 ("Dist. EMA20 ATR", row.get("technical_distance_ema20_atr")),
                 ("Dist. EMA20 %", row.get("technical_distance_ema20_pct")),
+                ("Riesgo extensión EMA20", row.get("ema20_extension_risk")),
+                ("Percentil distancia EMA20", row.get("ema20_distance_percentile_1y")),
                 ("Opciones", row.get("options_bias")),
                 ("Confianza opciones", row.get("options_confidence")),
                 ("Macro", row.get("macro_regime_mode") or row.get("macro_risk_flag")),
                 ("Sector", row.get("sector")),
                 ("Industria", row.get("industry")),
                 ("Stop vs ATR", row.get("stop_atr_status")),
+                ("Estado R/R", row.get("rr_status")),
+                ("Confianza R/R", row.get("rr_confidence")),
+                ("Fuente target", row.get("target_validation_source")),
+                ("Confluencia target", row.get("target_validation_sources")),
+                ("Cierre técnico", row.get("technical_as_of_date")),
+                ("Política de velas", row.get("technical_bar_policy")),
+                ("Vela intradía excluida", row.get("intraday_bar_excluded")),
                 ("Earnings", row.get("next_earnings_date") or row.get("earnings_date")),
             ],
         )
@@ -798,6 +853,7 @@ def render_candidate_detail(row: dict[str, Any]) -> None:
                 ("Razón sector", row.get("sector_context_reason")),
                 ("Lectura motor", row.get("engine_recommendation")),
                 ("Confirmación requerida", row.get("required_confirmation")),
+                ("Condiciones de invalidación", row.get("invalidation_conditions")),
             ],
         )
         + f'<div class="candidate-text-block"><strong>Tesis:</strong> {escape(formatters.safe_display_text(row.get("scenario_thesis")))}</div>'
@@ -840,6 +896,10 @@ def render_single_ticker_diagnostic_detail(row: dict[str, Any]) -> None:
                 _field("Extensión", row.get("extension_state")),
                 _field("Timing entrada", row.get("entry_timing_status")),
                 _field("MACD semanal", row.get("weekly_macd_histogram_state")),
+                _field("Trayectoria diaria", row.get("daily_macd_trajectory_state")),
+                _field("Trayectoria semanal", row.get("weekly_macd_trajectory_state")),
+                _field("Sincronía momentum", row.get("momentum_alignment")),
+                _field("Riesgo extensión EMA20", row.get("ema20_extension_risk")),
                 _field("Stop vs ATR", row.get("stop_atr_status")),
             ]
         )

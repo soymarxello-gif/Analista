@@ -112,7 +112,17 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
         .str.upper()
         .eq("FAIL")
     )
-    quality_scope = df.loc[~technical_rejected_mask].copy()
+    if "deep_analysis_selected" in df.columns:
+        deep_selected_mask = (
+            df["deep_analysis_selected"]
+            .fillna(False)
+            .astype(str)
+            .str.lower()
+            .isin({"true", "1", "yes", "y"})
+        )
+        quality_scope = df.loc[deep_selected_mask].copy()
+    else:
+        quality_scope = df.loc[~technical_rejected_mask].copy()
     quality_rows = len(quality_scope)
 
     signal_counts = _safe_value_counts(df, "signal")
@@ -133,11 +143,26 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
 
     rr_missing_rate = None
     if "rr" in quality_scope.columns and quality_rows:
-        rr_missing_rate = float(quality_scope["rr"].isna().mean())
+        if "rr_status" in quality_scope.columns:
+            rr_expected_mask = (
+                quality_scope["rr_status"]
+                .fillna("")
+                .astype(str)
+                .str.upper()
+                .isin({"VALIDATED", "DIAGNOSTIC_ONLY"})
+            )
+            rr_scope = quality_scope.loc[rr_expected_mask]
+        else:
+            rr_scope = quality_scope
+        rr_missing_rate = (
+            float(rr_scope["rr"].isna().mean()) if not rr_scope.empty else 0.0
+        )
         if rr_missing_rate > 0:
-            warnings.append(f"rr faltante en {_pct(rr_missing_rate)}% de filas no rechazadas por prefiltro")
+            warnings.append(
+                f"rr faltante en {_pct(rr_missing_rate)}% de filas que requieren R/R"
+            )
         if rr_missing_rate >= 0.50:
-            issues.append("rr faltante en más del 50% de filas no rechazadas por prefiltro")
+            issues.append("rr faltante en más del 50% de filas que requieren R/R")
             recommendations.append("Verificar que row incluya rr_data.get('rr') dentro de scanner_engine.py.")
 
     if veto_reason_counts.get("rr_below_minimum", 0) == rows and rows >= 5:
@@ -230,12 +255,17 @@ def audit_scan_dataframe(df: pd.DataFrame) -> dict:
         "stop_atr_multiple",
     ]:
         if col in df.columns:
-            score_stats[col] = {
-                "mean": round(float(pd.to_numeric(df[col], errors="coerce").mean()), 4),
-                "median": round(float(pd.to_numeric(df[col], errors="coerce").median()), 4),
-                "min": round(float(pd.to_numeric(df[col], errors="coerce").min()), 4),
-                "max": round(float(pd.to_numeric(df[col], errors="coerce").max()), 4),
-            }
+            numeric = pd.to_numeric(df[col], errors="coerce").dropna()
+            score_stats[col] = (
+                {
+                    "mean": round(float(numeric.mean()), 4),
+                    "median": round(float(numeric.median()), 4),
+                    "min": round(float(numeric.min()), 4),
+                    "max": round(float(numeric.max()), 4),
+                }
+                if not numeric.empty
+                else {"mean": None, "median": None, "min": None, "max": None}
+            )
 
     sector_counts = _safe_value_counts(df, "sector")
     setup_counts = _safe_value_counts(df, "setup_type")

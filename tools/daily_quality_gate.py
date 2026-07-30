@@ -281,6 +281,8 @@ def _scan_logic_checks(scan_df: pd.DataFrame, issues: list[dict]) -> dict:
         "no_valid_setup_not_veto_rows": 0,
         "veto_with_actionable_levels_rows": 0,
         "manual_recheck_quote_rows": 0,
+        "earnings_date_days_mismatch_rows": 0,
+        "earnings_stale_deep_candidate_rows": 0,
     }
 
     if scan_df.empty:
@@ -322,18 +324,28 @@ def _scan_logic_checks(scan_df: pd.DataFrame, issues: list[dict]) -> dict:
             .str.upper()
             .eq("FAIL")
         )
-        allowed_technical_avoid = (
-            technical_prefilter_failed
-            & scan_df["signal"].fillna("").astype(str).str.upper().eq("AVOID")
-            & scan_df.get("recommendation", pd.Series("", index=scan_df.index))
+        signal_state = scan_df["signal"].fillna("").astype(str).str.upper()
+        recommendation_state = (
+            scan_df.get("recommendation", pd.Series("", index=scan_df.index))
             .fillna("")
             .astype(str)
             .str.upper()
-            .eq("AVOID_FOR_NOW")
+        )
+        canonical_non_advance = (
+            scan_df.get("technical_analysis_lane", pd.Series("", index=scan_df.index))
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .isin({"RADAR_FORMING_SETUP", "REJECT_MOMENTUM", "REJECT_RISK"})
+        )
+        allowed_technical_avoid = (
+            (technical_prefilter_failed | canonical_non_advance)
+            & signal_state.isin({"VETO", "AVOID"})
+            & recommendation_state.isin({"DO_NOT_TRADE", "AVOID_FOR_NOW"})
         )
         mask = (
             scan_df["setup_type"].fillna("").astype(str).eq("NO_VALID_SETUP")
-            & ~scan_df["signal"].fillna("").astype(str).eq("VETO")
+            & ~signal_state.eq("VETO")
             & ~allowed_technical_avoid
         )
         checks["no_valid_setup_not_veto_rows"] = int(mask.sum())
@@ -343,7 +355,7 @@ def _scan_logic_checks(scan_df: pd.DataFrame, issues: list[dict]) -> dict:
                 issues,
                 "FAIL",
                 "latest_scan_audited.csv",
-                "Hay NO_VALID_SETUP que no quedaron como VETO.",
+                "Hay NO_VALID_SETUP que quedaron operables fuera de VETO/AVOID.",
             )
 
     actionable_cols = {"actionable_entry", "actionable_stop", "actionable_target"}
@@ -371,6 +383,67 @@ def _scan_logic_checks(scan_df: pd.DataFrame, issues: list[dict]) -> dict:
                 "WARN",
                 "latest_scan_audited.csv",
                 "Hay candidatos que requieren RECHECK_LIVE_QUOTE antes de revisión operativa.",
+            )
+
+    earnings_columns = {
+        "earnings_date",
+        "days_to_earnings",
+        "technical_as_of_date",
+    }
+    if earnings_columns.issubset(scan_df.columns):
+        earnings_date = pd.to_datetime(
+            scan_df["earnings_date"],
+            errors="coerce",
+        )
+        as_of_date = pd.to_datetime(
+            scan_df["technical_as_of_date"],
+            errors="coerce",
+        )
+        stored_days = pd.to_numeric(
+            scan_df["days_to_earnings"],
+            errors="coerce",
+        )
+        expected_days = (earnings_date - as_of_date).dt.days
+        comparable = (
+            earnings_date.notna()
+            & as_of_date.notna()
+            & stored_days.notna()
+        )
+        mismatch = comparable & stored_days.ne(expected_days)
+        checks["earnings_date_days_mismatch_rows"] = int(mismatch.sum())
+        if checks["earnings_date_days_mismatch_rows"] > 0:
+            _add_issue(
+                issues,
+                "FAIL",
+                "latest_scan_audited.csv",
+                "earnings_date y days_to_earnings son inconsistentes.",
+            )
+
+    if {
+        "deep_analysis_selected",
+        "earnings_refresh_required",
+    }.issubset(scan_df.columns):
+        deep_selected = (
+            scan_df["deep_analysis_selected"]
+            .astype(str)
+            .str.lower()
+            .isin({"true", "1", "yes"})
+        )
+        refresh_required = (
+            scan_df["earnings_refresh_required"]
+            .astype(str)
+            .str.lower()
+            .isin({"true", "1", "yes"})
+        )
+        checks["earnings_stale_deep_candidate_rows"] = int(
+            (deep_selected & refresh_required).sum()
+        )
+        if checks["earnings_stale_deep_candidate_rows"] > 0:
+            _add_issue(
+                issues,
+                "WARN",
+                "latest_scan_audited.csv",
+                "Hay candidatos profundos con earnings que requieren actualización.",
             )
 
     return checks

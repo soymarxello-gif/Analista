@@ -31,6 +31,35 @@ def _theme(row: pd.Series) -> str:
     return "general_equity"
 
 
+def _cohort_frames(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    if "decision_lane" not in df.columns:
+        return {"INPUT_ROWS": df.copy()}
+    lanes = df["decision_lane"].fillna("").astype(str).str.upper()
+    return {
+        "EXECUTION": df[lanes == "EXECUTION_CANDIDATE"].copy(),
+        "TACTICAL_RESEARCH": df[lanes == "TACTICAL_RESEARCH"].copy(),
+        "LEADERS_WAITING_RESET": df[lanes == "LEADERSHIP_RESET_WATCH"].copy(),
+    }
+
+
+def _cohort_summary(frame: pd.DataFrame) -> dict[str, Any]:
+    if frame.empty:
+        return {
+            "rows": 0,
+            "sector_counts": {},
+            "industry_counts": {},
+            "setup_type_counts": {},
+            "market_opportunity_status_counts": {},
+        }
+    return {
+        "rows": int(len(frame)),
+        "sector_counts": _counts(frame, "sector"),
+        "industry_counts": _counts(frame, "industry"),
+        "setup_type_counts": _counts(frame, "setup_type"),
+        "market_opportunity_status_counts": _counts(frame, "market_opportunity_status"),
+    }
+
+
 def collect_audit(input_csv: Path) -> dict[str, Any]:
     if not input_csv.exists():
         return {
@@ -61,8 +90,27 @@ def collect_audit(input_csv: Path) -> dict[str, Any]:
             "broker_execution": False,
             "creates_trigger_confirmed": False,
         }
-    work = df.copy()
-    work["theme"] = work.apply(_theme, axis=1)
+    cohorts = _cohort_frames(df)
+    work = pd.concat(
+        [frame for frame in cohorts.values() if not frame.empty],
+        ignore_index=True,
+        sort=False,
+    ) if any(not frame.empty for frame in cohorts.values()) else df.iloc[0:0].copy()
+    if work.empty:
+        return {
+            "status": "PASS",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "rows": 0,
+            "input_rows": int(len(df)),
+            "cohort_rows": {name: 0 for name in cohorts},
+            "cohorts": {name: _cohort_summary(frame) for name, frame in cohorts.items()},
+            "sector_counts": {},
+            "notice": NOTICE,
+            "broker_execution": False,
+            "creates_trigger_confirmed": False,
+        }
+    work = work.copy()
+    work = work.assign(theme=work.apply(_theme, axis=1))
     sector_counts = _counts(work, "sector")
     top_sector_weight = max(sector_counts.values()) / len(work) if sector_counts else 0.0
     warnings = []
@@ -73,7 +121,10 @@ def collect_audit(input_csv: Path) -> dict[str, Any]:
         "status": status,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "rows": int(len(work)),
+        "input_rows": int(len(df)),
         "input_csv": str(input_csv),
+        "cohort_rows": {name: int(len(frame)) for name, frame in cohorts.items()},
+        "cohorts": {name: _cohort_summary(frame) for name, frame in cohorts.items()},
         "sector_counts": sector_counts,
         "industry_counts": _counts(work, "industry"),
         "setup_type_counts": _counts(work, "setup_type"),
@@ -100,6 +151,7 @@ def save_reports(data: dict[str, Any], *, json_out: Path, markdown_out: Path) ->
         "",
         f"- status: {data.get('status')}",
         f"- rows: {data.get('rows', 0)}",
+        f"- cohort_rows: {json.dumps(data.get('cohort_rows', {}), sort_keys=True)}",
         f"- top_sector_weight: {data.get('top_sector_weight', 0)}",
         f"- notice: {NOTICE}",
         "",
@@ -116,6 +168,9 @@ def save_reports(data: dict[str, Any], *, json_out: Path, markdown_out: Path) ->
     lines.extend(["", "## Sector context"])
     for key, value in (data.get("sector_context_status_counts") or {}).items():
         lines.append(f"- {key}: {value}")
+    lines.extend(["", "## Cohorts"])
+    for name, payload in (data.get("cohorts") or {}).items():
+        lines.append(f"- {name}: {payload.get('rows', 0)}")
     lines.extend(["", "## Guardrails", "", "- No automatic trading.", "- No broker execution."])
     markdown_out.write_text("\n".join(lines), encoding="utf-8")
     return data
@@ -123,7 +178,7 @@ def save_reports(data: dict[str, Any], *, json_out: Path, markdown_out: Path) ->
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-csv", default=str(ROOT / "reports" / "manual_review_top.csv"))
+    parser.add_argument("--input-csv", default=str(ROOT / "reports" / "latest_scan_audited.csv"))
     parser.add_argument("--json-out", default=str(ROOT / "reports" / "portfolio_concentration_latest.json"))
     parser.add_argument("--markdown-out", default=str(ROOT / "reports" / "portfolio_concentration_latest.md"))
     args = parser.parse_args()

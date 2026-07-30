@@ -484,6 +484,29 @@ def collect_daily_run_manifest(
                 latest_scan_path, "sector_weekly_macd_acceleration_state"
             ),
             "sector_context_status": _safe_value_counts(latest_scan_path, "sector_context_status"),
+            "technical_analysis_lane": _safe_value_counts(
+                latest_scan_path, "technical_analysis_lane"
+            ),
+            "deep_analysis_tier": _safe_value_counts(
+                latest_scan_path, "deep_analysis_tier"
+            ),
+            "setup_readiness_state": _safe_value_counts(
+                latest_scan_path, "setup_readiness_state"
+            ),
+            "rr_status": _safe_value_counts(latest_scan_path, "rr_status"),
+            "technical_bar_policy": _safe_value_counts(
+                latest_scan_path, "technical_bar_policy"
+            ),
+            "momentum_gate_status": _safe_value_counts(
+                latest_scan_path, "momentum_gate_status"
+            ),
+            "timing_gate_status": _safe_value_counts(latest_scan_path, "timing_gate_status"),
+            "core_liquidity_status": _safe_value_counts(
+                latest_scan_path, "core_liquidity_status"
+            ),
+            "execution_spread_status": _safe_value_counts(
+                latest_scan_path, "execution_spread_status"
+            ),
             "scenario_status": _safe_value_counts(latest_scan_path, "scenario_status"),
             "momentum_state": _safe_value_counts(latest_scan_path, "momentum_state"),
             "extension_state": _safe_value_counts(latest_scan_path, "extension_state"),

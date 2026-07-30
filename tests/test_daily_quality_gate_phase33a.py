@@ -172,6 +172,33 @@ def test_daily_quality_gate_passes_clean_run(tmp_path: Path):
     assert data["scan_age_hours"] is not None
 
 
+def test_daily_quality_gate_allows_non_operable_canonical_radar_without_setup(
+    tmp_path: Path,
+) -> None:
+    reports = _make_reports(tmp_path)
+    scan_path = reports / "latest_scan_audited.csv"
+    scan = pd.read_csv(scan_path)
+    scan["technical_analysis_lane"] = ""
+    scan.loc[len(scan)] = {
+        "ticker": "RADAR",
+        "signal": "AVOID",
+        "recommendation": "AVOID_FOR_NOW",
+        "setup_type": "NO_VALID_SETUP",
+        "execution_quote_quality": "LOW",
+        "quote_status": "MISSING",
+        "actionable_entry": "",
+        "actionable_stop": "",
+        "actionable_target": "",
+        "technical_analysis_lane": "RADAR_FORMING_SETUP",
+    }
+    scan.to_csv(scan_path, index=False)
+
+    data = collect_daily_quality_gate(root=tmp_path)
+
+    assert data["status"] == "PASS"
+    assert data["logic_checks"]["no_valid_setup_not_veto_rows"] == 0
+
+
 def test_daily_quality_gate_warns_when_scan_is_not_current_business_day(tmp_path: Path):
     reports = _make_reports(tmp_path)
     scan_path = reports / "latest_scan_audited.csv"

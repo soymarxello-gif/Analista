@@ -37,6 +37,35 @@ OUTPUT_COLUMNS = [
     "momentum_penalty_reason",
     "engine_block_reason",
     "execution_readiness_status",
+    "operational_status",
+    "technical_opportunity_score",
+    "decision_lane",
+    "decision_reasons",
+    "technical_asset_quality_score",
+    "entry_readiness_score",
+    "research_priority_score",
+    "reset_watch_score",
+    "context_confidence_score",
+    "technical_analysis_lane",
+    "deep_analysis_tier",
+    "operational_eligibility",
+    "research_eligibility_reason",
+    "setup_readiness_score",
+    "setup_readiness_state",
+    "setup_candidate_type",
+    "primary_setup_hypothesis",
+    "primary_setup_hypothesis_state",
+    "primary_setup_hypothesis_score",
+    "alternative_setup_hypotheses",
+    "setup_hypothesis_count",
+    "technical_eligibility_reason",
+    "trend_setup_compatibility",
+    "research_trend_compatibility",
+    "research_trend_compatibility_reason",
+    "momentum_gate_status",
+    "timing_gate_status",
+    "core_liquidity_status",
+    "technical_prefilter_triage",
     "technical_prefilter_status",
     "technical_prefilter_reason",
     "daily_macd_prefilter_status",
@@ -52,13 +81,37 @@ OUTPUT_COLUMNS = [
     "options_scoring_status",
     "quote_status",
     "execution_quote_quality",
+    "execution_spread_status",
     "actionable_entry",
     "actionable_stop",
     "actionable_target",
     "rr",
+    "rr_status",
+    "rr_stressed",
+    "risk_geometry_status",
+    "risk_geometry_reason",
+    "rr_confidence",
+    "target_validation_source",
+    "target_validation_sources",
+    "entry_zone_low",
+    "entry_zone_high",
+    "technical_as_of_date",
+    "technical_bar_policy",
+    "daily_bar_complete",
+    "weekly_bar_complete",
+    "intraday_bar_excluded",
     "stop_atr_status",
     "earnings_date",
     "next_earnings_date",
+    "days_to_earnings",
+    "earnings_event_status",
+    "earnings_data_confidence",
+    "earnings_refresh_required",
+    "earnings_operability_block",
+    "earnings_review_reason",
+    "market_opportunity_status",
+    "sector_relative_strength_score",
+    "sector_relative_leadership_status",
     "sector",
     "industry",
     "metadata_source",
@@ -73,9 +126,23 @@ OUTPUT_COLUMNS = [
     "momentum_state",
     "extension_state",
     "ema20_extension_status",
+    "ema20_distance_percentile_1y",
+    "ema20_extension_model",
+    "trend_transition_score",
+    "trend_transition_state",
+    "trend_transition_reason",
     "entry_timing_status",
     "macd_histogram_state",
     "weekly_macd_histogram_state",
+    "daily_macd_trajectory_state",
+    "daily_macd_trajectory_confidence",
+    "weekly_macd_trajectory_state",
+    "weekly_macd_trajectory_confidence",
+    "daily_macd_non_decelerating",
+    "weekly_macd_non_decelerating",
+    "momentum_alignment",
+    "momentum_alignment_confidence",
+    "momentum_operability_status",
     "weekly_macd_hist_improving",
     "weekly_macd_hist",
     "weekly_macd_hist_change_1w",
@@ -90,6 +157,8 @@ OUTPUT_COLUMNS = [
     "sector_context_status",
     "sector_context_reason",
     "required_confirmation",
+    "required_confirmations",
+    "invalidation_conditions",
     "engine_recommendation",
     "shadow_entry",
     "shadow_stop",
@@ -172,7 +241,9 @@ def _derive_automatic_posttest_status(
     ema20_extension_status: str,
     macd_histogram_state: str,
     weekly_macd_histogram_state: str,
-    sector_weekly_macd_state: str,
+    daily_macd_trajectory_state: str,
+    weekly_macd_trajectory_state: str,
+    momentum_operability_status: str,
     technical_prefilter_status: str,
     technical_prefilter_reason: str,
     shadow_level_status: str,
@@ -200,24 +271,28 @@ def _derive_automatic_posttest_status(
         reasons.append("scenario_not_eligible")
     if execution_readiness and execution_readiness != "EXECUTION_READY_REVIEW":
         reasons.append(f"execution_readiness_{execution_readiness.lower()}")
-    if entry_timing_status not in {"", "ON_TIME"}:
-        reasons.append(f"entry_timing_{entry_timing_status.lower()}")
-    if ema20_extension_status not in {"", "HEALTHY"}:
-        reasons.append(f"ema20_extension_{ema20_extension_status.lower()}")
+    canonical_timing_status = ema20_extension_status or entry_timing_status
+    if canonical_timing_status not in {"", "HEALTHY", "ON_TIME"}:
+        reasons.append(f"entry_timing_{canonical_timing_status.lower()}")
     if macd_histogram_state in {"MACD_HIST_DETERIORATING", "MACD_HIST_FLATTENING"}:
         reasons.append(f"macd_histogram_{macd_histogram_state.lower()}")
-    if weekly_macd_histogram_state != "WEEKLY_MACD_HIST_IMPROVING":
+    if daily_macd_trajectory_state:
+        if daily_macd_trajectory_state not in {"ACCELERATING", "IMPROVING_STEADY"}:
+            reasons.append(f"daily_macd_trajectory_{daily_macd_trajectory_state.lower()}")
+    elif macd_histogram_state not in {
+        "MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO",
+        "MACD_HIST_POSITIVE_EXPANDING",
+    }:
+        reasons.append(f"daily_macd_histogram_{macd_histogram_state.lower() or 'missing'}")
+    if weekly_macd_trajectory_state:
+        if weekly_macd_trajectory_state not in {"ACCELERATING", "IMPROVING_STEADY"}:
+            reasons.append(f"weekly_macd_trajectory_{weekly_macd_trajectory_state.lower()}")
+    elif weekly_macd_histogram_state != "WEEKLY_MACD_HIST_IMPROVING":
         reasons.append(
             f"weekly_macd_histogram_{weekly_macd_histogram_state.lower() or 'missing'}"
         )
-    if sector_weekly_macd_state in {
-        "SECTOR_MACD_DECELERATING",
-        "SECTOR_MACD_BEARISH",
-        "SECTOR_MACD_IMPROVING_BUT_DECELERATING",
-        "SECTOR_MACD_MIXED",
-        "SECTOR_MACD_UNKNOWN",
-    }:
-        reasons.append(f"sector_weekly_macd_{sector_weekly_macd_state.lower()}")
+    if momentum_operability_status and momentum_operability_status != "CONFIRMED_NON_DECELERATING":
+        reasons.append(f"momentum_operability_{momentum_operability_status.lower()}")
     if technical_prefilter_status and technical_prefilter_status != "PASS":
         reasons.append(f"technical_prefilter_{technical_prefilter_status.lower()}")
     if technical_prefilter_reason and technical_prefilter_status != "PASS":
@@ -330,10 +405,15 @@ def evaluate_checklist_row(
     ema20_extension_status = _safe_text(row.get("ema20_extension_status")).upper()
     macd_histogram_state = _safe_text(row.get("macd_histogram_state")).upper()
     weekly_macd_histogram_state = _safe_text(row.get("weekly_macd_histogram_state")).upper()
+    daily_macd_trajectory_state = _safe_text(row.get("daily_macd_trajectory_state")).upper()
+    weekly_macd_trajectory_state = _safe_text(row.get("weekly_macd_trajectory_state")).upper()
+    momentum_operability_status = _safe_text(row.get("momentum_operability_status")).upper()
     sector_weekly_macd_state = _safe_text(row.get("sector_weekly_macd_state")).upper()
     sector_context_reason = _safe_text(row.get("sector_context_reason"))
     technical_prefilter_status = _safe_text(row.get("technical_prefilter_status")).upper()
     technical_prefilter_reason = _safe_text(row.get("technical_prefilter_reason"))
+    technical_analysis_lane = _safe_text(row.get("technical_analysis_lane")).upper()
+    rr_status = _safe_text(row.get("rr_status")).upper()
 
     entry = _safe_float(_first_value(row, ["actionable_entry", "entry"]))
     stop = _safe_float(_first_value(row, ["actionable_stop", "stop"]))
@@ -346,6 +426,8 @@ def evaluate_checklist_row(
         _append_unique(blockers, "signal_veto")
     if signal == "AVOID":
         _append_unique(blockers, "signal_avoid")
+    if technical_analysis_lane == "ADVANCE_RESEARCH_ANALYSIS":
+        _append_unique(blockers, "research_lane_not_operational")
     if technical_prefilter_status and technical_prefilter_status != "PASS":
         _append_unique(blockers, f"technical_prefilter_{technical_prefilter_status.lower()}")
         if technical_prefilter_reason:
@@ -353,11 +435,20 @@ def evaluate_checklist_row(
     if setup_type in {"", "NO_VALID_SETUP"}:
         _append_unique(blockers, "no_valid_setup")
 
-    if scenario_status and scenario_status != "VALID_TRIGGER":
+    if scenario_status == "WAIT_FOR_CONFIRMATION":
+        _append_unique(warnings, "scenario_wait_for_confirmation")
+        _append_unique(required_actions, "wait_for_required_confirmation")
+    elif scenario_status and scenario_status != "VALID_TRIGGER":
         _append_unique(blockers, f"scenario_not_operable_{scenario_status.lower()}")
-    if scenario_eligible_text and not _bool(row.get("scenario_eligible_for_backtest")):
+    if (
+        not scenario_status
+        and scenario_eligible_text
+        and not _bool(row.get("scenario_eligible_for_backtest"))
+    ):
         _append_unique(blockers, "scenario_not_eligible_for_backtest")
-    if engine_block_reason:
+    if engine_block_reason and not any(
+        blocker.startswith("scenario_not_operable_") for blocker in blockers
+    ):
         _append_unique(blockers, f"engine_block_{engine_block_reason.replace('; ', '_')}")
 
     required_confirmation = _safe_text(row.get("required_confirmation"))
@@ -371,19 +462,28 @@ def evaluate_checklist_row(
     }:
         _append_unique(warnings, f"shadow_level_status_{shadow_level_status.lower()}")
 
-    if entry_timing_status in {"CAUTION", "OVEREXTENDED", "LATE_ENTRY"}:
-        _append_unique(warnings, f"entry_timing_status_{entry_timing_status.lower()}")
-    if ema20_extension_status in {"CAUTION", "OVEREXTENDED", "LATE_ENTRY"}:
-        _append_unique(warnings, f"ema20_extension_status_{ema20_extension_status.lower()}")
-    if macd_histogram_state == "MACD_HIST_DETERIORATING":
+    canonical_timing_status = ema20_extension_status or entry_timing_status
+    if canonical_timing_status in {"CAUTION", "OVEREXTENDED", "LATE_ENTRY"}:
+        _append_unique(warnings, f"entry_timing_{canonical_timing_status.lower()}")
+    if macd_histogram_state in {
+        "MACD_HIST_DETERIORATING",
+        "MACD_HIST_IMPROVING_BUT_DECELERATING",
+    }:
         _append_unique(warnings, "macd_histogram_deteriorating")
-    if weekly_macd_histogram_state in {"WEEKLY_MACD_HIST_BEARISH", "WEEKLY_MACD_HIST_DECELERATING"}:
+    if daily_macd_trajectory_state in {"IMPROVING_BUT_DECELERATING", "DECLINING"}:
+        _append_unique(blockers, f"daily_macd_trajectory_{daily_macd_trajectory_state.lower()}")
+    if weekly_macd_trajectory_state in {"IMPROVING_BUT_DECELERATING", "DECLINING"}:
+        _append_unique(blockers, f"weekly_macd_trajectory_{weekly_macd_trajectory_state.lower()}")
+    elif (
+        not weekly_macd_trajectory_state
+        and weekly_macd_histogram_state in {"WEEKLY_MACD_HIST_BEARISH", "WEEKLY_MACD_HIST_DECELERATING"}
+    ):
         _append_unique(blockers, f"weekly_macd_histogram_{weekly_macd_histogram_state.lower()}")
     elif weekly_macd_histogram_state and weekly_macd_histogram_state != "WEEKLY_MACD_HIST_IMPROVING":
         _append_unique(warnings, f"weekly_macd_histogram_{weekly_macd_histogram_state.lower()}")
-    if sector_weekly_macd_state in {"SECTOR_MACD_BEARISH", "SECTOR_MACD_DECELERATING"}:
-        _append_unique(blockers, f"sector_weekly_macd_{sector_weekly_macd_state.lower()}")
-    elif sector_weekly_macd_state in {
+    if sector_weekly_macd_state in {
+        "SECTOR_MACD_BEARISH",
+        "SECTOR_MACD_DECELERATING",
         "SECTOR_MACD_IMPROVING_BUT_DECELERATING",
         "SECTOR_MACD_MIXED",
         "SECTOR_MACD_UNKNOWN",
@@ -399,12 +499,15 @@ def evaluate_checklist_row(
     if market_cap is not None and quote_type in {"", "EQUITY", "STOCK"} and market_cap < min_market_cap:
         _append_unique(blockers, "market_cap_below_minimum")
 
-    if "liquidity_pass" in row and _safe_text(row.get("liquidity_pass")) and not _bool(row.get("liquidity_pass")):
+    liquidity_core_value = row.get("liquidity_core_pass", row.get("liquidity_pass"))
+    if _safe_text(liquidity_core_value) and not _bool(liquidity_core_value):
         _append_unique(blockers, "liquidity_fail")
 
     if entry is None or stop is None or target is None:
         _append_unique(blockers, "missing_actionable_entry_stop_or_target")
 
+    if rr_status and rr_status != "VALIDATED":
+        _append_unique(blockers, f"rr_status_{rr_status.lower()}")
     if rr is None or rr < min_rr:
         _append_unique(blockers, "rr_invalid_or_below_minimum")
 
@@ -444,10 +547,15 @@ def evaluate_checklist_row(
             _append_unique(warnings, "price_far_from_actionable_entry")
 
     days_to_earnings = _safe_float(row.get("days_to_earnings"))
-    if _bool(row.get("earnings_veto")):
+    if _bool(row.get("earnings_veto")) or _bool(row.get("earnings_operability_block")):
         _append_unique(blockers, "earnings_too_close")
     elif days_to_earnings is not None and 0 <= days_to_earnings <= 10:
         _append_unique(warnings, "earnings_near")
+
+    risk_geometry_status = _safe_text(row.get("risk_geometry_status")).upper()
+    if risk_geometry_status in {"FRAGILE", "INVALID"}:
+        _append_unique(blockers, f"risk_geometry_{risk_geometry_status.lower()}")
+        _append_unique(required_actions, "review_stop_and_rr_geometry")
 
     base_score = _safe_float(row.get("final_trade_score"), 0.0) or 0.0
     readiness_score = _safe_float(row.get("operational_readiness_score"))
@@ -475,8 +583,23 @@ def evaluate_checklist_row(
         and entry_timing_status in {"", "ON_TIME"}
         and ema20_extension_status in {"", "HEALTHY"}
         and macd_histogram_state not in {"MACD_HIST_DETERIORATING", "MACD_HIST_FLATTENING"}
-        and weekly_macd_histogram_state == "WEEKLY_MACD_HIST_IMPROVING"
-        and sector_weekly_macd_state in {"", "SECTOR_MACD_ACCELERATING", "SECTOR_MACD_IMPROVING"}
+        and (
+            daily_macd_trajectory_state in {"ACCELERATING", "IMPROVING_STEADY"}
+            or (
+                not daily_macd_trajectory_state
+                and macd_histogram_state in {
+                    "MACD_HIST_BULLISH_INFLECTION_BELOW_ZERO",
+                    "MACD_HIST_POSITIVE_EXPANDING",
+                }
+            )
+        )
+        and (
+            weekly_macd_trajectory_state in {"ACCELERATING", "IMPROVING_STEADY"}
+            or (
+                not weekly_macd_trajectory_state
+                and weekly_macd_histogram_state == "WEEKLY_MACD_HIST_IMPROVING"
+            )
+        )
         and shadow_level_status in {"", "VALID", "NOT_AVAILABLE", "NOT_ELIGIBLE"}
         and checklist_score >= high_quality_score
     ):
@@ -503,7 +626,9 @@ def evaluate_checklist_row(
         ema20_extension_status=ema20_extension_status,
         macd_histogram_state=macd_histogram_state,
         weekly_macd_histogram_state=weekly_macd_histogram_state,
-        sector_weekly_macd_state=sector_weekly_macd_state,
+        daily_macd_trajectory_state=daily_macd_trajectory_state,
+        weekly_macd_trajectory_state=weekly_macd_trajectory_state,
+        momentum_operability_status=momentum_operability_status,
         technical_prefilter_status=technical_prefilter_status,
         technical_prefilter_reason=technical_prefilter_reason,
         shadow_level_status=shadow_level_status,
@@ -562,10 +687,14 @@ def build_trade_decision_checklist_dataframe(
         rows.append(out)
 
     out_df = pd.DataFrame(rows)
-
-    for col in OUTPUT_COLUMNS:
-        if col not in out_df.columns:
-            out_df[col] = ""
+    missing_columns = [col for col in OUTPUT_COLUMNS if col not in out_df.columns]
+    if missing_columns:
+        empty_columns = pd.DataFrame(
+            "",
+            index=out_df.index,
+            columns=missing_columns,
+        )
+        out_df = pd.concat([out_df, empty_columns], axis=1)
 
     return out_df[OUTPUT_COLUMNS].copy()
 
@@ -674,6 +803,8 @@ def save_trade_decision_checklist_reports(
 
     try:
         input_df = pd.read_csv(input_path)
+    except pd.errors.EmptyDataError:
+        input_df = pd.DataFrame()
     except Exception as exc:
         out = _empty_output_dataframe()
         out.to_csv(csv_out, index=False)

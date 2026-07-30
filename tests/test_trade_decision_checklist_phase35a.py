@@ -188,7 +188,8 @@ def test_overextended_ema20_is_not_high_quality_or_buy_now():
 
     assert result["checklist_status"] == "REVIEW_MANUALLY"
     assert result["automatic_posttest_status"] == "NOT_BUY_NOW"
-    assert "ema20_extension_status_overextended" in result["checklist_warnings"]
+    assert "entry_timing_overextended" in result["checklist_warnings"]
+    assert "ema20_extension_status_overextended" not in result["checklist_warnings"]
 
 
 def test_macd_histogram_deteriorating_is_not_high_quality_or_buy_now():
@@ -270,6 +271,24 @@ def test_save_trade_decision_checklist_reports_writes_csv_json_md(tmp_path: Path
 
     payload = json.loads((reports / "trade_decision_checklist_latest.json").read_text(encoding="utf-8"))
     assert payload["high_quality_review"] + payload["review_manually"] == 1
+
+
+def test_headerless_empty_input_is_controlled_pass_rows_zero(tmp_path: Path):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    input_csv = reports / "manual_review_top.csv"
+    input_csv.write_text("\r\n", encoding="utf-8")
+
+    result = save_trade_decision_checklist_reports(
+        input_path=input_csv,
+        csv_out=reports / "trade_decision_checklist_latest.csv",
+        markdown_out=reports / "trade_decision_checklist_latest.md",
+        json_out=reports / "trade_decision_checklist_latest.json",
+        root=tmp_path,
+    )
+
+    assert result["status"] == "PASS"
+    assert result["rows"] == 0
 
 
 def test_daily_validation_has_optional_trade_decision_checklist_after_live_recheck():

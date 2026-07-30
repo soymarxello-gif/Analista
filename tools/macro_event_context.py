@@ -496,16 +496,28 @@ def run_report(
         max_update_age_days=calendar_max_update_age_days,
     )
     liquidity_context, liquidity_notes = classify_liquidity_context(series)
-    issues = sorted(
+    peripheral_series = {"M2V"}
+    critical_issues = sorted(
         {
             item.get("issue")
-            for item in [calendar, *series.values()]
+            for item in [calendar]
             if item.get("issue")
         }
+        | {
+            item.get("issue")
+            for series_id, item in series.items()
+            if series_id not in peripheral_series and item.get("issue")
+        }
     )
-    status = "PASS" if calendar.get("status") == "PASS" and all(
-        item.get("status") == "PASS" for item in series.values()
-    ) else "WARN"
+    peripheral_issues = sorted(
+        {
+            f"{series_id}:{item.get('issue')}"
+            for series_id, item in series.items()
+            if series_id in peripheral_series and item.get("issue")
+        }
+    )
+    issues = [*critical_issues, *peripheral_issues]
+    status = "PASS" if not critical_issues else "WARN"
     next_event = calendar.get("next_event", {}) or {}
 
     result = {
@@ -547,6 +559,9 @@ def run_report(
         "macro_event_status": status,
         "macro_event_notes": "; ".join(liquidity_notes),
         "issues": issues,
+        "critical_issues": critical_issues,
+        "peripheral_issues": peripheral_issues,
+        "peripheral_series_do_not_reduce_regime_confidence": sorted(peripheral_series),
         "guardrails": {
             "scanner_rows_modified": False,
             "scoring_modified": False,
@@ -629,6 +644,15 @@ def build_markdown(result: dict[str, Any]) -> str:
         lines.append("- none")
     lines.extend(["", "## Issues", ""])
     lines.extend([f"- {issue}" for issue in result.get("issues", [])] or ["- none"])
+    lines.extend(["", "## Issue severity", ""])
+    lines.append(
+        "- critical: "
+        + (", ".join(result.get("critical_issues", [])) or "none")
+    )
+    lines.append(
+        "- peripheral: "
+        + (", ".join(result.get("peripheral_issues", [])) or "none")
+    )
     lines.extend(
         [
             "",
