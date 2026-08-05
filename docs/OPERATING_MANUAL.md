@@ -17,6 +17,23 @@ The system combines:
 
 ## Delayed And Manual Data Sources
 
+## Historical Market Data Engine
+
+The validated `market-data-engine` SQLite snapshot is the primary historical
+source for the current universe, adjusted daily OHLCV, sectors, industries and
+backtesting. The Drive master is copied to `cache/market_data_engine` through a
+temporary file, checked against its manifest and opened locally in read-only
+mode. Analista never analyzes the SQLite file directly from the mounted Drive.
+
+```powershell
+python .\tools\sync_market_data_engine.py
+python .\tools\market_data_engine_source_audit.py
+```
+
+If the snapshot is absent or stale, Yahoo is requested only for missing symbols
+or periods. Historical EOD data never changes `quote_status`,
+`execution_quote_quality`, signals or recommendations.
+
 Yahoo Finance remains the primary source. Alpaca IEX delayed data and a published
 Google Sheets CSV may fill analysis-only gaps. They do not change
 `quote_status`, `execution_quote_quality`, signals, recommendations, or P0.

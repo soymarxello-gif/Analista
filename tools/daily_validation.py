@@ -37,6 +37,19 @@ DEFAULT_STEPS = [
         "timeout_seconds": 60,
     },
     {
+        "name": "market_data_engine_source_audit",
+        "cmd": [
+            sys.executable,
+            "tools/market_data_engine_source_audit.py",
+            "--json-out",
+            "reports/market_data_engine_source_latest.json",
+            "--markdown-out",
+            "reports/market_data_engine_source_latest.md",
+        ],
+        "required": False,
+        "timeout_seconds": 600,
+    },
+    {
         "name": "run_scanner_audited",
         "cmd": [sys.executable, "run_scanner_audited.py"],
         "required": True,

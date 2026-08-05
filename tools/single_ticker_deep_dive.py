@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from data.price_client import download_daily_prices
+from data.historical_data_service import load_historical_prices
 from indicators.pipeline import add_all_indicators
 
 NOTICE = "consulta puntual diagnostica; no paso por screener completo; no real order"
@@ -61,7 +61,13 @@ def build_diagnostic_row(ticker: str, *, config: dict | None = None) -> dict[str
         row["warning"] = "ticker_required"
         return row
     try:
-        prices = download_daily_prices([clean], period="1y", interval="1d", max_individual_fallbacks=1)
+        prices = load_historical_prices(
+            [clean],
+            period="1y",
+            interval="1d",
+            config=config,
+            max_individual_fallbacks=1,
+        )
         hist = prices.get(clean, pd.DataFrame())
     except Exception as exc:
         row["status"] = "WARN"

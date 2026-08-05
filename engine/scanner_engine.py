@@ -15,7 +15,8 @@ from data.earnings_context import (
 )
 from data.fundamentals_client import enrich_metadata
 from data.options_client import fetch_options_metrics
-from data.price_client import download_daily_prices
+from data.historical_data_service import load_historical_prices, load_market_data_universe
+from data.screener_client import ScreenerResult
 from data.screener_client import run_screeners
 from data.technical_bars import derive_technical_prices
 from engine.data_sources.analysis_quotes import (
@@ -52,6 +53,9 @@ from scoring.operational_readiness import calculate_operational_readiness
 from scoring.options_score import calculate_options_score_adjustment, score_options_flow
 from scoring.relative_strength import add_relative_strength_scores
 from scoring.signal_classifier import classify_base_signal, classify_signal
+
+# Backward-compatible injection point used by scanner tests and offline fixtures.
+download_daily_prices = load_historical_prices
 from scoring.volume_score import score_volume
 from universe.equity_validator import validate_universe
 from universe.liquidity_filter import compute_liquidity
@@ -518,7 +522,23 @@ def _run_scan_impl(
     # 1. Screener and first universe validation.
     stage_started = perf_counter()
     _stage_start(performance, "screener_and_initial_validation")
-    screen = run_screeners(config)
+    engine_universe, engine_universe_health = load_market_data_universe(config)
+    if not engine_universe.empty:
+        screen = ScreenerResult(
+            dataframe=engine_universe,
+            used_fallback=False,
+            warnings=["universe_source=MARKET_DATA_ENGINE_SQLITE"],
+        )
+        performance["universe_source"] = {
+            "source": "MARKET_DATA_ENGINE_SQLITE",
+            "health": engine_universe_health,
+        }
+    else:
+        screen = run_screeners(config)
+        performance["universe_source"] = {
+            "source": "YAHOO_SCREENER",
+            "market_data_engine_health": engine_universe_health,
+        }
     meta = validate_universe(screen.dataframe, config)
 
     if max_candidates:
@@ -557,6 +577,7 @@ def _run_scan_impl(
         max_stale_hours=int(price_cfg.get("max_stale_hours", 120)),
         stats=price_stats,
         progress_callback=_price_progress,
+        config=config,
     )
     performance["price_download"] = price_stats
     _stage_done(performance, "bulk_price_download", stage_started)
@@ -571,6 +592,7 @@ def _run_scan_impl(
     rows: list[dict] = []
     base_rows: list[dict] = []
     price_cache_status = price_stats.get("cache_status_by_ticker", {})
+    price_source_by_ticker = price_stats.get("source_by_ticker", {})
     stale_price_tickers = set(price_stats.get("stale_fallback_tickers", []))
 
     # 3. Fast in-memory liquidity and technical funnel. Bid/ask is intentionally excluded here.
@@ -632,6 +654,7 @@ def _run_scan_impl(
             **evaluate_technical_prefilter(ind),
             **bar_metadata,
             "ohlcv_cache_status": price_cache_status.get(ticker, "NETWORK"),
+            "ohlcv_source": price_source_by_ticker.get(ticker, "UNKNOWN"),
             "ohlcv_stale_fallback_used": ticker in stale_price_tickers,
         }
         technical_prefilter_rows[ticker] = prefilter
@@ -928,6 +951,7 @@ def _run_scan_impl(
                     timeout_seconds=int(sector_context_cfg.get("timeout_seconds", 15)),
                     max_individual_fallbacks=int(sector_context_cfg.get("max_individual_fallbacks", 3)),
                     stats=sector_download_stats,
+                    config=config,
                 )
             except Exception as exc:
                 sector_download_stats["fatal_error"] = f"{type(exc).__name__}:{exc}"

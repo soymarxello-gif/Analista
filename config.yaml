@@ -361,6 +361,17 @@ data_sources:
     use_alpaca_iex: true
     use_google_sheets_manual: true
   providers:
+    market_data_engine:
+      enabled: true
+      priority: 0
+      mode: "read_only_eod"
+      data_freshness: "EOD"
+      drive_db_path: "G:/Mi unidad/MarketData/us_market_5y/master/us_market_5y.db"
+      drive_manifest_path: "G:/Mi unidad/MarketData/us_market_5y/manifests/master_manifest.json"
+      local_cache_path: "cache/market_data_engine/us_market_5y.db"
+      local_manifest_path: "cache/market_data_engine/master_manifest.json"
+      max_stale_days: 7
+      min_latest_coverage: 0.95
     yahoo:
       enabled: true
       priority: 1

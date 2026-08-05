@@ -21,6 +21,7 @@ SOURCE_SPECS = {
     "gui_visuals_audit": ("json", "reports/gui_visuals_audit_latest.json"),
     "gui_release_audit": ("json", "reports/gui_release_audit_latest.json"),
     "alpaca_readonly_connectivity": ("json", "reports/alpaca_readonly_connectivity_latest.json"),
+    "market_data_engine_source": ("json", "reports/market_data_engine_source_latest.json"),
     "manual_review_top": ("csv", "reports/manual_review_top.csv"),
     "manual_review_latest": ("csv", "reports/manual_review_latest.csv"),
     "trade_candidate_cards": ("json", "reports/trade_candidate_cards_latest.json"),

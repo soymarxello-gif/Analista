@@ -222,10 +222,16 @@ def _operational_freshness_items(sources: dict, quality: dict) -> list[tuple[str
     scan_status = freshness.get("scan_freshness_status", "UNKNOWN")
     manual_status = "WARN" if freshness.get("manual_review_is_stale") else "PASS"
     macro_status = _source_status(sources, "macro_event_context")
+    historical_status = _source_status(sources, "market_data_engine_source")
+    historical_data = (
+        sources.get("sources", {}).get("market_data_engine_source", {}).get("data", {}) or {}
+    )
+    historical_date = (historical_data.get("health", {}) or {}).get("latest_bar_date", "N/A")
     return [
         ("Scan", f"{_freshness_label(scan_status)} · {_source_timestamp(sources, 'latest_scan_audited')}", scan_status),
         ("Manual review", f"{_freshness_label(manual_status)} · {_source_timestamp(sources, 'manual_review_latest')}", manual_status),
         ("Macro", f"{_freshness_label(macro_status)} · {_source_timestamp(sources, 'macro_event_context')}", macro_status),
+        ("Base histórica", f"{_freshness_label(historical_status)} · {historical_date}", historical_status),
         ("Reportes", _latest_source_timestamp(sources), "PASS"),
     ]
 
@@ -474,6 +480,26 @@ def main() -> None:
                 ("Quotes VALID/HIGH", valid_high_count),
             ],
             columns=3,
+        )
+        historical = (
+            sources.get("sources", {}).get("market_data_engine_source", {}).get("data", {}) or {}
+        )
+        historical_health = historical.get("health", {}) or {}
+        ui_layout.render_section_title("Base histórica")
+        _metrics(
+            [
+                ("Estado", historical.get("status", "MISSING")),
+                ("Última sesión", historical_health.get("latest_bar_date", "N/A")),
+                ("Cobertura", historical_health.get("latest_coverage", "N/A")),
+                ("Activos", historical_health.get("active_assets", 0)),
+                ("Sectores", historical_health.get("sectors", 0)),
+                ("Fuente", historical.get("source", "MARKET_DATA_ENGINE_SQLITE")),
+            ],
+            columns=3,
+        )
+        ui_layout.render_inline_note(
+            "Datos EOD para análisis y backtesting; los quotes actuales usan proveedores separados.",
+            status="INFO",
         )
         macro_summary = macro.get("summary", {})
         ui_layout.render_section_title("Contexto macro")

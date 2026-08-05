@@ -4,6 +4,18 @@ Reports are generated artifacts for manual review and auditability. Most files u
 
 ## Core Daily Reports
 
+### `reports/market_data_engine_source_latest.*`
+
+Read-only audit of the locally synchronized historical market database. It
+reports the latest market session, universe coverage, active assets, sectors,
+sync result and source path. This report is EOD context and does not authorize
+execution or alter P0.
+
+### `reports/market_data_engine_sync_latest.json`
+
+Detailed synchronization result for the Drive master, manifest comparison,
+checksum validation and atomic local replacement.
+
 ### `reports/daily_validation_summary.txt`
 
 End-to-end daily run summary. Shows required and optional step status, output file status, scan snapshot, quote recheck summary, checklist summary, candidate cards summary, calibration summary, and operational next steps.

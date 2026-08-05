@@ -1,4 +1,3 @@
-\
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -6,12 +5,15 @@ from typing import Any
 
 import pandas as pd
 
-from data.price_client import download_daily_prices
+from data.historical_data_service import load_historical_prices
 from indicators.pipeline import add_all_indicators
 
 
 MACRO_DATA_FRESHNESS = "DELAYED_OR_EOD"
 MACRO_SOURCE = "yfinance"
+
+# Backward-compatible injection point for deterministic macro fixtures.
+download_daily_prices = load_historical_prices
 
 
 def _safe_float(value: Any) -> float | None:

@@ -25,6 +25,17 @@ reports/daily_run_manifest_latest.md
 
 ## Main Commands
 
+Synchronize and audit the historical Market Data Engine snapshot:
+
+```powershell
+python .\tools\sync_market_data_engine.py
+python .\tools\market_data_engine_source_audit.py
+```
+
+Analista uses the validated local SQLite snapshot first for universe, EOD OHLCV,
+sector metadata and backtesting. Yahoo remains the fallback for missing history
+and benchmarks; execution quotes remain a separate data path.
+
 Run the full daily workflow:
 
 ```powershell
@@ -122,6 +133,7 @@ git -c safe.directory="*" status --short
 - Single-ticker deep dive is manual review only and does not create scanner signals.
 - Options and institutional flow are contextual only; they do not invalidate setups or participate in scoring until data coverage is reliable.
 - Macro context is read-only context and does not modify quote quality or execution status.
+- Market Data Engine is EOD/read-only and cannot elevate execution quality or create a signal.
 - Calibration does not change weights or thresholds automatically.
 
 ## Documentation

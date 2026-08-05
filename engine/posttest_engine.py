@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Callable
 
 import pandas as pd
-import yfinance as yf
 from loguru import logger
 
 from config_loader import load_config
+from data.historical_data_service import load_historical_prices
 from engine.scenario_engine import analyze_scenario
 from indicators.pipeline import add_all_indicators
 
@@ -58,15 +58,13 @@ def _infer_scan_date(scan_path: Path, scan_df: pd.DataFrame) -> pd.Timestamp:
 
 
 def _download_history(ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
-    df = yf.Ticker(ticker).history(
-        start=start.strftime("%Y-%m-%d"),
-        end=end.strftime("%Y-%m-%d"),
-        auto_adjust=False,
-    )
+    frames = load_historical_prices([ticker], period="2y", interval="1d")
+    df = frames.get(ticker)
     if df is None or df.empty:
         return pd.DataFrame()
-    df = df.rename(columns={column: column.lower().replace(" ", "_") for column in df.columns})
-    return df[["open", "high", "low", "close", "volume"]].dropna(subset=["close"])
+    dates = pd.to_datetime(df.index).tz_localize(None)
+    selected = df.loc[(dates >= start.tz_localize(None)) & (dates <= end.tz_localize(None))].copy()
+    return selected[["open", "high", "low", "close", "volume"]].dropna(subset=["close"])
 
 
 def _normalize_history(hist: pd.DataFrame) -> pd.DataFrame:

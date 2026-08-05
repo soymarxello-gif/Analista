@@ -871,6 +871,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     google_sheets_data_source_json_path = reports / "google_sheets_data_source_latest.json"
     macro_event_context_json_path = reports / "macro_event_context_latest.json"
     nasdaq_risk_regime_json_path = reports / "nasdaq_risk_regime_latest.json"
+    market_data_engine_json_path = reports / "market_data_engine_source_latest.json"
 
     summary_text = _read_text(summary_path)
 
@@ -952,6 +953,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
     nasdaq_risk_regime_data = _normalize_nasdaq_risk_regime_status(
         _load_json(nasdaq_risk_regime_json_path),
     )
+    market_data_engine_data = _load_json(market_data_engine_json_path)
     manifest_data = _load_json(reports / "daily_run_manifest_latest.json")
     manifest_status = manifest_data.get("status", "UNKNOWN")
     git_dirty = bool(manifest_data.get("git", {}).get("dirty", False))
@@ -1025,6 +1027,8 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         reports / "google_sheets_data_source_latest.md",
         reports / "macro_event_context_latest.json",
         reports / "macro_event_context_latest.md",
+        reports / "market_data_engine_source_latest.json",
+        reports / "market_data_engine_source_latest.md",
         reports / "nasdaq_risk_regime_latest.json",
         reports / "nasdaq_risk_regime_latest.md",
         reports / "live_quote_recheck_latest.csv",
@@ -1136,6 +1140,7 @@ def collect_operator_index_data(root: Path = ROOT) -> dict:
         "google_sheets_data_source": google_sheets_data_source_data,
         "macro_event_context": macro_event_context_data,
         "nasdaq_risk_regime": nasdaq_risk_regime_data,
+        "market_data_engine_source": market_data_engine_data,
         "manifest_status": manifest_status,
         "git_dirty": git_dirty,
         "missing_script_files": missing_script_files,
@@ -1643,6 +1648,20 @@ def build_daily_operator_index_markdown(data: dict) -> str:
         lines.append(f"- confirmation_guardrail_ok: {gui_release.get('confirmation_guardrail_ok', False)}")
         lines.append("- markdown: reports/gui_release_audit_latest.md")
         lines.append("- json: reports/gui_release_audit_latest.json")
+    lines.append("")
+
+    market_data_engine = data.get("market_data_engine_source", {}) or {}
+    market_health = market_data_engine.get("health", {}) or {}
+    lines.append("## Base histórica / Market Data Engine")
+    lines.append("")
+    lines.append(f"- status: {market_data_engine.get('status', 'MISSING')}")
+    lines.append(f"- latest_bar_date: {market_health.get('latest_bar_date', 'UNKNOWN')}")
+    lines.append(f"- latest_coverage: {market_health.get('latest_coverage', 'UNKNOWN')}")
+    lines.append(f"- active_assets: {market_health.get('active_assets', 0)}")
+    lines.append(f"- sectors: {market_health.get('sectors', 0)}")
+    lines.append("- source: MARKET_DATA_ENGINE_SQLITE (EOD, read-only)")
+    lines.append("- markdown: reports/market_data_engine_source_latest.md")
+    lines.append("- json: reports/market_data_engine_source_latest.json")
     lines.append("")
 
     alpaca_readonly = data.get("alpaca_readonly_connectivity", {}) or {}

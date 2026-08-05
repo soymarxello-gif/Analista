@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from data.price_client import download_daily_prices
+from data.historical_data_service import load_historical_prices
 
 DEFAULT_HORIZONS = [5, 10, 15]
 NOTICE = "automatic BUY_NOW memory posttest only; no real order; no automatic scoring changes"
@@ -490,7 +490,7 @@ def run_posttest(
     *,
     horizons: list[int] | None = None,
     top_n: int = 5,
-    history_fn: Callable[..., dict[str, pd.DataFrame]] = download_daily_prices,
+    history_fn: Callable[..., dict[str, pd.DataFrame]] = load_historical_prices,
 ) -> dict[str, Any]:
     horizons = sorted(set(horizons or DEFAULT_HORIZONS))
     sessions = load_report_sessions()

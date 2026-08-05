@@ -413,6 +413,7 @@ def collect_daily_run_manifest(
     cboe_market_statistics_path = reports / "cboe_market_statistics_latest.json"
     google_sheets_data_source_path = reports / "google_sheets_data_source_latest.json"
     macro_event_context_path = reports / "macro_event_context_latest.json"
+    market_data_engine_source_path = reports / "market_data_engine_source_latest.json"
 
     daily_summary_text = _read_text(daily_summary_path)
     daily_validation_progress = _load_daily_validation_progress(daily_progress_path)
@@ -531,6 +532,7 @@ def collect_daily_run_manifest(
             "cboe_market_statistics": _load_json(cboe_market_statistics_path),
             "google_sheets_data_source": _load_json(google_sheets_data_source_path),
             "macro_event_context": _load_json(macro_event_context_path),
+            "market_data_engine_source": _load_json(market_data_engine_source_path),
         },
         "script_files": script_files,
         "report_files": report_files,

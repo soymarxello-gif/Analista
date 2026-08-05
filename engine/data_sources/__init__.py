@@ -28,12 +28,14 @@ from .source_priority import (
     TRADINGVIEW_MANUAL,
     YAHOO_FINANCE,
 )
+from .market_data_engine import MARKET_DATA_ENGINE_SOURCE
 
 __all__ = [
     "FINVIZ",
     "GOOGLE_SHEETS_MANUAL",
     "GOOGLE_SHEETS_SOURCE",
     "MARKETWATCH",
+    "MARKET_DATA_ENGINE_SOURCE",
     "MetadataProvider",
     "ProviderResponse",
     "PROVIDER_CONFIDENCE_VALUES",

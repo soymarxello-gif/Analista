@@ -17,11 +17,15 @@ python .\tools\daily_validation.py
 ```
 
 This runs the audited scanner, P0 validation, quality gates, optional report builders, candidate cards, automatic simple posttest, calibration, and run manifest.
+Before the scanner, it synchronizes and validates the local Market Data Engine
+snapshot. A sync failure with a valid local copy or Yahoo fallback is `WARN`;
+missing history from every trusted source remains unavailable rather than being invented.
 
 ## 3. Review Reports In This Order
 
 1. `reports/daily_operator_index.md`
-2. `reports/daily_quality_gate_latest.md`
+2. `reports/market_data_engine_source_latest.md`
+3. `reports/daily_quality_gate_latest.md`
 3. `reports/live_quote_recheck_latest.md`
 4. `reports/trade_decision_checklist_latest.md`
 5. `reports/trade_candidate_cards_latest.md`
