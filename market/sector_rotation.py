@@ -17,6 +17,26 @@ DEFAULT_SECTOR_BENCHMARKS = {
     "Utilities": "XLU",
     "Real Estate": "XLRE",
     "Communication Services": "XLC",
+    # TradingView industry-sector taxonomy used by Market Data Engine.
+    "Finance": "XLF",
+    "Technology Services": "XLK",
+    "Electronic Technology": "XLK",
+    "Health Technology": "XLV",
+    "Producer Manufacturing": "XLI",
+    "Consumer Services": "XLY",
+    "Non-Energy Minerals": "XLB",
+    "Consumer Non-Durables": "XLP",
+    "Retail Trade": "XLY",
+    "Industrial Services": "XLI",
+    "Transportation": "XLI",
+    "Commercial Services": "XLI",
+    "Energy Minerals": "XLE",
+    "Process Industries": "XLB",
+    "Consumer Durables": "XLY",
+    "Communications": "XLC",
+    "Health Services": "XLV",
+    "Distribution Services": "XLI",
+    "Miscellaneous": "SPY",
 }
 
 SECTOR_CONTEXT_COLUMNS = [

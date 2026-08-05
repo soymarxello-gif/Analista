@@ -89,6 +89,20 @@ def test_sector_benchmark_symbols_use_spdr_mapping_without_tradable_universe() -
     assert sector_benchmark_symbols_for_meta(meta, {}) == ["XLF", "XLK"]
 
 
+def test_market_data_engine_sector_taxonomy_maps_to_benchmark_etfs() -> None:
+    meta = pd.DataFrame(
+        [
+            {"ticker": "SOFT", "sector": "Technology Services"},
+            {"ticker": "BANK", "sector": "Finance"},
+            {"ticker": "RAIL", "sector": "Transportation"},
+            {"ticker": "DRUG", "sector": "Health Technology"},
+            {"ticker": "MISC", "sector": "Miscellaneous"},
+        ]
+    )
+
+    assert sector_benchmark_symbols_for_meta(meta, {}) == ["SPY", "XLF", "XLI", "XLK", "XLV"]
+
+
 def test_sector_context_fields_are_attached_by_ticker() -> None:
     meta = pd.DataFrame([{"ticker": "MSFT", "sector": "Technology"}])
     index = pd.date_range("2025-01-03", periods=260, freq="B")
