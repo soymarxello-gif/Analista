@@ -122,3 +122,18 @@ def test_historical_source_has_no_execution_fields(tmp_path) -> None:
 
     forbidden = {"signal", "recommendation", "quote_status", "execution_quote_quality"}
     assert forbidden.isdisjoint(frame.columns)
+
+
+def test_transient_fetch_status_does_not_hide_persisted_universe_history(tmp_path) -> None:
+    db = tmp_path / "market.db"
+    _database(db)
+    with sqlite3.connect(db) as conn:
+        conn.execute("UPDATE assets SET data_status='fetch_failed' WHERE ticker='AAA'")
+    config = _config(db, tmp_path)
+    config["data_sources"]["providers"]["market_data_engine"]["local_cache_path"] = str(db)
+
+    health = inspect_market_database(db, max_stale_days=500)
+    universe, _ = load_market_data_universe(config)
+
+    assert health["assets_with_history"] == 1
+    assert universe["ticker"].tolist() == ["AAA"]

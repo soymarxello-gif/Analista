@@ -72,7 +72,14 @@ def inspect_market_database(path: str | Path, *, max_stale_days: int = 7) -> dic
                     "assets": int(scalar("SELECT COUNT(*) FROM assets") or 0),
                     "active_assets": active,
                     "assets_with_history": int(
-                        scalar("SELECT COUNT(*) FROM assets WHERE data_status='ok'") or 0
+                        scalar(
+                            """
+                            SELECT COUNT(*)
+                            FROM assets a
+                            WHERE a.is_active=1
+                              AND EXISTS (SELECT 1 FROM daily_bars b WHERE b.ticker=a.ticker)
+                            """
+                        ) or 0
                     ),
                     "latest_assets": latest_count,
                     "latest_coverage": round(coverage, 6),
@@ -178,7 +185,8 @@ def load_current_universe_from_database(path: str | Path) -> pd.DataFrame:
             LEFT JOIN daily_bars b ON b.ticker=lb.ticker AND b.date=lb.date
             LEFT JOIN latest_fundamental lf ON lf.ticker=a.ticker
             LEFT JOIN fundamentals_snapshot f ON f.ticker=lf.ticker AND f.as_of_date=lf.as_of_date
-            WHERE u.run_id=? AND a.data_status='ok'
+            WHERE u.run_id=?
+              AND EXISTS (SELECT 1 FROM daily_bars history WHERE history.ticker=a.ticker)
             GROUP BY a.ticker
             ORDER BY COALESCE(u.market_cap,f.market_cap) DESC,a.ticker
             """,
