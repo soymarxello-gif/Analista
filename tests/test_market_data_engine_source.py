@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -137,3 +139,17 @@ def test_transient_fetch_status_does_not_hide_persisted_universe_history(tmp_pat
 
     assert health["assets_with_history"] == 1
     assert universe["ticker"].tolist() == ["AAA"]
+
+
+def test_market_data_engine_tools_are_directly_invocable() -> None:
+    root = Path(__file__).resolve().parents[1]
+    for script in ["sync_market_data_engine.py", "market_data_engine_source_audit.py"]:
+        result = subprocess.run(
+            [sys.executable, str(root / "tools" / script), "--help"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr

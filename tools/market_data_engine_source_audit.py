@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from config_loader import load_config
 from data.historical_data_service import configured_local_database
 from engine.data_sources.market_data_engine import inspect_market_database
-from tools.sync_market_data_engine import ROOT, sync_market_database
+from tools.sync_market_data_engine import sync_market_database
 
 
 def build_audit(*, sync: bool = True, config: dict | None = None) -> dict:
@@ -73,4 +78,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
