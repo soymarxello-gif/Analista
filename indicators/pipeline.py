@@ -1,10 +1,10 @@
-\
-from .moving_averages import add_moving_averages
-from .rsi import add_rsi
-from .macd import add_macd
 from .atr import add_atr
+from .macd import add_macd
+from .moving_averages import add_moving_averages
 from .obv import add_obv
+from .rsi import add_rsi
 from .volume import add_volume_features
+
 
 def add_all_indicators(df, config):
     out = add_moving_averages(df, config.get("indicators", {}).get("moving_averages", [20, 50, 200]))

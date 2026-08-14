@@ -13,7 +13,9 @@ cache/
 *.cache
 reports/*.csv
 reports/*.json
+reports/*.zip
 reports/history/
+Analista*.zip
 .streamlit/secrets.toml
 .DS_Store
 Thumbs.db
@@ -27,6 +29,7 @@ Thumbs.db
 
 # Android
 android/.gradle/
+android/.kotlin/
 android/local.properties
 android/**/build/
 *.apk

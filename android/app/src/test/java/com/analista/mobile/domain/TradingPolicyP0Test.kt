@@ -71,6 +71,12 @@ class TradingPolicyP0Test {
         assertFalse(result.eligibilityVerified)
     }
 
+    @Test fun etfDoesNotRequireCompanyMarketCap() {
+        assertTrue(TradingPolicy.eligibilityVerified(null, "ETF"))
+        assertFalse("market_cap_unverified" in TradingPolicy.eligibilityWarnings(null, "ETF"))
+        assertFalse("market_cap_below_min" in TradingPolicy.hardVetoReasons(100.0, 0L, "ETF"))
+    }
+
     @Test fun readyWaitTriggerRequiresUnconfirmedTrigger() {
         val result = TechnicalEngine.analyze("TEST", bars(), validContext())
         if (result.signal == "READY_WAIT_TRIGGER") assertFalse(result.triggerConfirmed)

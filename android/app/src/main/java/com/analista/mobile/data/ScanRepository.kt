@@ -36,11 +36,25 @@ class ScanRepository(
     private val dao: AnalistaDao,
     private val yahoo: YahooFinanceClient,
     private val marketData: MarketDataGateway,
-    private val tickers: List<String> = DEFAULT_TICKERS,
+    private val tickers: List<String> = LEGACY_RESEARCH_TICKERS,
     private val datasetCapture: RunDatasetCaptureService? = null,
-    private val officialSources: OfficialSourceCoordinator? = null
+    private val officialSources: OfficialSourceCoordinator? = null,
+    private val institutionalEngine: InstitutionalEngineClient? = null
 ) {
-    suspend fun runScan(): ScanRunEntity = coroutineScope {
+    @Volatile
+    var lastInstitutionalUniverseCount: Int = 0
+        private set
+
+    suspend fun runScan(): ScanRunEntity {
+        val engine = institutionalEngine ?: error(
+            "Motor institucional no conectado. El motor Yahoo local quedó deshabilitado como fallback productivo."
+        )
+        val result = engine.runAndPersist(dao)
+        lastInstitutionalUniverseCount = result.universeCount
+        return result.run
+    }
+
+    suspend fun runLegacyResearchScan(): ScanRunEntity = coroutineScope {
         val started = System.currentTimeMillis()
         val semaphore = Semaphore(4)
         var failures = 0
@@ -121,7 +135,10 @@ class ScanRepository(
         }
         val marketDate = LocalDate.now(ZoneId.of("America/New_York")).toString()
         val alpacaDegraded = quoteBatch.alpacaStatus !in setOf("AVAILABLE", "NOT_CONFIGURED")
+        val preparedUniverse = DynamicScanRegistry.state()
+        val validEmptyDiscovery = tickers.isEmpty() && preparedUniverse?.status == "LIVE_NO_SETUPS"
         val trust = when {
+            validEmptyDiscovery -> "TRUSTED"
             analyzed.isEmpty() -> "UNUSABLE"
             failures > tickers.size / 2 || unusableQualityCount > tickers.size / 2 -> "UNUSABLE"
             failures > 0 || cacheHits > 0 || quoteFailures > 0 || lowQualityCount > 0 ||
@@ -144,7 +161,11 @@ class ScanRepository(
         val run = ScanRunEntity(
             runId = runId, startedAtUtc = started, finishedAtUtc = finished,
             marketDateEt = marketDate,
-            status = if (analyzed.isEmpty()) "FAILED_DATA_SOURCE" else "COMPLETED",
+            status = when {
+                validEmptyDiscovery -> "COMPLETED_NO_SETUPS"
+                analyzed.isEmpty() -> "FAILED_DATA_SOURCE"
+                else -> "COMPLETED"
+            },
             trustStatus = trust, candidateCount = analyzed.size, failureCount = failures + quoteFailures,
             source = sourceDescription,
             durationMs = finished - started, cacheHitCount = cacheHits, retryCount = retries
@@ -317,7 +338,7 @@ class ScanRepository(
         if (datasetArtifacts.isNotEmpty()) dao.insertRunDatasetArtifacts(datasetArtifacts)
         if (contracts.isNotEmpty()) dao.insertSignalContracts(contracts)
         evaluateSignalContracts(barsByTicker)
-        updateBacktestOutcomes(runId, rows)
+        updateBacktestOutcomes(runId)
         run
     }
 
@@ -327,8 +348,13 @@ class ScanRepository(
     fun alpacaCredentials(): AlpacaCredentialsStore.Credentials? = marketData.alpacaCredentials()
 
     private suspend fun evaluateSignalContracts(barsByTicker: Map<String, List<PriceBar>>) {
-        val outcomes = dao.recentSignalContracts().mapNotNull { contract ->
-            val bars = barsByTicker[contract.ticker] ?: return@mapNotNull null
+        val contracts = dao.recentSignalContracts()
+        val missing = contracts.map { it.ticker }.distinct().filterNot { it in barsByTicker }
+        val historical = if (missing.isEmpty()) emptyMap() else marketData.dailyHistories(missing).histories
+            .mapValues { it.value.bars }
+        val completeBars = barsByTicker + historical
+        val outcomes = contracts.mapNotNull { contract ->
+            val bars = completeBars[contract.ticker] ?: return@mapNotNull null
             BacktestEngine.evaluate(contract, bars)
         }
         if (outcomes.isNotEmpty()) dao.upsertTradeOutcomes(outcomes)
@@ -358,7 +384,7 @@ class ScanRepository(
         candidates: List<CandidateEntity>,
         semaphore: Semaphore
     ): List<CandidateEnrichmentEntity> = coroutineScope {
-        candidates.map { candidate ->
+        candidates.sortedByDescending { it.score }.take(MAX_ENRICHMENT_TICKERS).map { candidate ->
             async {
                 semaphore.withPermit {
                     val fundamentalResult = runCatching { yahoo.fundamentals(candidate.ticker) }
@@ -403,16 +429,19 @@ class ScanRepository(
         }.awaitAll()
     }
 
-    private suspend fun updateBacktestOutcomes(currentRunId: String, current: List<CandidateEntity>) {
-        val latestByTicker = current.associateBy { it.ticker }
-        val outcomes = dao.priorCandidates(currentRunId)
+    private suspend fun updateBacktestOutcomes(currentRunId: String) {
+        val prior = dao.priorCandidates(currentRunId).distinctBy { it.runId to it.ticker }
+        val symbols = prior.map { it.ticker }.distinct()
+        val histories = if (symbols.isEmpty()) emptyMap() else marketData.dailyHistories(symbols).histories
+        val latestByTicker = histories.mapNotNull { (ticker, result) -> result.bars.lastOrNull()?.let { ticker to it.close } }.toMap()
+        val outcomes = prior
             .distinctBy { it.runId to it.ticker }
             .mapNotNull { prior ->
                 val latest = latestByTicker[prior.ticker] ?: return@mapNotNull null
                 BacktestOutcomeEntity(
                     outcomeId = "${prior.runId}-${prior.ticker}", sourceRunId = prior.runId,
                     ticker = prior.ticker, signal = prior.signal, sourceClose = prior.close,
-                    latestClose = latest.close, returnPct = round2((latest.close / prior.close - 1.0) * 100.0),
+                    latestClose = latest, returnPct = round2((latest / prior.close - 1.0) * 100.0),
                     evaluatedAtUtc = System.currentTimeMillis()
                 )
             }
@@ -434,7 +463,7 @@ class ScanRepository(
         dao.observeReproducibilityManifests(runId)
 
     companion object {
-        val DEFAULT_TICKERS = listOf(
+        val LEGACY_RESEARCH_TICKERS = listOf(
             "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AVGO", "TSLA",
             "JPM", "V", "MA", "COST", "LLY", "NFLX", "AMD", "CRM", "ORCL", "PLTR",
             "UBER", "PANW", "CRWD", "NOW", "MU", "QCOM", "INTC", "AMAT", "LRCX",
@@ -446,5 +475,6 @@ class ScanRepository(
             "DX-Y.NYB" to "DXY", "CL=F" to "WTI", "BTC-USD" to "Bitcoin"
         )
         private fun round2(value: Double) = round(value * 100.0) / 100.0
+        private const val MAX_ENRICHMENT_TICKERS = 30
     }
 }

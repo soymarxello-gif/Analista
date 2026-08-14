@@ -17,14 +17,14 @@ data class ProviderObservation(
 )
 
 object ProviderMatrixPolicy {
-    const val VERSION = "provider-matrix-1"
+    const val VERSION = "provider-matrix-2"
 
     val priorities: Map<String, List<String>> = linkedMapOf(
         "EXECUTION_QUOTE" to listOf("ALPACA", "YAHOO"),
         "HISTORICAL_PRICE" to listOf("ALPACA", "YAHOO"),
-        "FUNDAMENTAL" to listOf("YAHOO", "FINVIZ", "MARKETWATCH", "TRADINGVIEW"),
+        "FUNDAMENTAL" to listOf("SEC_COMPANYFACTS_BACKEND", "YAHOO_RESEARCH_ONLY"),
         "OPTIONS" to listOf("YAHOO"),
-        "MACRO" to listOf("YAHOO", "OFFICIAL"),
+        "MACRO" to listOf("FRED_ALFRED", "CFTC", "CBOE", "YAHOO_MARKET_CONTEXT"),
         "CALENDAR" to listOf("LOCAL_XNYS", "OFFICIAL")
     )
 
@@ -114,7 +114,7 @@ object ProviderMatrixAssembler {
             retrievedAtUtc = retrievedAtUtc,
             freshness = if (available) "ASSESSED_BY_DATA_AGE" else "UNKNOWN",
             fallbackUsed = false,
-            errorStatus = if (available) null else "YAHOO_UNAVAILABLE;FINVIZ_NOT_CONFIGURED;MARKETWATCH_NOT_CONFIGURED;TRADINGVIEW_NOT_CONFIGURED"
+            errorStatus = if (available) null else "YAHOO_RESEARCH_ONLY_UNAVAILABLE;SEC_BACKEND_NOT_CONFIGURED"
         )
     }
 

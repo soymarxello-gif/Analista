@@ -17,7 +17,6 @@ object DynamicScanRegistry {
 
     fun activate(resolution: DynamicUniverseResolver.Resolution, preparedAtUtc: Long = System.currentTimeMillis()) {
         val symbols = resolution.symbols.map(::normalize).filter { it.isNotBlank() }.distinct()
-        require(symbols.isNotEmpty())
         histories.clear()
         resolution.histories.forEach { (symbol, result) -> histories[normalize(symbol)] = result }
         state = State(symbols, resolution.source, resolution.status, resolution.fallbackUsed, preparedAtUtc)

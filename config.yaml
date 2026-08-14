@@ -1,29 +1,28 @@
 project:
   name: "Analista"
-  version: "0.2.0"
-  description: "Scanner para descubrir setups long-only de swing trading en acciones comunes cotizadas en Estados Unidos."
+  version: "1.81.0"
+  description: "Scanner para descubrir setups long-only de swing trading en acciones y ETF cotizados en Estados Unidos."
   objective: "discover_long_swing_setups"
   execution_mode: "manual_review"
   portfolio_construction: false
 
 trading_profile:
   market: "US"
-  asset_class: "common_stocks"
+  asset_class: "common_stocks_and_etfs"
   direction: "long_only"
   holding_period_min_days: 4
   holding_period_ideal_days: [4, 21]
-  allow_etfs_as_tradable_assets: false
+  allow_etfs_as_tradable_assets: true
   allow_etfs_as_benchmarks: true
 
 universe:
-  mode: "us_listed_common_equities"
+  mode: "us_listed_common_equities_and_etfs"
   allowed_exchanges: ["NMS", "NYQ", "ASE", "NAS", "NYE"]
-  allowed_quote_types: ["EQUITY"]
+  allowed_quote_types: ["EQUITY", "ETF"]
   allow_adrs: true
   allow_liquid_foreign_issuers: true
   min_history_days: 252
   excluded_security_types:
-    - ETF
     - ETN
     - CLOSED_END_FUND
     - PREFERRED_SHARE
@@ -34,7 +33,6 @@ universe:
     - SPAC_PRE_DEAL
     - ILLIQUID_ADR
   exclude_name_contains:
-    - "ETF"
     - "ETN"
     - "Fund"
     - "Trust"
@@ -50,7 +48,7 @@ filters:
 screener:
   max_results_per_query: 250
   deduplicate_results: true
-  fallback_tickers:
+  legacy_research_fallback_tickers:
     - AAPL
     - MSFT
     - NVDA
@@ -198,23 +196,65 @@ signals:
   allowed_states: ["VETO", "AVOID", "WATCHLIST", "READY_WAIT_TRIGGER", "TRIGGER_CONFIRMED"]
 
 data_sources:
-  primary: "Yahoo Finance"
-  secondary: ["Finviz", "MarketWatch", "TradingView"]
+  primary: "institutional_point_in_time_store"
+  secondary: []
+  legacy_research_only: ["Yahoo Finance"]
   cache_ttl_minutes:
     fundamentals: 1440
     options: 30
 
+institutional_engine:
+  enabled: true
+  production_entrypoint: "run_scanner.py --engine institutional"
+  legacy_engine_policy: "explicit_research_only_never_fallback"
+  api_base_url: "http://127.0.0.1:8000"
+  store_schema: "institutional-store-1"
+  universe_engine: "full-universe-point-in-time-1"
+  discovery_engine: "technical-discovery-1"
+  decision_engine: "decision-lifecycle-1+context-advisory-1"
+  outcomes_engine: "fixed-horizon-outcomes-1"
+  walk_forward_engine: "rolling-walk-forward-1"
+  full_universe_before_setup_filter: true
+  arbitrary_top_n_before_discovery: false
+  required_history_sessions: 220
+  discovery_filters:
+    rsi14_min: 25
+    rsi14_max: 65
+    require_rsi6_above_rsi14: true
+  feeds:
+    execution_equities: "SIP"
+    options: "OPRA"
+    iex_mode: "degraded_research_only"
+  ingestion:
+    security_master: ["NASDAQ_TRADER", "ALPACA_ASSETS"]
+    historical_prices: "ALPACA"
+    market_cap_file_env: "ANALISTA_MARKET_CAP_FILE"
+    missing_market_cap_policy: "include_with_warning_never_invalidate_setup"
+    default_history_sessions: 320
+  walk_forward:
+    mode: "rolling_expanding"
+    train_observations: 120
+    validation_observations: 40
+    test_observations: 40
+    step_observations: 40
+    embargo_sessions: 21
+    minimum_oos_closed: 200
+    minimum_dominant_cell: 40
+    minimum_expectancy_r: 0.10
+    bootstrap_samples: 2000
+
 fundamentals:
   enabled: true
+  selection_role: "advisory_only"
   metadata_enrichment:
     enabled: true
     max_tickers: 300
   earnings_risk:
-    veto_if_days_to_earnings_lte: 3
-    penalize_if_days_to_earnings_lte: 7
+    warn_if_days_to_earnings_lte: 7
 
 options_flow:
   enabled: true
+  selection_role: "advisory_only"
   use_as_confirmation_only: true
   max_tickers_per_run: 30
   max_expirations: 3
@@ -248,11 +288,20 @@ scoring_weights:
   fundamentals: 5.1
   sentiment: 4.0
 
+selection_policy:
+  basis: "technical_setup_only"
+  context_only_components: ["market_regime", "fundamentals", "options_flow", "sentiment"]
+  missing_context_policy: "warn_never_filter_or_penalize"
+  context_labels:
+    market_regime: "Macro"
+    fundamentals: "Fundamentales"
+    options_flow: "Opciones"
+
 trade_score_weights:
-  asset_quality: 0.25
-  setup_quality: 0.40
-  context: 0.25
-  institutional: 0.10
+  asset_quality: 0.30
+  setup_quality: 0.45
+  technical_context: 0.25
+  institutional: 0.00
 
 signal_thresholds:
   trigger_confirmed:

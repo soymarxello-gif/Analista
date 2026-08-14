@@ -1,8 +1,8 @@
-\
 from setups.breakout import detect_breakout
 from setups.pullback import detect_pullback
 from setups.reclaim import detect_reclaim
 from setups.volatility_contraction import detect_volatility_contraction
+
 
 def score_structure(df, config):
     b = detect_breakout(df, config)

@@ -4,7 +4,6 @@ import json
 import math
 from pathlib import Path
 
-
 FIXTURE = (
     Path(__file__).resolve().parents[1]
     / "android"

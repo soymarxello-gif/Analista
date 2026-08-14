@@ -1,5 +1,5 @@
-\
 import pandas as pd
+
 
 def add_relative_strength_scores(rows: list[dict]) -> list[dict]:
     df = pd.DataFrame(rows)

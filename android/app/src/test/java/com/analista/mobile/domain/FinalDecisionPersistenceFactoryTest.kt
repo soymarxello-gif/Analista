@@ -116,11 +116,10 @@ class FinalDecisionPersistenceFactoryTest {
     }
 
     @Test
-    fun bearishInstitutionalConflictBlocksContract() {
+    fun bearishInstitutionalConflictIsAdvisoryAndDoesNotBlockContract() {
         val result = create(overlay = overlay("BEARISH_WITH_DATA", "COMPLETE", 38.0))
-        assertEquals("WATCHLIST", result.decision.finalSignal)
-        assertNull(result.contract)
-        assertTrue("institutional_conflict_high" in result.decision.penaltyReasons)
+        assertEquals("READY_WAIT_TRIGGER", result.decision.finalSignal)
+        assertEquals("READY_WAIT_TRIGGER", result.contract?.signal)
     }
 
     @Test

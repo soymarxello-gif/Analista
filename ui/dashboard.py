@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 from datetime import datetime
-import pandas as pd
-import streamlit as st
-import plotly.express as px
+from pathlib import Path
 
+import pandas as pd
+import plotly.express as px
+import streamlit as st
 
 st.set_page_config(
     page_title="Analista | Swing Scanner",
@@ -523,7 +523,11 @@ with st.sidebar:
 
     if "options_bias" in df.columns:
         options_biases = sorted([x for x in df["options_bias"].dropna().unique() if str(x).strip()])
-        selected_options_bias = st.multiselect("Options bias", options_biases, default=options_biases)
+        selected_options_bias = st.multiselect(
+            "Options bias · filtro visual, no selección",
+            options_biases,
+            default=options_biases,
+        )
     else:
         selected_options_bias = []
 
@@ -533,7 +537,13 @@ with st.sidebar:
         score_range = (0.0, 100.0)
 
     rr_min = st.slider("R:R mínimo", 0.0, 5.0, 0.0, step=0.10) if "rr" in df.columns else 0.0
-    opt_score_min = st.slider("Options score mínimo", 0.0, 1.0, 0.0, step=0.05) if "options_score" in df.columns else 0.0
+    opt_score_min = st.slider(
+        "Options score mínimo · filtro visual",
+        0.0,
+        1.0,
+        0.0,
+        step=0.05,
+    ) if "options_score" in df.columns else 0.0
     search = st.text_input("Buscar ticker / empresa", value="", placeholder="Ej: NVDA, Microsoft...")
 
     st.divider()
@@ -686,8 +696,8 @@ with tab_options:
         )
 
         st.caption(
-            "Lectura: options_score confirma o penaliza setups. No genera compra automática. "
-            "Put/call extremadamente bajo puede ser señal de crowded trade."
+            "Lectura: opciones solo respaldan o advierten sobre un setup ya seleccionado técnicamente. "
+            "No modifican el ranking, no penalizan y su ausencia no invalida candidatos."
         )
 
 with tab_table:

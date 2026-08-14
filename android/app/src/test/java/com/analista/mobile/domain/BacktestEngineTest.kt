@@ -129,7 +129,8 @@ class BacktestEngineTest {
             contract(expiration = 2),
             listOf(
                 bar(2, 105.0, 108.0, 100.0, 106.0),
-                bar(3, 106.0, 110.0, 101.0, 109.0)
+                bar(3, 106.0, 110.0, 101.0, 109.0),
+                bar(4, 109.0, 111.0, 105.0, 110.0)
             ),
             costs = BacktestEngine.CostModel(entrySlippageBps = 0.0, exitSlippageBps = 0.0)
         )
@@ -137,6 +138,7 @@ class BacktestEngineTest {
         assertEquals("CLOSED_EXPIRED", result.status)
         assertEquals(109.0, result.exitFill!!, 0.0001)
         assertTrue(result.return1dPct != null)
+        assertEquals(109.0 / 105.0 * 100.0 - 100.0, result.return1dPct!!, 0.01)
     }
 
     private fun contract(

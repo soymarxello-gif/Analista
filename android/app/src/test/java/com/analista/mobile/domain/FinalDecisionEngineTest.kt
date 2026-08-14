@@ -90,14 +90,13 @@ class FinalDecisionEngineTest {
     }
 
     @Test
-    fun institutionalConflictCanBlockTechnicalSignal() {
+    fun institutionalConflictWarnsButCannotBlockTechnicalSignal() {
         val result = FinalDecisionEngine.decide(
             input(preliminarySignal = "TRIGGER_CONFIRMED", liveTriggerConfirmed = true,
                 actionability = "ACTIONABLE_REVIEW", institutionalConflict = "HIGH")
         )
-        assertEquals("WATCHLIST", result.finalSignal)
-        assertFalse(result.eligibleForContract)
-        assertTrue("institutional_conflict_high" in result.penaltyReasons)
+        assertEquals("TRIGGER_CONFIRMED", result.finalSignal)
+        assertTrue(result.eligibleForContract)
     }
 
     @Test
@@ -122,13 +121,12 @@ class FinalDecisionEngineTest {
     }
 
     @Test
-    fun riskOffRaisesReadyAndConfirmedThresholds() {
+    fun riskOffWarnsButNeverRaisesTechnicalThresholds() {
         val waiting = FinalDecisionEngine.decide(
             input(macroRegime = "RISK_OFF", finalTradeScore = 68.0)
         )
-        assertEquals("WATCHLIST", waiting.finalSignal)
-        assertFalse(waiting.eligibleForContract)
-        assertTrue("risk_off_thresholds_elevated" in waiting.penaltyReasons)
+        assertEquals("READY_WAIT_TRIGGER", waiting.finalSignal)
+        assertTrue(waiting.eligibleForContract)
 
         val triggered = FinalDecisionEngine.decide(
             input(
@@ -139,8 +137,8 @@ class FinalDecisionEngineTest {
                 actionability = "ACTIONABLE_REVIEW"
             )
         )
-        assertEquals("WATCHLIST", triggered.finalSignal)
-        assertFalse(triggered.eligibleForContract)
+        assertEquals("TRIGGER_CONFIRMED", triggered.finalSignal)
+        assertTrue(triggered.eligibleForContract)
     }
 
     @Test
@@ -176,9 +174,16 @@ class FinalDecisionEngineTest {
     fun closedSessionBlocksContractWithoutCreatingVeto() {
         val result = FinalDecisionEngine.decide(input(executionSessionOpen = false))
         assertEquals("WATCHLIST", result.finalSignal)
+        assertEquals(FinalDecisionEngine.LifecycleState.READY_FOR_NEXT_SESSION, result.lifecycleState)
         assertFalse(result.eligibleForContract)
         assertTrue(result.vetoReasons.isEmpty())
         assertTrue("market_session_blocks_contract" in result.penaltyReasons)
+    }
+
+    @Test
+    fun missingExecutionDataHasDedicatedLifecycleState() {
+        val result = FinalDecisionEngine.decide(input(executionFreshness = "UNKNOWN"))
+        assertEquals(FinalDecisionEngine.LifecycleState.DATA_BLOCKED, result.lifecycleState)
     }
 
     @Test

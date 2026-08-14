@@ -1,6 +1,0 @@
-Local mirror path: /mnt/data/Analista
-Remote branch: full-project-audit
-Base commit: d26548bd86c2e6d20fda01a42359e8055cb8bc14
-Implementation scope: audit iteration 1
-Status: synchronized for files changed by this branch
-Validation: pytest tests/test_scan_schema.py -q => 5 passed

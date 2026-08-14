@@ -52,8 +52,9 @@ class DynamicUniverseEngineTest {
                 "ETF" to bars()
             )
         )
-        assertEquals(listOf("GOOD"), result.map { it.symbol })
+        assertEquals(listOf("ETF", "GOOD"), result.map { it.symbol })
         assertTrue(result.first().averageDollarVolume20 >= 20_000_000.0)
+        assertEquals("ETF", result.first { it.symbol == "ETF" }.quoteType)
     }
 
     @Test
@@ -69,5 +70,17 @@ class DynamicUniverseEngineTest {
         assertEquals(3, result.size)
         assertFalse(result.count { it.sector == "Technology" } > 2)
         assertTrue(result.any { it.sector == "Energy" })
+    }
+
+    @Test
+    fun defaultSelectionDoesNotApplyArbitraryTopNOrSectorCap() {
+        val symbols = (1..125).map { "S%03d".format(it) }
+        val result = DynamicUniverseEngine.select(
+            assets = symbols.map { asset(it) },
+            metadata = symbols.map { metadata(it) },
+            histories = symbols.associateWith { bars() }
+        )
+        assertEquals(125, result.size)
+        assertEquals(symbols.sorted(), result.map { it.symbol })
     }
 }

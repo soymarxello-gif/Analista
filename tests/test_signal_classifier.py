@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from scoring.signal_classifier import classify_signal
 
-
 BASE_CONFIG = {
     "filters": {"min_price": 10, "min_market_cap_usd": 1_500_000_000},
     "risk_reward": {"min_rr_absolute": 1.5},
@@ -82,3 +81,11 @@ def test_price_and_market_cap_are_hard_filters():
 def test_buy_setup_active_is_never_emitted():
     signal, _ = classify_signal(base_row(), BASE_CONFIG)
     assert signal != "BUY_SETUP_ACTIVE"
+
+
+def test_nearby_earnings_is_advisory_and_never_vetoes_setup():
+    row = base_row()
+    row["earnings_veto"] = True
+    signal, reasons = classify_signal(row, BASE_CONFIG)
+    assert signal == "TRIGGER_CONFIRMED"
+    assert "earnings_too_close" not in reasons

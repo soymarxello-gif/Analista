@@ -1,5 +1,5 @@
-\
 import pandas as pd
+
 
 def add_moving_averages(df: pd.DataFrame, windows=(20, 50, 200)) -> pd.DataFrame:
     out = df.copy()

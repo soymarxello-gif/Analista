@@ -6,9 +6,7 @@ import pandas as pd
 
 from scoring.signal_classifier import classify_signal
 
-
 EXCLUDED_QUOTE_TYPES = {
-    "ETF",
     "ETN",
     "MUTUALFUND",
     "MUTUAL_FUND",
@@ -93,12 +91,16 @@ def _hard_veto_reasons(row: dict, config: dict) -> list[str]:
     price = _num(row.get("price"))
     market_cap = _num(row.get("market_cap"))
     quote_type = str(row.get("quote_type") or "").strip().upper()
+    allowed_quote_types = {
+        str(value).upper() for value in config.get("universe", {}).get("allowed_quote_types", ["EQUITY"])
+    }
+    is_etf = quote_type == "ETF"
 
     if price is None or price < min_price:
         reasons.append("price_below_min")
-    if market_cap is None or market_cap < min_market_cap:
+    if not is_etf and market_cap is not None and market_cap < min_market_cap:
         reasons.append("market_cap_below_min")
-    if quote_type and quote_type not in {"EQUITY"}:
+    if quote_type and quote_type not in allowed_quote_types:
         reasons.append("non_tradable_instrument")
     if quote_type in EXCLUDED_QUOTE_TYPES:
         reasons.append("excluded_security_type")
@@ -116,7 +118,7 @@ def _score100(*values, default=50.0) -> float:
 
 def _add_scores(row: dict, config: dict) -> None:
     row["asset_quality_score"] = _score100(
-        row.get("fundamental_score"), row.get("liquidity_score"), row.get("trend_score")
+        row.get("liquidity_score"), row.get("trend_score")
     )
     row["setup_quality_score"] = _score100(
         row.get("structure_score"), row.get("rr_score"), row.get("momentum_score"), row.get("volume_score")
@@ -134,10 +136,8 @@ def _add_scores(row: dict, config: dict) -> None:
     weighted = [
         (row["asset_quality_score"], float(weights.get("asset_quality", 0.25))),
         (row["setup_quality_score"], float(weights.get("setup_quality", 0.40))),
-        (row["context_score"], float(weights.get("context", 0.25))),
+        (row["context_score"], float(weights.get("technical_context", weights.get("context", 0.25)))),
     ]
-    if row["institutional_score"] is not None:
-        weighted.append((row["institutional_score"], float(weights.get("institutional", 0.10))))
 
     total_weight = sum(weight for _, weight in weighted) or 1.0
     final_trade_score = sum(score * weight for score, weight in weighted) / total_weight
@@ -147,7 +147,9 @@ def _add_scores(row: dict, config: dict) -> None:
     row["final_trade_score"] = round(final_trade_score, 2)
     row["score_breakdown"] = (
         f"asset={row['asset_quality_score']}; setup={row['setup_quality_score']}; "
-        f"context={row['context_score']}; institutional={row['institutional_score']}"
+        f"technical_context={row['context_score']}; "
+        f"advisory_fundamental={_score100(row.get('fundamental_score'))}; "
+        f"advisory_options={row['institutional_score']}"
     )
 
 

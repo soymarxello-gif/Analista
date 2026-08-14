@@ -60,7 +60,8 @@ object BacktestEngine {
 
         val mfe = observed.maxOfOrNull { (it.high / entry.fill - 1.0) * 100.0 }
         val mae = observed.minOfOrNull { (it.low / entry.fill - 1.0) * 100.0 }
-        fun markout(days: Int): Double? = active.getOrNull(days - 1)?.close
+        // A 1D markout is the close of the first complete session after the entry session.
+        fun markout(days: Int): Double? = active.getOrNull(days)?.close
             ?.let { round2((it / entry.fill - 1.0) * 100.0) }
 
         val expired = exit == null && active.size >= contract.expirationSessions

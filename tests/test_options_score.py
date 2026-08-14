@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from scoring.options_score import score_options_flow
 
-
 CONFIG = {
     "options_flow": {
         "enabled": True,

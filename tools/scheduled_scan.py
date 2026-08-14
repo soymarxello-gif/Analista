@@ -17,6 +17,7 @@ def main() -> int:
     parser.add_argument("--scheduled-slot", default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--config", default=None)
+    parser.add_argument("--ingest-live", action="store_true")
     args = parser.parse_args()
     gate = evaluate_scheduled_slot(args.scheduled_slot)
     print(f"NYSE schedule gate: run={gate.should_run} reason={gate.reason} target={gate.scheduled_for_et}")
@@ -25,6 +26,8 @@ def main() -> int:
     command = [sys.executable, str(ROOT / "run_scanner.py")]
     if args.config:
         command.extend(["--config", args.config])
+    if args.ingest_live:
+        command.append("--ingest-live")
     return subprocess.run(command, cwd=ROOT, check=False).returncode
 
 

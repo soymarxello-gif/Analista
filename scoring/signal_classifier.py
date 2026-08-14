@@ -23,12 +23,16 @@ def classify_signal(row: dict, config: dict) -> tuple[str, list[str]]:
     price = row.get("price")
     market_cap = row.get("market_cap")
     quote_type = str(row.get("quote_type") or "").strip().upper()
+    allowed_quote_types = {
+        str(value).upper() for value in config.get("universe", {}).get("allowed_quote_types", ["EQUITY"])
+    }
+    is_etf = quote_type == "ETF"
 
     if price is not None and float(price) < min_price:
         veto.append("price_below_min")
-    if market_cap is not None and float(market_cap) < min_market_cap:
+    if not is_etf and market_cap is not None and float(market_cap) < min_market_cap:
         veto.append("market_cap_below_min")
-    if quote_type and quote_type != "EQUITY":
+    if quote_type and quote_type not in allowed_quote_types:
         veto.append("non_tradable_instrument")
     if not _as_bool(row.get("liquidity_pass", False)):
         veto.append("liquidity_fail")
@@ -41,9 +45,6 @@ def classify_signal(row: dict, config: dict) -> tuple[str, list[str]]:
         veto.append("trend_score_too_weak")
     if row.get("setup_type") == "NO_VALID_SETUP":
         veto.append("no_valid_setup")
-    if _as_bool(row.get("earnings_veto", False)):
-        veto.append("earnings_too_close")
-
     if veto:
         return "VETO", list(dict.fromkeys(veto))
 

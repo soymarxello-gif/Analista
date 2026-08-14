@@ -1,11 +1,10 @@
-\
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from loguru import logger
+from typing import Any
+
 import pandas as pd
 
 try:
@@ -80,7 +79,7 @@ def run_screeners(config: dict) -> ScreenerResult:
 
     if not rows:
         used_fallback = True
-        tickers = screener_cfg.get("fallback_tickers", [])
+        tickers = screener_cfg.get("legacy_research_fallback_tickers", [])
         rows = [{"ticker": t, "source_channel": "manual_fallback"} for t in tickers]
         warnings.append("Se usó lista fallback manual de tickers.")
 

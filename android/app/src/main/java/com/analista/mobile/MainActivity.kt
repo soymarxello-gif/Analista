@@ -327,7 +327,7 @@ class MainActivity : ComponentActivity() {
                         DetailLine("Decisión", "${signalLabel(it.preliminarySignal)} → ${signalLabel(it.finalSignal)}")
                         DetailLine("Contrato", if (it.eligibleForContract) "Elegible para revisión manual" else "Bloqueado")
                         DetailLine("Confianza", it.confidence)
-                        DetailLine("Contexto", "Macro ${it.macroRegime} · Fundamental ${it.fundamentalCoverage} · Institucional ${it.institutionalCoverage}")
+                        DetailLine("Contexto (solo advertencia)", "Macro ${it.macroRegime} · Fundamental ${it.fundamentalCoverage} · Opciones/Institucional ${it.institutionalCoverage}")
                     }
                     DetailLine("Técnico", "RSI ${candidate.rsi14} · RVOL ${candidate.relativeVolume} · ATR ${candidate.atr14}")
                     DetailLine("Tendencia", "SMA20 ${candidate.sma20} · SMA50 ${candidate.sma50}")
@@ -379,9 +379,9 @@ class MainActivity : ComponentActivity() {
     private fun SignalBadge(signal: String) {
         val (background, foreground) = when (signal) {
             "TRIGGER_CONFIRMED" -> Color(0xFF14532D) to Color(0xFFBBF7D0)
-            "READY_WAIT_TRIGGER" -> Color(0xFF164E63) to Color(0xFFCFFAFE)
-            "WATCHLIST" -> Color(0xFF3F3F46) to Color(0xFFE4E4E7)
-            "VETO" -> Color(0xFF450A0A) to Color(0xFFFECACA)
+            "READY_WAIT_TRIGGER", "READY_FOR_NEXT_SESSION", "LIVE_TRIGGER_PENDING" -> Color(0xFF164E63) to Color(0xFFCFFAFE)
+            "WATCHLIST", "SETUP_DISCOVERED" -> Color(0xFF3F3F46) to Color(0xFFE4E4E7)
+            "VETO", "HARD_VETO", "DATA_BLOCKED" -> Color(0xFF450A0A) to Color(0xFFFECACA)
             else -> Color(0xFF422006) to Color(0xFFFDE68A)
         }
         Surface(color = background, contentColor = foreground, shape = RoundedCornerShape(999.dp)) {
@@ -469,6 +469,9 @@ class MainActivity : ComponentActivity() {
         val feed by vm.alpacaFeed.collectAsState()
         val status by vm.alpacaStatus.collectAsState()
         val testing by vm.testingAlpaca.collectAsState()
+        val institutionalConfigured by vm.institutionalEngineConfigured.collectAsState()
+        val institutionalStatus by vm.institutionalEngineStatus.collectAsState()
+        val testingInstitutional by vm.testingInstitutionalEngine.collectAsState()
         val reproducibility by vm.reproducibilitySummary.collectAsState()
         val replay by vm.replayDiagnostics.collectAsState()
         val replayRunning by vm.replayRunning.collectAsState()
@@ -478,8 +481,44 @@ class MainActivity : ComponentActivity() {
         val universeCount by vm.universeCount.collectAsState()
         var apiKey by remember { mutableStateOf("") }
         var secretKey by remember { mutableStateOf("") }
+        var institutionalUrl by remember { mutableStateOf("") }
+        var institutionalToken by remember { mutableStateOf("") }
         LazyColumn(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { Text("Diagnóstico operativo", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Motor institucional", fontWeight = FontWeight.Bold)
+                        Text(
+                            if (institutionalConfigured) "Conectado · $institutionalStatus" else "No configurado · el fallback local está deshabilitado",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (!institutionalConfigured) {
+                            OutlinedTextField(
+                                institutionalUrl,
+                                { institutionalUrl = it },
+                                label = { Text("URL del servicio (https://…)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                institutionalToken,
+                                { institutionalToken = it },
+                                label = { Text("Bearer token") },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Button(
+                                onClick = { vm.saveAndTestInstitutionalEngine(institutionalUrl, institutionalToken) },
+                                enabled = !testingInstitutional && institutionalUrl.isNotBlank() && institutionalToken.isNotBlank()
+                            ) { Text(if (testingInstitutional) "Probando…" else "Guardar y probar motor") }
+                        } else {
+                            OutlinedButton(onClick = vm::clearInstitutionalEngine) { Text("Desconectar motor") }
+                        }
+                    }
+                }
+            }
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -583,9 +622,9 @@ class MainActivity : ComponentActivity() {
         val signal = decision?.finalSignal ?: candidate.signal
         return when {
             signal == "TRIGGER_CONFIRMED" -> "Accionables"
-            signal == "READY_WAIT_TRIGGER" -> "Esperando"
-            signal == "WATCHLIST" -> "Observación"
-            signal == "VETO" -> "No elegibles"
+            signal in setOf("READY_WAIT_TRIGGER", "READY_FOR_NEXT_SESSION", "LIVE_TRIGGER_PENDING") -> "Esperando"
+            signal in setOf("WATCHLIST", "SETUP_DISCOVERED") -> "Observación"
+            signal in setOf("VETO", "HARD_VETO", "DATA_BLOCKED") -> "No elegibles"
             candidate.setupType == "NO_VALID_SETUP" || signal == "AVOID" -> "Sin setup"
             else -> "Observación"
         }
@@ -593,18 +632,20 @@ class MainActivity : ComponentActivity() {
 
     private fun signalPriority(signal: String): Int = when (signal) {
         "TRIGGER_CONFIRMED" -> 0
-        "READY_WAIT_TRIGGER" -> 1
-        "WATCHLIST" -> 2
+        "READY_WAIT_TRIGGER", "READY_FOR_NEXT_SESSION", "LIVE_TRIGGER_PENDING" -> 1
+        "WATCHLIST", "SETUP_DISCOVERED" -> 2
         "AVOID" -> 3
-        "VETO" -> 4
+        "VETO", "HARD_VETO", "DATA_BLOCKED" -> 4
         else -> 5
     }
 
     private fun signalLabel(signal: String) = when (signal) {
         "TRIGGER_CONFIRMED" -> "Confirmado"
-        "READY_WAIT_TRIGGER" -> "Esperando"
-        "WATCHLIST" -> "Observación"
-        "VETO" -> "No elegible"
+        "READY_WAIT_TRIGGER", "LIVE_TRIGGER_PENDING" -> "Esperando trigger"
+        "READY_FOR_NEXT_SESSION" -> "Próxima sesión"
+        "WATCHLIST", "SETUP_DISCOVERED" -> "Setup descubierto"
+        "VETO", "HARD_VETO" -> "No elegible"
+        "DATA_BLOCKED" -> "Datos insuficientes"
         else -> "Sin setup"
     }
 
@@ -635,6 +676,7 @@ class MainActivity : ComponentActivity() {
 
     private fun sourceLabel(source: String): String = when (source) {
         "ALPACA_ASSETS+NASDAQ_METADATA+ALPACA_BARS" -> "Alpaca Assets + Nasdaq + barras Alpaca"
+        "INSTITUTIONAL_POINT_IN_TIME_API" -> "API institucional · store point-in-time"
         "LAST_GOOD_DYNAMIC" -> "Último universo dinámico válido"
         "EMERGENCY_STATIC" -> "Fallback estático de emergencia"
         "NONE", "" -> "Fuente aún no resuelta"

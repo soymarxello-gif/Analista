@@ -134,7 +134,9 @@ class MarketDataGateway(
 
         var fallbackCount = 0
         val failed = mutableListOf<String>()
-        normalized.filterNot { it in histories }.forEach { symbol ->
+        val missing = normalized.filterNot { it in histories }
+        val yahooFallbackSymbols = if (normalized.size <= MAX_BULK_YAHOO_FALLBACK) missing else emptyList()
+        yahooFallbackSymbols.forEach { symbol ->
             val fallback = runCatching { yahoo.dailyHistory(symbol, yahooRange) }.getOrNull()
             if (fallback != null) {
                 histories[symbol] = fallback
@@ -143,6 +145,7 @@ class MarketDataGateway(
                 failed += symbol
             }
         }
+        failed += missing.filterNot { it in yahooFallbackSymbols }
         val primarySource = when {
             histories.isEmpty() -> "UNAVAILABLE"
             alpacaBars.isNotEmpty() && fallbackCount > 0 -> "ALPACA_BARS+YAHOO_FALLBACK"
@@ -196,5 +199,6 @@ class MarketDataGateway(
     companion object {
         private const val MAX_DIVERGENCE_PCT = 1.0
         private const val MIN_HISTORY_BARS = 220
+        private const val MAX_BULK_YAHOO_FALLBACK = 100
     }
 }

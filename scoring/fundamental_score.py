@@ -1,7 +1,5 @@
-\
 from __future__ import annotations
 
-import math
 import pandas as pd
 
 
@@ -52,8 +50,10 @@ def _score_roe(x):
 
 def score_fundamentals(meta_row, config):
     """
-    Tactical fundamentals score for swing trading.
-    It is not a full valuation model; it mainly avoids weak quality and earnings event risk.
+    Advisory fundamentals for a setup selected independently by technical data.
+
+    Missing or adverse fundamentals and nearby earnings are warnings only. They never
+    veto or penalize the technical candidate score.
     """
     revenue_growth = _num(meta_row.get("revenue_growth"))
     earnings_growth = _num(meta_row.get("earnings_growth") or meta_row.get("earnings_quarterly_growth"))
@@ -76,29 +76,24 @@ def score_fundamentals(meta_row, config):
     )
 
     warning = meta_row.get("fundamental_warning") or ""
-    veto_earnings = False
-    earnings_penalty = False
+    earnings_warning = False
 
     erisk = config.get("fundamentals", {}).get("earnings_risk", {})
-    veto_days = erisk.get("veto_if_days_to_earnings_lte", 3)
-    penalty_days = erisk.get("penalize_if_days_to_earnings_lte", 7)
+    warning_days = erisk.get("warn_if_days_to_earnings_lte", 7)
 
-    if days_to_earnings is not None:
-        if days_to_earnings >= 0 and days_to_earnings <= veto_days:
-            veto_earnings = True
-            score *= 0.20
-            warning = (warning + "; " if warning else "") + f"earnings en {int(days_to_earnings)} días: veto"
-        elif days_to_earnings >= 0 and days_to_earnings <= penalty_days:
-            earnings_penalty = True
-            score *= 0.65
-            warning = (warning + "; " if warning else "") + f"earnings en {int(days_to_earnings)} días: penalización"
+    if days_to_earnings is not None and 0 <= days_to_earnings <= warning_days:
+        earnings_warning = True
+        warning = (warning + "; " if warning else "") + (
+            f"earnings en {int(days_to_earnings)} días: advertencia contextual"
+        )
 
     return {
         "fundamental_score": round(_clip01(score), 4),
         "earnings_date": meta_row.get("earnings_date"),
         "days_to_earnings": int(days_to_earnings) if days_to_earnings is not None else None,
-        "earnings_veto": veto_earnings,
-        "earnings_penalty": earnings_penalty,
+        "earnings_veto": False,
+        "earnings_penalty": False,
+        "earnings_warning": earnings_warning,
         "revenue_growth": revenue_growth,
         "earnings_growth": earnings_growth,
         "operating_margins": operating_margin,

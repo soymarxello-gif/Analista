@@ -1,7 +1,16 @@
 package com.analista.mobile.domain
 
 object FinalDecisionEngine {
-    const val VERSION = "final-decision-5"
+    const val VERSION = "final-decision-7-technical-selection"
+
+    enum class LifecycleState {
+        SETUP_DISCOVERED,
+        READY_FOR_NEXT_SESSION,
+        LIVE_TRIGGER_PENDING,
+        TRIGGER_CONFIRMED,
+        DATA_BLOCKED,
+        HARD_VETO
+    }
 
     data class Thresholds(
         val minimumReadyScore: Double = 65.0,
@@ -39,6 +48,7 @@ object FinalDecisionEngine {
         val confidence: String,
         val vetoReasons: List<String>,
         val penaltyReasons: List<String>,
+        val lifecycleState: LifecycleState,
         val decisionVersion: String = VERSION
     )
 
@@ -51,12 +61,10 @@ object FinalDecisionEngine {
 
         val vetoReasons = input.hardVetoReasons.toMutableList()
         val penalties = input.penaltyReasons.toMutableList()
-        val riskOff = input.macroRegime.trim().uppercase() == "RISK_OFF"
-        val readyThreshold = (thresholds.minimumReadyScore + if (riskOff) 5.0 else 0.0).coerceAtMost(100.0)
-        val confirmedThreshold = (thresholds.minimumConfirmedScore + if (riskOff) 10.0 else 0.0).coerceAtMost(100.0)
+        val readyThreshold = thresholds.minimumReadyScore
+        val confirmedThreshold = thresholds.minimumConfirmedScore
 
         if (input.preliminarySignal == "VETO") vetoReasons += "preliminary_veto"
-        if (riskOff) penalties += "risk_off_thresholds_elevated"
 
         val finalSignal = when {
             vetoReasons.isNotEmpty() -> "VETO"
@@ -100,10 +108,6 @@ object FinalDecisionEngine {
                 penalties += if (input.executionFreshness == "STALE") "quote_stale" else "quote_freshness_unknown"
                 "WATCHLIST"
             }
-            input.institutionalConflict == "HIGH" -> {
-                penalties += "institutional_conflict_high"
-                "WATCHLIST"
-            }
             input.finalTradeScore < readyThreshold -> {
                 penalties += "final_trade_score_below_ready_threshold"
                 "WATCHLIST"
@@ -135,7 +139,6 @@ object FinalDecisionEngine {
             input.executionQuoteQuality != "LOW" &&
             eligibleFreshness &&
             !input.failedBreakout &&
-            input.institutionalConflict != "HIGH" &&
             vetoReasons.isEmpty()
 
         require(finalSignal in TradingPolicy.allowedSignals)
@@ -148,6 +151,16 @@ object FinalDecisionEngine {
         }
         if (finalSignal == "READY_WAIT_TRIGGER") require(!input.liveTriggerConfirmed)
 
+        val lifecycleState = when {
+            vetoReasons.isNotEmpty() -> LifecycleState.HARD_VETO
+            !input.dataQualityAllowsExecution || input.executionFreshness in setOf("STALE", "UNKNOWN") ->
+                LifecycleState.DATA_BLOCKED
+            finalSignal == "TRIGGER_CONFIRMED" -> LifecycleState.TRIGGER_CONFIRMED
+            input.setupValid && !input.executionSessionOpen && input.riskPlanValid -> LifecycleState.READY_FOR_NEXT_SESSION
+            input.setupValid && input.executionSessionOpen -> LifecycleState.LIVE_TRIGGER_PENDING
+            else -> LifecycleState.SETUP_DISCOVERED
+        }
+
         return Decision(
             preliminarySignal = input.preliminarySignal,
             finalSignal = finalSignal,
@@ -155,7 +168,8 @@ object FinalDecisionEngine {
             eligibleForContract = eligible,
             confidence = confidence,
             vetoReasons = vetoReasons.distinct(),
-            penaltyReasons = penalties.distinct()
+            penaltyReasons = penalties.distinct(),
+            lifecycleState = lifecycleState
         )
     }
 
@@ -166,7 +180,7 @@ object FinalDecisionEngine {
             input.institutionalCoverage
         ).map { it.trim().uppercase() }
         return when {
-            !input.eligibilityVerified || !input.executionSessionOpen -> "LOW"
+            !input.eligibilityVerified -> "LOW"
             !input.dataQualityAllowsExecution || input.executionQuoteQuality == "LOW" -> "LOW"
             input.executionFreshness in setOf("STALE", "UNKNOWN") -> "LOW"
             coverage.any { it in setOf("UNKNOWN", "EMPTY", "ERROR", "UNAVAILABLE", "STALE") } -> "LOW"

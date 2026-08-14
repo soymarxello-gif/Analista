@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-import yaml
 
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config.yaml"
@@ -61,8 +61,45 @@ def test_data_source_cache_has_fundamentals_and_options():
     assert "options" in ttl
 
 
-def test_operating_constraints_long_only_no_etfs():
+def test_operating_constraints_long_only_stocks_and_etfs():
     cfg = load_config()
+    assert cfg["project"]["version"] == "1.81.0"
     assert cfg["trading_profile"]["direction"] == "long_only"
-    assert cfg["trading_profile"]["allow_etfs_as_tradable_assets"] is False
-    assert cfg["trading_profile"]["asset_class"] == "common_stocks"
+    assert cfg["trading_profile"]["holding_period_min_days"] == 4
+    assert cfg["trading_profile"]["allow_etfs_as_tradable_assets"] is True
+    assert cfg["trading_profile"]["asset_class"] == "common_stocks_and_etfs"
+    assert cfg["universe"]["mode"] == "us_listed_common_equities_and_etfs"
+    assert cfg["universe"]["allowed_quote_types"] == ["EQUITY", "ETF"]
+
+
+def test_institutional_discovery_contract_has_no_pre_setup_top_n():
+    cfg = load_config()
+    engine = cfg["institutional_engine"]
+    discovery = engine["discovery_filters"]
+
+    assert cfg["data_sources"]["primary"] == "institutional_point_in_time_store"
+    assert engine["enabled"] is True
+    assert engine["full_universe_before_setup_filter"] is True
+    assert engine["arbitrary_top_n_before_discovery"] is False
+    assert discovery == {
+        "rsi14_min": 25,
+        "rsi14_max": 65,
+        "require_rsi6_above_rsi14": True,
+    }
+    assert engine["feeds"] == {
+        "execution_equities": "SIP",
+        "options": "OPRA",
+        "iex_mode": "degraded_research_only",
+    }
+
+
+def test_context_domains_are_advisory_only_and_missing_data_never_filters():
+    cfg = load_config()
+    policy = cfg["selection_policy"]
+    assert policy["basis"] == "technical_setup_only"
+    assert policy["missing_context_policy"] == "warn_never_filter_or_penalize"
+    assert set(policy["context_only_components"]) >= {
+        "market_regime", "fundamentals", "options_flow"
+    }
+    assert cfg["fundamentals"]["selection_role"] == "advisory_only"
+    assert cfg["options_flow"]["selection_role"] == "advisory_only"

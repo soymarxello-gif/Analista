@@ -1,28 +1,27 @@
 from __future__ import annotations
 
-from loguru import logger
 import pandas as pd
+from loguru import logger
 
-from data.screener_client import run_screeners
-from data.price_client import download_daily_prices
 from data.fundamentals_client import enrich_metadata
 from data.options_client import fetch_options_metrics
-from universe.equity_validator import validate_universe
-from universe.liquidity_filter import compute_liquidity
+from data.price_client import download_daily_prices
+from data.screener_client import run_screeners
 from indicators.pipeline import add_all_indicators
 from market.market_regime import classify_market_regime
 from market.sector_rotation import calculate_sector_rotation
+from scoring.final_score import calculate_final_score
+from scoring.fundamental_score import score_fundamentals
+from scoring.momentum_score import score_momentum
+from scoring.options_score import score_options_flow
 from scoring.relative_strength import add_relative_strength_scores
+from scoring.risk_reward_score import score_risk_reward
+from scoring.signal_classifier import classify_signal
+from scoring.structure_score import score_structure
 from scoring.trend_score import score_trend
 from scoring.volume_score import score_volume
-from scoring.structure_score import score_structure
-from scoring.risk_reward_score import score_risk_reward
-from scoring.momentum_score import score_momentum
-from scoring.fundamental_score import score_fundamentals
-from scoring.options_score import score_options_flow
-from scoring.final_score import calculate_final_score
-from scoring.signal_classifier import classify_signal
-
+from universe.equity_validator import validate_universe
+from universe.liquidity_filter import compute_liquidity
 
 QUOTE_CONTEXT_FIELDS = (
     "quote_timestamp",
@@ -295,7 +294,8 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
             "regular_market_volume_yf": m.get("regular_market_volume_yf"),
             "earnings_date": fund.get("earnings_date"),
             "days_to_earnings": fund.get("days_to_earnings"),
-            "earnings_veto": fund.get("earnings_veto"),
+            "earnings_veto": False,
+            "earnings_warning": bool(fund.get("earnings_warning")),
             "earnings_penalty": fund.get("earnings_penalty"),
             "revenue_growth": fund.get("revenue_growth"),
             "earnings_growth": fund.get("earnings_growth"),
@@ -327,6 +327,10 @@ def run_scan(config: dict, max_candidates: int | None = None) -> pd.DataFrame:
                 m.get("data_quality_warning"), m.get("liquidity_warning"),
                 fund.get("fundamental_warning"), options_score_data.get("options_warning"),
             ),
+            "selection_basis": "TECHNICAL_SETUP_ONLY",
+            "macro_role": "ADVISORY_ONLY",
+            "fundamentals_role": "ADVISORY_ONLY",
+            "options_role": "ADVISORY_ONLY",
             "scanner_stage": "FULL_SCORE",
         }
         row.update(_quote_context(m))
@@ -352,7 +356,11 @@ def _reason_summary(row: dict) -> str:
     rr = row.get("rr")
     rr_text = round(rr, 2) if rr is not None else "NA"
     options_bias = row.get("options_bias")
-    options_text = f" | opt {options_bias}" if options_bias else ""
+    options_text = (
+        f" | aviso opt {options_bias}"
+        if row.get("options_data_available")
+        else " | Sin datos de opciones"
+    )
     return (
         f"{row.get('setup_type')} | score {row.get('final_score')} | "
         f"RS {row.get('rs_score')} | trend {row.get('trend_score')} | "

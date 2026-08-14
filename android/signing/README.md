@@ -1,5 +1,5 @@
-# Firma de distribución lateral
+# Firma de producción
 
-Este directorio contiene una clave de desarrollo estable usada únicamente para APKs de prueba distribuidas fuera de Google Play.
+El repositorio no contiene ni descarga claves de firma compartidas. CI publica solamente un APK `debug` identificado explícitamente como no apto para producción.
 
-La variante estable usa un identificador de paquete distinto para convivir con las primeras APK debug, cuyas firmas eran efímeras. Esta clave no debe reutilizarse para una publicación de producción ni para Play App Signing.
+Para publicar una variante `release`, configure un keystore privado fuera del repositorio o use Play App Signing. La contraseña, el alias y el keystore deben entrar mediante secretos protegidos del entorno de release. Nunca use la clave AOSP de prueba ni una clave descargable públicamente.

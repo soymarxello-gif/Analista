@@ -1,9 +1,8 @@
-\
 from __future__ import annotations
 
-from loguru import logger
 import pandas as pd
 import yfinance as yf
+from loguru import logger
 
 
 def download_daily_prices(tickers: list[str], period: str = "1y", interval: str = "1d") -> dict[str, pd.DataFrame]:

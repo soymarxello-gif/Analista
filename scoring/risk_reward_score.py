@@ -1,5 +1,5 @@
-\
 import numpy as np
+
 
 def score_risk_reward(df, structure, config):
     if df is None or df.empty:
