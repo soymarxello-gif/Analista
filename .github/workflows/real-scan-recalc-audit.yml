@@ -1,12 +1,6 @@
 name: Real scan recalculation audit
 
 on:
-  pull_request:
-    branches: ["main"]
-    paths:
-      - "tools/recalculate_real_scans_backtest.py"
-      - "tests/test_real_scan_recalc.py"
-      - ".github/workflows/real-scan-recalc-audit.yml"
   workflow_dispatch:
 
 jobs:
