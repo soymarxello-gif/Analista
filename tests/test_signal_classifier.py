@@ -80,13 +80,13 @@ def test_price_and_market_cap_are_hard_filters():
     assert "market_cap_below_min" in reasons
 
 
-def test_missing_eligibility_metadata_is_not_a_confirmed_veto():
+def test_missing_eligibility_metadata_is_watchlist_not_confirmed_veto():
     row = base_row()
     row["market_cap"] = None
     row["quote_type"] = None
     signal, reasons = classify_signal(row, BASE_CONFIG)
-    assert signal == "TRIGGER_CONFIRMED"
-    assert reasons == []
+    assert signal == "WATCHLIST"
+    assert "eligibility_metadata_unverified" in reasons
 
 
 def test_rr_and_trend_invalidations_are_avoid_not_veto():
