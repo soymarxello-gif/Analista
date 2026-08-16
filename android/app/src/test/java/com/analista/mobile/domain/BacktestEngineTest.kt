@@ -76,6 +76,8 @@ class BacktestEngineTest {
         assertTrue(result.triggered)
         assertTrue(result.ambiguousSameBar)
         assertEquals("AMBIGUOUS_ENTRY_STOP_SAME_BAR", result.exitReason)
+        assertNull(result.mfePct)
+        assertNull(result.maePct)
     }
 
     @Test
@@ -137,6 +139,43 @@ class BacktestEngineTest {
         assertEquals("CLOSED_EXPIRED", result.status)
         assertEquals(109.0, result.exitFill!!, 0.0001)
         assertTrue(result.return1dPct != null)
+    }
+
+    @Test
+    fun lateEntryStillExpiresAtEndOfDecisionWindow() {
+        val result = BacktestEngine.evaluate(
+            contract(expiration = 4),
+            listOf(
+                bar(2, 100.0, 104.0, 99.0, 103.0),
+                bar(3, 101.0, 104.5, 100.0, 104.0),
+                bar(4, 104.0, 106.0, 103.0, 105.0),
+                bar(5, 106.0, 110.0, 104.0, 109.0)
+            ),
+            costs = BacktestEngine.CostModel(entrySlippageBps = 0.0, exitSlippageBps = 0.0)
+        )
+
+        assertTrue(result.triggered)
+        assertEquals("EXPIRED", result.exitReason)
+        assertEquals("CLOSED_EXPIRED", result.status)
+        assertEquals(109.0, result.exitFill!!, 0.0001)
+        assertEquals(2, result.holdingSessions)
+    }
+
+    @Test
+    fun intradayEntryDoesNotUsePreTriggerLowForMae() {
+        val result = BacktestEngine.evaluate(
+            contract(expiration = 2),
+            listOf(
+                // The 95 low can occur before the 105 intraday trigger. It must not become MAE.
+                bar(2, 100.0, 107.0, 95.0, 106.0),
+                bar(3, 106.0, 110.0, 103.0, 109.0)
+            ),
+            costs = BacktestEngine.CostModel(entrySlippageBps = 0.0, exitSlippageBps = 0.0)
+        )
+
+        assertTrue(result.triggered)
+        assertEquals(-1.9, result.maePct!!, 0.01)
+        assertEquals(4.76, result.mfePct!!, 0.01)
     }
 
     private fun contract(
