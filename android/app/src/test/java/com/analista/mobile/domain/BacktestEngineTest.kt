@@ -166,8 +166,9 @@ class BacktestEngineTest {
         val result = BacktestEngine.evaluate(
             contract(expiration = 2),
             listOf(
-                // The 95 low can occur before the 105 intraday trigger. It must not become MAE.
-                bar(2, 100.0, 107.0, 95.0, 106.0),
+                // The 96 low can occur before the 105 intraday trigger. It stays above the 95 stop,
+                // so this fixture isolates pre-trigger MAE contamination from same-bar stop ambiguity.
+                bar(2, 100.0, 107.0, 96.0, 106.0),
                 bar(3, 106.0, 110.0, 103.0, 109.0)
             ),
             costs = BacktestEngine.CostModel(entrySlippageBps = 0.0, exitSlippageBps = 0.0)
