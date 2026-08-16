@@ -35,6 +35,10 @@ data class CandidateEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val runId: String,
     val ticker: String,
+    @Deprecated(
+        message = "CandidateEntity.signal is the preliminary technical signal only. Operational decisions must use FinalDecisionEntity.finalSignal.",
+        level = DeprecationLevel.WARNING
+    )
     val signal: String,
     val score: Double,
     val close: Double,
@@ -74,6 +78,10 @@ data class CandidateEntity(
     val actionabilityAtExecution: String = "QUOTE_UNCONFIRMED",
     val quoteCapturedAtUtc: Long? = null
 )
+
+@Suppress("DEPRECATION")
+val CandidateEntity.preliminarySignal: String
+    get() = signal
 
 @Entity(tableName = "backtest_outcomes", indices = [Index("ticker"), Index("sourceRunId")])
 data class BacktestOutcomeEntity(
@@ -221,6 +229,9 @@ data class ScanCandidate(
     val eligibilityVerified: Boolean = true,
     val executionSessionOpen: Boolean = false
 )
+
+val ScanCandidate.preliminarySignal: String
+    get() = signal
 
 data class FundamentalMetrics(
     val marketCap: Long?,
