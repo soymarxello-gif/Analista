@@ -43,9 +43,10 @@ object FinalDecisionPersistenceFactory {
         val resolvedMacroConfidence = overlay.macroConfidence
             .takeUnless { it == "UNKNOWN" }
             ?: macroConfidence
+        val institutionalCoverage = overlay.institutionalCoverage
         val resolvedInstitutionalConflict = when {
             overlay.institutionalConflict != "NONE" -> overlay.institutionalConflict
-            overlay.optionsCoverage == "COMPLETE" &&
+            institutionalCoverage == "COMPLETE" &&
                 overlay.optionsBias == "BEARISH_WITH_DATA" &&
                 overlay.institutionalScore <= 40.0 -> "HIGH"
             else -> "NONE"
@@ -60,7 +61,7 @@ object FinalDecisionPersistenceFactory {
                 macroRegime = overlay.macroRegime,
                 macroConfidence = resolvedMacroConfidence,
                 fundamentalCoverage = overlay.fundamentalCoverage,
-                institutionalCoverage = overlay.optionsCoverage,
+                institutionalCoverage = institutionalCoverage,
                 institutionalConflict = resolvedInstitutionalConflict,
                 riskPlanValid = aggressiveStop.valid,
                 liveTriggerConfirmed = candidate.liveTriggerConfirmed,
@@ -87,7 +88,10 @@ object FinalDecisionPersistenceFactory {
             MacroRegimeEngine.VERSION,
             FundamentalAssessmentEngine.VERSION,
             OptionMetricsEngine.VERSION,
-            InstitutionalContrarianEngine.VERSION
+            InstitutionalContrarianEngine.VERSION,
+            InsiderAssessmentEngine.VERSION,
+            OfficialContextEngine.VERSION,
+            DecisionOverlayEngine.ENGINE_VERSION
         ).joinToString("+")
         val entity = FinalDecisionEntity(
             decisionId = "$runId-${candidate.ticker}",
@@ -102,7 +106,7 @@ object FinalDecisionPersistenceFactory {
             penaltyReasons = evaluated.penaltyReasons.joinToString(","),
             macroRegime = overlay.macroRegime,
             fundamentalCoverage = overlay.fundamentalCoverage,
-            institutionalCoverage = overlay.optionsCoverage,
+            institutionalCoverage = institutionalCoverage,
             executionFreshness = candidate.quoteFreshnessStatus,
             decisionVersion = decisionBundle,
             calculatedAtUtc = calculatedAtUtc
