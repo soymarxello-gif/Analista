@@ -5,6 +5,7 @@ import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.FinalDecisionEntity
 import com.analista.mobile.data.ScanCandidate
 import com.analista.mobile.data.SignalContractEntity
+import com.analista.mobile.data.preliminarySignal
 
 object FinalDecisionPersistenceFactory {
     data class Result(
@@ -54,7 +55,7 @@ object FinalDecisionPersistenceFactory {
 
         val evaluated = FinalDecisionEngine.decide(
             FinalDecisionEngine.Input(
-                preliminarySignal = candidate.signal,
+                preliminarySignal = candidate.preliminarySignal,
                 finalTradeScore = analysis.finalTradeScore,
                 setupType = candidate.setupType,
                 setupValid = candidate.setupType != "NO_VALID_SETUP",
