@@ -78,11 +78,16 @@ def classify_signal(row: dict, config: dict) -> tuple[str, list[str]]:
     trigger = _as_bool(row.get("trigger_confirmed", False))
     quote_quality = str(row.get("execution_quote_quality") or "HIGH").upper()
     liquidity_pass = _as_bool(row.get("liquidity_pass", False))
+    eligibility_verified = price is not None and market_cap is not None and bool(quote_type)
     thresholds = config.get("signal_thresholds", {})
 
     trigger_cfg = thresholds.get("trigger_confirmed", {})
     ready_cfg = thresholds.get("ready_wait_trigger", {})
     watch_cfg = thresholds.get("watchlist", {})
+
+    # Unknown eligibility is not a veto, but it cannot authorize an execution contract.
+    if not eligibility_verified:
+        return "WATCHLIST", ["eligibility_metadata_unverified"]
 
     # Execution-quality failures can retain a watchlist thesis but cannot authorize a contract.
     if not liquidity_pass:
