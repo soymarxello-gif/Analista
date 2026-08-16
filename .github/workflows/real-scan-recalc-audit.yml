@@ -1,0 +1,38 @@
+name: Real scan recalculation audit
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "tools/recalculate_real_scans_backtest.py"
+      - "tests/test_real_scan_recalc.py"
+      - ".github/workflows/real-scan-recalc-audit.yml"
+  workflow_dispatch:
+
+jobs:
+  recalculate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install audit dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Validate compatibility adapter
+        run: pytest -q tests/test_real_scan_recalc.py
+      - name: Recalculate immutable real-scan sample
+        run: python tools/recalculate_real_scans_backtest.py --max-rows-per-run 100 --output-dir audit-output/real-scan-recalc
+      - name: Show audit summary
+        run: cat audit-output/real-scan-recalc/real_scan_recalc.md
+      - name: Upload recalculation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-scan-recalc-backtest-fill-3
+          path: audit-output/real-scan-recalc/
+          if-no-files-found: error
