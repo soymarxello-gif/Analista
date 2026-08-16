@@ -19,6 +19,12 @@ EXCLUDED_QUOTE_TYPES = {
     "UNIT",
     "CLOSED_END_FUND",
 }
+HARD_VETO_CODES = {
+    "price_below_min",
+    "market_cap_below_min",
+    "non_tradable_instrument",
+    "excluded_security_type",
+}
 
 
 def _num(value, default=None):
@@ -94,15 +100,28 @@ def _hard_veto_reasons(row: dict, config: dict) -> list[str]:
     market_cap = _num(row.get("market_cap"))
     quote_type = str(row.get("quote_type") or "").strip().upper()
 
-    if price is None or price < min_price:
+    # Missing metadata is UNKNOWN, not a confirmed eligibility failure. This mirrors
+    # Android TradingPolicy: only known violations may become hard vetoes.
+    if price is not None and price < min_price:
         reasons.append("price_below_min")
-    if market_cap is None or market_cap < min_market_cap:
+    if market_cap is not None and market_cap < min_market_cap:
         reasons.append("market_cap_below_min")
-    if quote_type and quote_type not in {"EQUITY"}:
-        reasons.append("non_tradable_instrument")
     if quote_type in EXCLUDED_QUOTE_TYPES:
         reasons.append("excluded_security_type")
+    elif quote_type and quote_type != "EQUITY":
+        reasons.append("non_tradable_instrument")
     return reasons
+
+
+def _eligibility_warnings(row: dict) -> list[str]:
+    warnings: list[str] = []
+    if _num(row.get("price")) is None:
+        warnings.append("price_unverified")
+    if _num(row.get("market_cap")) is None:
+        warnings.append("market_cap_unverified")
+    if not str(row.get("quote_type") or "").strip():
+        warnings.append("instrument_type_unverified")
+    return warnings
 
 
 def _score100(*values, default=50.0) -> float:
@@ -158,19 +177,26 @@ def normalize_candidate(row: dict, config: dict) -> dict:
     out["execution_quote_quality"] = quote_quality
 
     hard_reasons = _hard_veto_reasons(out, config)
-    existing_veto = _parse_reasons(out.get("all_veto_reasons")) + _parse_reasons(out.get("veto_reasons"))
-    penalties = _parse_reasons(out.get("penalty_reasons"))
+    existing_veto = [
+        reason
+        for reason in _parse_reasons(out.get("all_veto_reasons")) + _parse_reasons(out.get("veto_reasons"))
+        if reason in HARD_VETO_CODES
+    ]
+    penalties = _parse_reasons(out.get("penalty_reasons")) + _eligibility_warnings(out)
 
     _add_scores(out, config)
 
     signal, classifier_reasons = classify_signal(out, config)
-    all_veto = _unique(existing_veto + hard_reasons + classifier_reasons)
+    classifier_veto = classifier_reasons if signal == "VETO" else []
+    if signal != "VETO":
+        penalties += classifier_reasons
+    all_veto = _unique(existing_veto + hard_reasons + classifier_veto)
 
     if hard_reasons:
         signal = "VETO"
     if out.get("setup_type") == "NO_VALID_SETUP":
-        signal = "VETO"
-        all_veto = _unique(all_veto + ["no_valid_setup"])
+        signal = "AVOID"
+        penalties.append("no_valid_setup")
 
     trigger = _bool(out.get("trigger_confirmed"))
     rr = _num(out.get("rr"), 0.0) or 0.0
@@ -202,14 +228,16 @@ def normalize_candidate(row: dict, config: dict) -> dict:
     out["theoretical_stop"] = out.get("theoretical_stop", stop)
     out["theoretical_target"] = out.get("theoretical_target", target)
 
-    if signal == "VETO":
-        out["actionable_entry"] = None
-        out["actionable_stop"] = None
-        out["actionable_target"] = None
-    else:
+    # Candidate rows carry theoretical levels. Only a confirmed execution state may expose
+    # levels as actionable; READY/WATCHLIST/AVOID/VETO cannot be mistaken for orders.
+    if signal == "TRIGGER_CONFIRMED":
         out["actionable_entry"] = out.get("actionable_entry", entry)
         out["actionable_stop"] = out.get("actionable_stop", stop)
         out["actionable_target"] = out.get("actionable_target", target)
+    else:
+        out["actionable_entry"] = None
+        out["actionable_stop"] = None
+        out["actionable_target"] = None
 
     out["signal"] = signal
     out["all_veto_reasons"] = ", ".join(_unique(all_veto))

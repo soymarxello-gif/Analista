@@ -5,6 +5,7 @@ import com.analista.mobile.data.CandidateTradePlanEntity
 import com.analista.mobile.data.FinalDecisionEntity
 import com.analista.mobile.data.ScanCandidate
 import com.analista.mobile.data.SignalContractEntity
+import com.analista.mobile.data.preliminarySignal
 
 object FinalDecisionPersistenceFactory {
     data class Result(
@@ -43,9 +44,10 @@ object FinalDecisionPersistenceFactory {
         val resolvedMacroConfidence = overlay.macroConfidence
             .takeUnless { it == "UNKNOWN" }
             ?: macroConfidence
+        val institutionalCoverage = overlay.institutionalCoverage
         val resolvedInstitutionalConflict = when {
             overlay.institutionalConflict != "NONE" -> overlay.institutionalConflict
-            overlay.optionsCoverage == "COMPLETE" &&
+            institutionalCoverage == "COMPLETE" &&
                 overlay.optionsBias == "BEARISH_WITH_DATA" &&
                 overlay.institutionalScore <= 40.0 -> "HIGH"
             else -> "NONE"
@@ -53,14 +55,14 @@ object FinalDecisionPersistenceFactory {
 
         val evaluated = FinalDecisionEngine.decide(
             FinalDecisionEngine.Input(
-                preliminarySignal = candidate.signal,
+                preliminarySignal = candidate.preliminarySignal,
                 finalTradeScore = analysis.finalTradeScore,
                 setupType = candidate.setupType,
                 setupValid = candidate.setupType != "NO_VALID_SETUP",
                 macroRegime = overlay.macroRegime,
                 macroConfidence = resolvedMacroConfidence,
                 fundamentalCoverage = overlay.fundamentalCoverage,
-                institutionalCoverage = overlay.optionsCoverage,
+                institutionalCoverage = institutionalCoverage,
                 institutionalConflict = resolvedInstitutionalConflict,
                 riskPlanValid = aggressiveStop.valid,
                 liveTriggerConfirmed = candidate.liveTriggerConfirmed,
@@ -87,7 +89,10 @@ object FinalDecisionPersistenceFactory {
             MacroRegimeEngine.VERSION,
             FundamentalAssessmentEngine.VERSION,
             OptionMetricsEngine.VERSION,
-            InstitutionalContrarianEngine.VERSION
+            InstitutionalContrarianEngine.VERSION,
+            InsiderAssessmentEngine.VERSION,
+            OfficialContextEngine.VERSION,
+            DecisionOverlayEngine.ENGINE_VERSION
         ).joinToString("+")
         val entity = FinalDecisionEntity(
             decisionId = "$runId-${candidate.ticker}",
@@ -102,7 +107,7 @@ object FinalDecisionPersistenceFactory {
             penaltyReasons = evaluated.penaltyReasons.joinToString(","),
             macroRegime = overlay.macroRegime,
             fundamentalCoverage = overlay.fundamentalCoverage,
-            institutionalCoverage = overlay.optionsCoverage,
+            institutionalCoverage = institutionalCoverage,
             executionFreshness = candidate.quoteFreshnessStatus,
             decisionVersion = decisionBundle,
             calculatedAtUtc = calculatedAtUtc

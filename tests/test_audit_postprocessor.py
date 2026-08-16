@@ -69,7 +69,8 @@ def normalize(*rows):
 def test_invalid_bidask_cannot_be_trigger_confirmed():
     result = normalize(candidate(bid=0, ask=0))
     assert result.loc[0, "execution_quote_quality"] == "LOW"
-    assert result.loc[0, "signal"] != "TRIGGER_CONFIRMED"
+    assert result.loc[0, "signal"] == "WATCHLIST"
+    assert "execution_quote_unconfirmed" in result.loc[0, "penalty_reasons"]
 
 
 def test_price_filter_is_hard():
@@ -84,10 +85,18 @@ def test_market_cap_filter_is_hard():
     assert "market_cap_below_min" in result.loc[0, "all_veto_reasons"]
 
 
+def test_missing_market_cap_is_unverified_not_veto():
+    result = normalize(candidate(market_cap=None))
+    assert result.loc[0, "signal"] != "VETO"
+    assert "market_cap_unverified" in result.loc[0, "penalty_reasons"]
+    assert "market_cap_below_min" not in result.loc[0, "all_veto_reasons"]
+
+
 def test_ready_wait_trigger_semantics():
     result = normalize(candidate(trigger_confirmed=False))
     if result.loc[0, "signal"] == "READY_WAIT_TRIGGER":
         assert bool(result.loc[0, "trigger_confirmed"]) is False
+        assert pd.isna(result.loc[0, "actionable_entry"])
 
 
 def test_trigger_confirmed_semantics():
@@ -96,12 +105,17 @@ def test_trigger_confirmed_semantics():
     assert bool(result.loc[0, "trigger_confirmed"]) is True
     assert result.loc[0, "execution_quote_quality"] != "LOW"
     assert result.loc[0, "rr"] >= 2.0
+    assert result.loc[0, "actionable_entry"] == 101.0
 
 
-def test_no_valid_setup_is_veto():
+def test_no_valid_setup_is_avoid_with_theoretical_levels_only():
     result = normalize(candidate(setup_type="NO_VALID_SETUP"))
-    assert result.loc[0, "signal"] == "VETO"
+    assert result.loc[0, "signal"] == "AVOID"
     assert result.loc[0, "final_trade_score"] <= 49
+    assert "no_valid_setup" in result.loc[0, "penalty_reasons"]
+    assert "no_valid_setup" not in result.loc[0, "all_veto_reasons"]
+    assert pd.isna(result.loc[0, "actionable_entry"])
+    assert result.loc[0, "theoretical_entry"] == 101.0
 
 
 def test_veto_has_no_actionable_levels():

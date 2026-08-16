@@ -8,7 +8,7 @@ import kotlin.math.max
 import kotlin.math.round
 
 object BacktestEngine {
-    const val VERSION = "backtest-fill-2"
+    const val VERSION = "backtest-fill-3"
 
     data class CostModel(
         val entrySlippageBps: Double = 5.0,
@@ -40,6 +40,11 @@ object BacktestEngine {
         val ambiguous: Boolean
     )
 
+    private data class Excursions(
+        val mfePct: Double?,
+        val maePct: Double?
+    )
+
     fun evaluate(
         contract: SignalContractEntity,
         bars: List<PriceBar>,
@@ -50,21 +55,18 @@ object BacktestEngine {
         require(contract.targetPrice > contract.triggerPrice)
         require(contract.maximumEntry >= contract.triggerPrice)
 
+        // expirationSessions is the decision-window lifetime of the immutable signal contract.
+        // A late fill does not restart that clock: the trade expires at the end of the same
+        // decision window. This keeps triggered and non-triggered contracts on one timeline.
         val future = bars.filter { it.epochSeconds * 1000L > contract.decisionTimestampUtc }
             .take(contract.expirationSessions)
         val entry = findEntry(contract, future, costs)
             ?: return emptyOutcome(contract, evaluatedAtUtc, future.size, costs.version)
         val active = future.drop(entry.index)
         val exit = findExit(contract, active, entry, costs)
-        val observed = active.take((exit?.index?.plus(1)) ?: active.size)
 
-        val mfe = observed.maxOfOrNull { (it.high / entry.fill - 1.0) * 100.0 }
-        val mae = observed.minOfOrNull { (it.low / entry.fill - 1.0) * 100.0 }
-        fun markout(days: Int): Double? = active.getOrNull(days - 1)?.close
-            ?.let { round2((it / entry.fill - 1.0) * 100.0) }
-
-        val expired = exit == null && active.size >= contract.expirationSessions
-        val resolvedExit = exit ?: if (expired && active.isNotEmpty()) {
+        val decisionWindowComplete = future.size >= contract.expirationSessions
+        val resolvedExit = exit ?: if (decisionWindowComplete && active.isNotEmpty()) {
             val lastIndex = active.lastIndex
             val last = active[lastIndex]
             Exit(
@@ -77,6 +79,11 @@ object BacktestEngine {
                 ambiguous = false
             )
         } else null
+        val observed = active.take((resolvedExit?.index?.plus(1)) ?: active.size)
+        val excursions = excursions(observed, entry, resolvedExit)
+
+        fun markout(days: Int): Double? = active.getOrNull(days - 1)?.close
+            ?.let { round2((it / entry.fill - 1.0) * 100.0) }
 
         val exitFill = resolvedExit?.fill
         val tradeReturnPct = exitFill?.let { round2((it / entry.fill - 1.0) * 100.0) }
@@ -120,8 +127,8 @@ object BacktestEngine {
             return5dPct = markout(5),
             return10dPct = markout(10),
             return20dPct = markout(20),
-            mfePct = mfe?.let(::round2),
-            maePct = mae?.let(::round2),
+            mfePct = excursions.mfePct?.let(::round2),
+            maePct = excursions.maePct?.let(::round2),
             holdingSessions = observed.size,
             ambiguousSameBar = resolvedExit?.ambiguous ?: false,
             status = status,
@@ -135,6 +142,31 @@ object BacktestEngine {
             totalCosts = totalCosts,
             costModelVersion = costs.version
         )
+    }
+
+    private fun excursions(
+        observed: List<PriceBar>,
+        entry: Entry,
+        resolvedExit: Exit?
+    ): Excursions {
+        if (observed.isEmpty()) return Excursions(null, null)
+
+        // With daily OHLC we cannot know whether the entry-bar low happened before or after
+        // an intraday trigger. Do not manufacture adverse excursion from pre-entry prices.
+        // If the same entry bar also touches the stop, the path itself is indeterminate and
+        // both excursion metrics are withheld rather than leaking an assumed intrabar order.
+        if (!entry.triggeredAtOpen && resolvedExit?.index == 0 && resolvedExit.ambiguous) {
+            return Excursions(null, null)
+        }
+
+        val mfe = observed.maxOfOrNull { (it.high / entry.fill - 1.0) * 100.0 }
+        val mae = if (entry.triggeredAtOpen) {
+            observed.minOfOrNull { (it.low / entry.fill - 1.0) * 100.0 }
+        } else {
+            val laterMae = observed.drop(1).minOfOrNull { (it.low / entry.fill - 1.0) * 100.0 }
+            minOf(0.0, laterMae ?: 0.0)
+        }
+        return Excursions(mfe, mae)
     }
 
     private fun findEntry(

@@ -31,19 +31,19 @@ def base_row():
     }
 
 
-def test_veto_liquidity_fail():
+def test_liquidity_fail_is_watchlist_not_hard_veto():
     row = base_row()
     row["liquidity_pass"] = False
     signal, reasons = classify_signal(row, BASE_CONFIG)
-    assert signal == "VETO"
-    assert "liquidity_fail" in reasons
+    assert signal == "WATCHLIST"
+    assert "liquidity_unconfirmed" in reasons
 
 
-def test_veto_no_valid_setup():
+def test_no_valid_setup_is_avoid_not_hard_veto():
     row = base_row()
     row["setup_type"] = "NO_VALID_SETUP"
     signal, reasons = classify_signal(row, BASE_CONFIG)
-    assert signal == "VETO"
+    assert signal == "AVOID"
     assert "no_valid_setup" in reasons
 
 
@@ -56,8 +56,9 @@ def test_trigger_confirmed_requires_valid_quote():
 def test_low_quote_cannot_trigger_confirmed():
     row = base_row()
     row["execution_quote_quality"] = "LOW"
-    signal, _ = classify_signal(row, BASE_CONFIG)
-    assert signal != "TRIGGER_CONFIRMED"
+    signal, reasons = classify_signal(row, BASE_CONFIG)
+    assert signal == "WATCHLIST"
+    assert "execution_quote_unconfirmed" in reasons
 
 
 def test_ready_wait_trigger_without_trigger():
@@ -77,6 +78,29 @@ def test_price_and_market_cap_are_hard_filters():
     assert signal == "VETO"
     assert "price_below_min" in reasons
     assert "market_cap_below_min" in reasons
+
+
+def test_missing_eligibility_metadata_is_watchlist_not_confirmed_veto():
+    row = base_row()
+    row["market_cap"] = None
+    row["quote_type"] = None
+    signal, reasons = classify_signal(row, BASE_CONFIG)
+    assert signal == "WATCHLIST"
+    assert "eligibility_metadata_unverified" in reasons
+
+
+def test_rr_and_trend_invalidations_are_avoid_not_veto():
+    low_rr = base_row()
+    low_rr["rr"] = 1.2
+    signal, reasons = classify_signal(low_rr, BASE_CONFIG)
+    assert signal == "AVOID"
+    assert "rr_below_minimum" in reasons
+
+    weak_trend = base_row()
+    weak_trend["trend_score"] = 0.4
+    signal, reasons = classify_signal(weak_trend, BASE_CONFIG)
+    assert signal == "AVOID"
+    assert "trend_score_too_weak" in reasons
 
 
 def test_buy_setup_active_is_never_emitted():

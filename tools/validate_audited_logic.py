@@ -135,16 +135,16 @@ def validate_final_score() -> None:
 
 def validate_signals() -> None:
     signal, reasons = classify_signal(candidate(liquidity_pass=False), SIGNAL_CONFIG)
-    assert signal == "VETO" and "liquidity_fail" in reasons
+    assert signal == "WATCHLIST" and "liquidity_unconfirmed" in reasons
 
     signal, reasons = classify_signal(candidate(setup_type="NO_VALID_SETUP"), SIGNAL_CONFIG)
-    assert signal == "VETO" and "no_valid_setup" in reasons
+    assert signal == "AVOID" and "no_valid_setup" in reasons
 
     signal, _ = classify_signal(candidate(), SIGNAL_CONFIG)
     assert signal == "TRIGGER_CONFIRMED"
 
     signal, _ = classify_signal(candidate(execution_quote_quality="LOW"), SIGNAL_CONFIG)
-    assert signal != "TRIGGER_CONFIRMED"
+    assert signal == "WATCHLIST"
 
     signal, _ = classify_signal(candidate(trigger_confirmed=False, final_trade_score=82), SIGNAL_CONFIG)
     assert signal == "READY_WAIT_TRIGGER"
@@ -152,6 +152,9 @@ def validate_signals() -> None:
     signal, reasons = classify_signal(candidate(price=9.99, market_cap=1_000_000_000), SIGNAL_CONFIG)
     assert signal == "VETO"
     assert "price_below_min" in reasons and "market_cap_below_min" in reasons
+
+    signal, _ = classify_signal(candidate(market_cap=None, quote_type=None), SIGNAL_CONFIG)
+    assert signal != "VETO"
 
     assert "BUY_SETUP_ACTIVE" not in {
         classify_signal(candidate(), SIGNAL_CONFIG)[0],
@@ -188,7 +191,7 @@ def validate_options() -> None:
 def validate_postprocessor() -> None:
     invalid = normalize_scan(pd.DataFrame([candidate(bid=0, ask=0)]), CONFIG).iloc[0]
     assert invalid["execution_quote_quality"] == "LOW"
-    assert invalid["signal"] != "TRIGGER_CONFIRMED"
+    assert invalid["signal"] == "WATCHLIST"
 
     low_price = normalize_scan(pd.DataFrame([candidate(price=9.99)]), CONFIG).iloc[0]
     assert low_price["signal"] == "VETO"
@@ -198,15 +201,20 @@ def validate_postprocessor() -> None:
     assert low_cap["signal"] == "VETO"
     assert "market_cap_below_min" in low_cap["all_veto_reasons"]
 
+    unverified = normalize_scan(pd.DataFrame([candidate(market_cap=None)]), CONFIG).iloc[0]
+    assert unverified["signal"] != "VETO"
+    assert "market_cap_unverified" in unverified["penalty_reasons"]
+
     confirmed = normalize_scan(pd.DataFrame([candidate()]), CONFIG).iloc[0]
     assert confirmed["signal"] == "TRIGGER_CONFIRMED"
     assert confirmed["rr"] >= 2.0
 
     invalid_setup = normalize_scan(pd.DataFrame([candidate(setup_type="NO_VALID_SETUP")]), CONFIG).iloc[0]
-    assert invalid_setup["signal"] == "VETO"
+    assert invalid_setup["signal"] == "AVOID"
     assert invalid_setup["final_trade_score"] <= 49
     assert pd.isna(invalid_setup["actionable_entry"])
     assert invalid_setup["theoretical_entry"] == 101.0
+    assert "no_valid_setup" not in invalid_setup["all_veto_reasons"]
 
     ranking = normalize_scan(
         pd.DataFrame([candidate(ticker="A"), candidate(ticker="B", trigger_confirmed=False, final_score=75)]),

@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
         val ordered = candidates
             .filter { candidate -> selectedFilter == "Todos" || bucket(candidate, decisionByTicker[candidate.ticker]) == selectedFilter }
             .sortedWith(
-                compareBy<CandidateEntity> { signalPriority(decisionByTicker[it.ticker]?.finalSignal ?: it.signal) }
+                compareBy<CandidateEntity> { signalPriority(decisionByTicker[it.ticker]?.finalSignal ?: "PENDING_FINAL_DECISION") }
                     .thenByDescending { decisionByTicker[it.ticker]?.finalTradeScore ?: it.score }
             )
         val counts = candidates.groupingBy { bucket(it, decisionByTicker[it.ticker]) }.eachCount()
@@ -295,8 +295,8 @@ class MainActivity : ComponentActivity() {
         decision: FinalDecisionEntity?
     ) {
         var expanded by rememberSaveable(candidate.id) { mutableStateOf(false) }
-        val signal = decision?.finalSignal ?: candidate.signal
-        val score = decision?.finalTradeScore ?: candidate.score
+        val signal = decision?.finalSignal ?: "PENDING_FINAL_DECISION"
+        val score = decision?.finalTradeScore
         Card(
             onClick = { expanded = !expanded },
             modifier = Modifier.fillMaxWidth().animateContentSize(),
@@ -314,15 +314,18 @@ class MainActivity : ComponentActivity() {
                     }
                     Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
                         SignalBadge(signal)
-                        Text("${"%.1f".format(score)}", fontWeight = FontWeight.Bold)
+                        Text(score?.let { "%.1f".format(it) } ?: "—", fontWeight = FontWeight.Bold)
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(executionLabel(candidate), style = MaterialTheme.typography.bodySmall)
+                    Text(if (decision == null) "Decisión final pendiente" else executionLabel(candidate), style = MaterialTheme.typography.bodySmall)
                     Text(if (expanded) "Ocultar detalle ▲" else "Ver detalle ▼", style = MaterialTheme.typography.labelMedium)
                 }
                 if (expanded) {
                     HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                    if (decision == null) {
+                        DetailLine("Decisión", "Pendiente de evaluación final")
+                    }
                     decision?.let {
                         DetailLine("Decisión", "${signalLabel(it.preliminarySignal)} → ${signalLabel(it.finalSignal)}")
                         DetailLine("Contrato", if (it.eligibleForContract) "Elegible para revisión manual" else "Bloqueado")
@@ -380,7 +383,7 @@ class MainActivity : ComponentActivity() {
         val (background, foreground) = when (signal) {
             "TRIGGER_CONFIRMED" -> Color(0xFF14532D) to Color(0xFFBBF7D0)
             "READY_WAIT_TRIGGER" -> Color(0xFF164E63) to Color(0xFFCFFAFE)
-            "WATCHLIST" -> Color(0xFF3F3F46) to Color(0xFFE4E4E7)
+            "WATCHLIST", "PENDING_FINAL_DECISION" -> Color(0xFF3F3F46) to Color(0xFFE4E4E7)
             "VETO" -> Color(0xFF450A0A) to Color(0xFFFECACA)
             else -> Color(0xFF422006) to Color(0xFFFDE68A)
         }
@@ -580,13 +583,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bucket(candidate: CandidateEntity, decision: FinalDecisionEntity?): String {
-        val signal = decision?.finalSignal ?: candidate.signal
-        return when {
-            signal == "TRIGGER_CONFIRMED" -> "Accionables"
-            signal == "READY_WAIT_TRIGGER" -> "Esperando"
-            signal == "WATCHLIST" -> "Observación"
-            signal == "VETO" -> "No elegibles"
-            candidate.setupType == "NO_VALID_SETUP" || signal == "AVOID" -> "Sin setup"
+        if (decision == null) {
+            return if (candidate.setupType == "NO_VALID_SETUP") "Sin setup" else "Observación"
+        }
+        return when (decision.finalSignal) {
+            "TRIGGER_CONFIRMED" -> "Accionables"
+            "READY_WAIT_TRIGGER" -> "Esperando"
+            "WATCHLIST" -> "Observación"
+            "VETO" -> "No elegibles"
+            "AVOID" -> "Sin setup"
             else -> "Observación"
         }
     }
@@ -604,8 +609,10 @@ class MainActivity : ComponentActivity() {
         "TRIGGER_CONFIRMED" -> "Confirmado"
         "READY_WAIT_TRIGGER" -> "Esperando"
         "WATCHLIST" -> "Observación"
+        "AVOID" -> "Sin setup"
         "VETO" -> "No elegible"
-        else -> "Sin setup"
+        "PENDING_FINAL_DECISION" -> "Decisión pendiente"
+        else -> "Estado desconocido"
     }
 
     private fun setupLabel(setup: String) = when (setup) {

@@ -15,7 +15,7 @@ import com.analista.mobile.data.ScanCandidate
 import kotlin.math.round
 
 object DecisionOverlayEngine {
-    const val ENGINE_VERSION = "android-v3-overlays-7"
+    const val ENGINE_VERSION = "android-v3-overlays-8"
 
     data class OverlayResult(
         val contextScore: Double,
@@ -25,6 +25,8 @@ object DecisionOverlayEngine {
         val macroRegime: String,
         val optionsBias: String,
         val fundamentalCoverage: String,
+        // Legacy constructor/storage name retained for source compatibility. This value has
+        // represented the full institutional composite coverage since overlays-7, not only options.
         val optionsCoverage: String,
         val confidencePenalty: Double,
         val breakdown: String,
@@ -39,7 +41,10 @@ object DecisionOverlayEngine {
         val fundamentalReasons: List<String> = emptyList(),
         val institutionalConflict: String = "NONE",
         val institutionalReasons: List<String> = emptyList()
-    )
+    ) {
+        val institutionalCoverage: String
+            get() = optionsCoverage
+    }
 
     data class ResolvedInputs(
         val macroHistories: Map<String, List<PriceBar>>,
