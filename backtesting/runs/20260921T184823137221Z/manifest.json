@@ -1,0 +1,28 @@
+{
+  "registry_schema_version": "1.0",
+  "run_id": "20260921T184823137221Z",
+  "generated_at_utc": "2026-09-21T18:48:23.137221+00:00",
+  "market_date_et": "2026-09-21",
+  "exchange_timezone": "America/New_York",
+  "scheduled_time_et": "09:20",
+  "rows": 602,
+  "run_trust_status": "UNUSABLE",
+  "run_trust_reasons": [
+    "essential_source_price_history_yahoo_critical",
+    "supporting_source_fundamentals_yahoo_critical"
+  ],
+  "files": {
+    "scan_json": {
+      "path": "backtesting/runs/20260921T184823137221Z/scan.json",
+      "sha256": "26cef20102e9560bf914092020414f8009aa50fe1bf0664f14970c9dcad40b9b"
+    },
+    "scan_csv": {
+      "path": "backtesting/runs/20260921T184823137221Z/scan.csv",
+      "sha256": "5842aaeee6d825960f25bb23d83a788429e7c18bcf979b8d07581841c37e0ccb"
+    },
+    "telemetry_json": {
+      "path": "backtesting/runs/20260921T184823137221Z/telemetry.json",
+      "sha256": "aed28c72801128ca9de598eeecd4d0a680016b55c8810cd2a6ad0b4a22a95263"
+    }
+  }
+}
