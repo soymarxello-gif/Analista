@@ -1,0 +1,116 @@
+{
+  "telemetry_schema_version": "1.1",
+  "started_at": "2026-09-30T18:27:47.980820+00:00",
+  "finished_at": "2026-09-30T18:32:06.920928+00:00",
+  "sources": {
+    "fundamentals_yahoo": {
+      "calls": 1,
+      "successes": 1,
+      "failures": 0,
+      "retries": 0,
+      "circuit_opens": 0,
+      "blocked_calls": 0,
+      "latency_ms_total": 232719.09,
+      "latency_ms_max": 232719.09,
+      "requested_items": 504,
+      "covered_items": 504,
+      "cache_hits": 0,
+      "last_error": null,
+      "latency_ms_avg": 232719.09,
+      "coverage_pct": 100.0,
+      "cache_hit_pct": 0.0
+    },
+    "options_yahoo": {
+      "calls": 5,
+      "successes": 5,
+      "failures": 0,
+      "retries": 0,
+      "circuit_opens": 0,
+      "blocked_calls": 0,
+      "latency_ms_total": 1529.73,
+      "latency_ms_max": 418.92,
+      "requested_items": 5,
+      "covered_items": 5,
+      "cache_hits": 0,
+      "last_error": null,
+      "latency_ms_avg": 305.95,
+      "coverage_pct": 100.0,
+      "cache_hit_pct": 0.0
+    },
+    "price_history_yahoo": {
+      "calls": 1,
+      "successes": 1,
+      "failures": 0,
+      "retries": 0,
+      "circuit_opens": 0,
+      "blocked_calls": 0,
+      "latency_ms_total": 18518.32,
+      "latency_ms_max": 18518.32,
+      "requested_items": 382,
+      "covered_items": 382,
+      "cache_hits": 0,
+      "last_error": null,
+      "latency_ms_avg": 18518.32,
+      "coverage_pct": 100.0,
+      "cache_hit_pct": 0.0
+    },
+    "screeners": {
+      "calls": 1,
+      "successes": 1,
+      "failures": 0,
+      "retries": 0,
+      "circuit_opens": 0,
+      "blocked_calls": 0,
+      "latency_ms_total": 1324.75,
+      "latency_ms_max": 1324.75,
+      "requested_items": 1,
+      "covered_items": 528,
+      "cache_hits": 0,
+      "last_error": null,
+      "latency_ms_avg": 1324.75,
+      "coverage_pct": 52800.0,
+      "cache_hit_pct": 0.0
+    }
+  },
+  "health": {
+    "overall_status": "CRITICAL",
+    "degraded_sources": [
+      "fundamentals_yahoo",
+      "price_history_yahoo"
+    ],
+    "sources": {
+      "fundamentals_yahoo": {
+        "health_status": "CRITICAL",
+        "health_score": 70.0,
+        "health_reasons": [
+          "very_high_latency"
+        ],
+        "failure_rate_pct": 0.0,
+        "retry_rate_pct": 0.0
+      },
+      "options_yahoo": {
+        "health_status": "HEALTHY",
+        "health_score": 100.0,
+        "health_reasons": [],
+        "failure_rate_pct": 0.0,
+        "retry_rate_pct": 0.0
+      },
+      "price_history_yahoo": {
+        "health_status": "CRITICAL",
+        "health_score": 70.0,
+        "health_reasons": [
+          "very_high_latency"
+        ],
+        "failure_rate_pct": 0.0,
+        "retry_rate_pct": 0.0
+      },
+      "screeners": {
+        "health_status": "HEALTHY",
+        "health_score": 100.0,
+        "health_reasons": [],
+        "failure_rate_pct": 0.0,
+        "retry_rate_pct": 0.0
+      }
+    }
+  }
+}
